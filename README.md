@@ -1,23 +1,21 @@
-Os arquivos dessa pasta são os arquivos do ESP32.
+# Firmware ESP32
 
+Este diretório contém os códigos-fonte do ESP32. A arquitetura foi modularizada para permitir o teste individual de cada "tarefa", facilitando o debug e a manutenção sem quebrar funcionalidades já estáveis.
 
-Dentro da pasta "ESP_Completo", temos os arquivos dos codigos individuais de cada funcao que o ESP32 faz:
+## Estrutura de Módulos (`/ESP_Completo`)
 
-1. ADS.cpp:
-    Arquivo do codigo que lida com o ADS. Nele, podemos ver como é feita a coleta de dados do ADS pelo ESP32.
+* **`main.cpp`**
+  O código principal. Faz a junção de todos os fragmentos e orquestra o fluxo de execução do ESP32.
 
-2. Backend.cpp:
-    Arquivo da comunicação do ESP32 com o backend. É possível destrinchar a cominicação por lá e testar.
+* **`ADS.cpp`**
+  Módulo de coleta de dados. Lida diretamente com a leitura e processamento das informações do ADS.
 
-3. BMS.cpp:
-    Código da utilização do BMS para coleta de dados usando ESP32. Pode-se ver como é feita a coleta dos dados e quais dados são requisitados.
+* **`BMS.cpp`**
+  Gerenciamento da bateria. Define como é feita a coleta de dados do BMS e quais informações são requisitadas.
 
-4. main.cpp:
-    O código completo do ESP32. Nele, temos a junção de todos os fragmentos códigos que compõem o código completo.
+* **`Backend.cpp`**
+  Comunicação externa. Isola a lógica de envio e recebimento de dados entre o ESP32 e o backend.
 
+## Padrão de Código
 
-A intenção de fazer a pasta assim foi para podermos testar individualmente cada "tarefa" que o ESP32 faz. É possível realizar testes e fazer debug
-de coisas com mais facilidade e podermos mudar o codigo sem alterar outras funcionalidades quee já estiverem funcionando.
-
-Cada código é feito para ter o máximo de compreensão possível. Isso se torna visível quando vemos algum codigo com extensas linhas de comentário.
-Nem sempre os comentários extensos são necessários, mas eles visam tirar a necessidade de pesquisar muito sobre uma função específica.
+Cada módulo foi escrito com foco máximo em legibilidade. Trechos mais complexos possuem linhas de comentários extensas e detalhadas. O objetivo é tornar o código autoexplicativo e eliminar a necessidade de pesquisar documentações externas para entender funções específicas.
