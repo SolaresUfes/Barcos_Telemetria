@@ -54,18 +54,18 @@ void loop() {
 // ===============Funções auxiliares===============
 
 void iniciar_ADS(int SDA, int SCL) {
-// Inicia a comunicação I2C nos pinos 21 e 22
-Wire.begin(SDA, SCL);
+    // Inicia a comunicação I2C nos pinos 21 e 22
+    Wire.begin(SDA, SCL);
 
-Serial.println("Inicializando o ADS");
+    Serial.println("Inicializando o ADS");
 
-// Tenta iniciar o módulo ADS.
-while (!ads.begin()) {
-    Serial.println("Falha ao iniciar o ADS. Verifique as conexões!");
-    delay(1000); // Se deu ruim, tenta de novo de segundo em segundo até termos alguma coisa diferente
-}
+    // Tenta iniciar o módulo ADS.
+    while (!ads.begin()) {
+        Serial.println("Falha ao iniciar o ADS. Verifique as conexões!");
+        delay(1000); // Se deu ruim, tenta de novo de segundo em segundo até termos alguma coisa diferente
+    }
 
-Serial.println("ADS iniciado com sucesso!");
+    Serial.println("ADS iniciado com sucesso!");
 }
 
 resposta_ADS coleta_ADS(bool ads0=false, bool ads1=false, bool ads2=false, bool subtrair_magico=false){
