@@ -1,20 +1,24 @@
 # Firmware ESP32
 
-Este diretório contém os códigos-fonte do ESP32. A arquitetura foi modularizada para permitir o teste individual de cada "tarefa", facilitando o debug e a manutenção sem quebrar funcionalidades já estáveis.
+Este diretório contém os códigos-fonte do ESP32, modularizados para facilitar testes, debug e reaproveitamento de código sem quebrar funcionalidades já estáveis.
 
-## Estrutura de Módulos (`/ESP_Completo`)
+## Estrutura do Projeto
 
+### `/src` (Execução e Testes)
 * **`main.cpp`**
-  O código principal. Faz a junção de todos os fragmentos e orquestra o fluxo de execução do ESP32.
+  O código principal. Faz a junção de todos os módulos e orquestra o fluxo de execução do ESP32.
+* **`teste.cpp`**
+  Arquivo dedicado para testes rápidos e isolados. Use esse arquivo para testar as alterações nos arquivos isolados de `ADS.cpp`, `BMS.cpp` ou `Backend.cpp`. Ao terminar os testes, comente completamente esse arquivo de código. (Nota: Ao compilar algum código, certifique que `main.cpp` esteja completamente comentada para evitar conflito de múltiplas declarações de `setup` e `loop`)
 
-* **`ADS.cpp`**
-  Módulo de coleta de dados. Lida diretamente com a leitura e processamento das informações do ADS.
+### `/lib` (Módulos Secundários)
+Nesta pasta ficam os códigos das funcionalidades individuais que o ESP tem:
 
-* **`BMS.cpp`**
-  Gerenciamento da bateria. Define como é feita a coleta de dados do BMS e quais informações são requisitadas.
-
-* **`Backend.cpp`**
-  Comunicação externa. Isola a lógica de envio e recebimento de dados entre o ESP32 e o backend.
+* **`ADS/`**
+  Contém a lógica completa de leitura e processamento de dados coletados pelo ADS.
+* **`BMS/`**
+  Executa a comunicação direta para a coleta de dados do BMS e requisição de parâmetros da bateria.
+* **`Backend/`**
+  Lida com toda a interação de envio e recebimento de informações entre o ESP32 e o backend.
 
 ## Padrão de Código
 
