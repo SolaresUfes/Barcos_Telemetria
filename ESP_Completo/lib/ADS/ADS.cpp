@@ -7,28 +7,16 @@
 #define SCL_ADS 22 
 #define numero_magico 2.500125
 
-// Vamos usar o ADS para 4 coisas, a priori: Os sensores de efeito hall (3) e um canal para referencia (não vamos mexer pra nao interferir)
+// Vamos usar o ADS para 4 coisas, a priori: Os sensores de efeito hall (3) nos tres primeiros canais [A0, A1, A2] e um canal para referencia [A3] (não vamos mexer pra nao interferir)
 
-// Cria o objeto do ADS1015. 
-// Se o módulo for o ADS1115, é só trocar para 'Adafruit_ADS1115 ads;'
+// Cria o objeto do ADS1115. 
 Adafruit_ADS1115 ads; 
 
 void setup() {
     Serial.begin(115200);
 
-    // Inicia a comunicação I2C nos pinos 21 e 22
-    Wire.begin(SDA_ADS, SCL_ADS);
-
-    Serial.println("Inicializando o ADS");
-
-    // Tenta iniciar o módulo ADS. 
-    if (!ads.begin()) {
-        Serial.println("Falha ao iniciar o ADS. Verifique as conexões!");
-        while (1); // Trava em um loop infinito (fiz isso pra não tentar fazer mais nada depois)
-    }
-
-    Serial.println("ADS iniciado com sucesso!");
-
+    iniciar_ADS(SDA_ADS, SCL_ADS);
+    
     // O "Gain" (Ganho) define a faixa máxima de tensão que o módulo pode ler.
     // GAIN_TWOTHIRDS permite ler de -6.144V até +6.144V (Faixa padrão, mas nao sei o que eles vao querer usar)
     // GAIN_ONE permite ler de -4.096V até +4.096V
@@ -88,4 +76,20 @@ void loop() {
     // Serial.println(tensao_A1 - tensao_A3);
 
     // delay(50); // Aguarda 1 segundo para a próxima leitura
+}
+
+
+void iniciar_ADS(int SDA, int SCL){
+    // Inicia a comunicação I2C nos pinos 21 e 22
+    Wire.begin(SDA, SCL);
+
+    Serial.println("Inicializando o ADS");
+
+    // Tenta iniciar o módulo ADS. 
+    while (!ads.begin()) {
+        Serial.println("Falha ao iniciar o ADS. Verifique as conexões!");
+        delay(1000);; // Se deu ruim, tenta de novo de segundo em segundo até termos alguma coisa diferente
+    }
+
+    Serial.println("ADS iniciado com sucesso!");    
 }
