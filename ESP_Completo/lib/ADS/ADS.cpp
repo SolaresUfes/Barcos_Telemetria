@@ -1,11 +1,15 @@
 #include <Arduino.h>
-#include <Wire.h>
-#include <Adafruit_ADS1X15.h> // Biblioteca necessária para o ADS
+#include <Wire.h>             // I2C
+#include <Adafruit_ADS1X15.h> // ADS
 
-// Definição dos pinos I2C
+// ===================Definições==================
+
+// Pinos I2C
 #define SDA_ADS 21
 #define SCL_ADS 22
-#define numero_magico 2.500125 // OFFSET DO SENSOR HALL. Esse número foi coletado experimentalmente como o valor "padrão" do 0V vindos da resposta do sensor de efeito hall. Subtrimos ele do vlaor recebido pra termos uma resposta que gira em torno de um 0V
+
+// OFFSET DO SENSOR HALL
+#define numero_magico 2.500125 // Esse número foi coletado experimentalmente como o valor "padrão" do 0V vindos da resposta do sensor de efeito hall. Subtrimos ele do vlaor recebido pra termos uma resposta que gira em torno de um 0V
 
 // Vamos usar o ADS para 4 coisas, a priori: Os sensores de efeito hall (3) nos tres primeiros canais [A0, A1, A2] e um canal para referencia [A3] (não vamos mexer pra nao interferir)
 // Criei essa estrutura pra nao precisar ficar enviando 3 funções por loop. Essa estrutura recebera os valores de cada ads em cada variavel, se for pedido o valor da medição daquele canal do ADS
@@ -21,6 +25,9 @@ resposta_ADS coleta_ADS(bool ads0=false, bool ads1=false, bool ads2=false, bool 
 
 // A lógica dessa função acerca da escolha é igual a da função anterior, com a escolha dependendo do "true" ou "false", mas essa é so pra imprimir os valores no Serial.
 void visualizar_ADS(resposta_ADS valores_ADS, bool ads0=false, bool ads1=false, bool ads2=false);
+
+
+// ==================Setup e Loop==================
 
 void setup() {
 
@@ -42,6 +49,9 @@ void loop() {
 
     delay(100); // Uma leitura a cada 1/10 segundo
 }
+
+
+// ===============Funções auxiliares===============
 
 void iniciar_ADS(int SDA, int SCL) {
 // Inicia a comunicação I2C nos pinos 21 e 22
