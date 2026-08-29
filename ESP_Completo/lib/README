@@ -1,46 +1,15 @@
+# Módulos Funcionais (Bibliotecas)
 
-This directory is intended for project specific (private) libraries.
-PlatformIO will compile them to static libraries and link into the executable file.
+Esta pasta não guarda apenas bibliotecas comuns, mas sim os **subsistemas completos** do nosso projeto. Cada subpasta aqui dentro representa uma "tarefa" ativa e independente que o ESP32 realiza.
 
-The source code of each library should be placed in a separate directory
-("lib/your_library_name/[Code]").
+A ideia de separar tudo em módulos é simples: se precisarmos alterar, por exemplo, como o Wi-Fi funciona, mexemos apenas no módulo do Backend, sem o risco de quebrar a leitura da bateria (BMS) ou dos sensores (ADS). Essa lógica se aplica a todos os arquivos daqui
 
-For example, see the structure of the following example libraries `Foo` and `Bar`:
+## O que temos aqui?
 
-|--lib
-|  |
-|  |--Bar
-|  |  |--docs
-|  |  |--examples
-|  |  |--src
-|  |     |- Bar.c
-|  |     |- Bar.h
-|  |  |- library.json (optional. for custom build options, etc) https://docs.platformio.org/page/librarymanager/config.html
-|  |
-|  |--Foo
-|  |  |- Foo.c
-|  |  |- Foo.h
-|  |
-|  |- README --> THIS FILE
-|
-|- platformio.ini
-|--src
-   |- main.c
+* **`ADS/`**: O coletor de dados do ESP32: Lê os sensores físicos com precisão.
+* **`BMS/`**: O gerenciador da bateria: Conversa com o sistema de energia para saber o estado da carga e se há algum problema.
+* **`Backend/`**: O código de comunicação: Pega as informações coletadas e manda para o nosso servidor pela internet.
 
-Example contents of `src/main.c` using Foo and Bar:
-```
-#include <Foo.h>
-#include <Bar.h>
+Para entender como cada um funciona por baixo dos panos, basta abrir a pasta correspondente e ler o seu próprio README.
 
-int main (void)
-{
-  ...
-}
-
-```
-
-The PlatformIO Library Dependency Finder will find automatically dependent
-libraries by scanning project source files.
-
-More information about PlatformIO Library Dependency Finder
-- https://docs.platformio.org/page/librarymanager/ldf.html
+Para testar cada código individualmente no ESP, use o arquivo `test.cpp` na pasta `/src` e cole o codigo que voce precisa testar. Ao final dos testes, caso algo seja modificado, altere os arquivos dentro de sua pasta específica, descomente o arquivo `/src/main.cpp` e envie as alterações para cá
