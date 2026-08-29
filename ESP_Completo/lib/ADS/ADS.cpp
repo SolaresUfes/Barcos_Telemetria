@@ -54,6 +54,7 @@ void loop() {
 // ===============Funções auxiliares===============
 
 void iniciar_ADS(int SDA, int SCL) {
+    
     // Inicia a comunicação I2C nos pinos 21 e 22
     Wire.begin(SDA, SCL);
 
