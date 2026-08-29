@@ -1,0 +1,1 @@
+// Insira aqui o código que quer testar. LEMBRE-SE de usar a biblioteca <Arduino.h> se for colocar algo no ESP32/Arduino
