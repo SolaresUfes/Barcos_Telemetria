@@ -1,10 +1,9 @@
-#include <Arduino.h>     // Basicos do Arduino_ESP
-#include <WiFi.h>        // Wi-Fi
-#include <HTTPClient.h>  // HTTP
-#include <ArduinoJson.h> // Json
-#include <Adafruit_ADS1X15.h>
-
-#include <Wire.h> // I2C
+#include <Arduino.h>          // Basicos do Arduino_ESP
+#include <WiFi.h>             // Wi-Fi
+#include <Wire.h>             // I2C
+#include <HTTPClient.h>       // HTTP
+#include <ArduinoJson.h>      // Json
+#include <Adafruit_ADS1X15.h> // ADS
 
 #define RXD2 16
 #define TXD2 17
