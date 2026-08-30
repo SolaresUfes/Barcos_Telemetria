@@ -2,15 +2,17 @@
 
 #define RXD2 16
 #define TXD2 17
-#define RS485_CONTROL 4
+#define RS485_CONTROL 23
 
-// Struct que compreende os dados da bateria que iremos pegar. Pode-se adicionar mais dados aqui com o passar do tempo.
+// ----------------- ESTRUTURAS DOS DADOS -----------------
+
+// Estrutura com as variaveis dos dados do BMS
 struct DADOS_BATERIA {
-  float tensao;
-  float corrente;
-  float porcentagem;
+    float tensao;
+    float corrente;
+    float porcentagem;
 };
-
+// Estrutura com os valores (TRUE or FALSE) dos alertas do BMS
 struct ALERTAS_BATERIA {
   bool celula_sobretensao;
   bool celula_subtensao;
@@ -30,10 +32,19 @@ struct ALERTAS_BATERIA {
 
   bool alerta_ativo;
 };
+// Estrutura com dados individuais de tensao para cada celula
+struct CELULAS_INDIVIDUAIS {
+  float celulas[16] = {0};
+};
+
+// ----------------- VARIAVEIS E CONSTANTES -----------------
 
 // Comando geral que pode ser usado para tensao, corrente e porcentagem
-byte status_geral[]    = {0xA5, 0x40, 0x90, 0x08, 0x00, 0x00, 0x00, 0x7D}; // 381 -> 125 = 0x7D
-byte falhas[]          = {0xA5, 0x40, 0x95, 0x08, 0x00, 0x00, 0x00, 0x82}; // 386 -> 130 = 0x82
+byte status_geral[]   = {0xA5, 0x40, 0x90, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x7D}; // 381 -> 125 = 0x7D
+// Comando para recebimento dos valores individuais de tensao por pack de bateria (32 packs)
+byte cel_individual[] = {0xA5, 0x40, 0x95, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x82}; // 386 -> 130 = 0x82};
+// Comando pra recebimentos das falhas/alertas do BMS
+byte falhas[]         = {0xA5, 0x40, 0x98, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x85}; // 389 -> 133 = 0x85
 
 // Comandos usam uma sequencia definida como:
 /*
@@ -63,170 +74,274 @@ byte falhas[]          = {0xA5, 0x40, 0x95, 0x08, 0x00, 0x00, 0x00, 0x82}; // 38
   int resposta_pra_algo = (array_resposta[n] << 8) | array_resposta[n+1];
   
   Onde o n sera o byte que queremos analisar. Para cada comando, o byte pode mudar, entao o codigo nao tem somente um valor pra "n"
-  */
- 
+*/
+
+// ----------------- FUNCOES AUXILIARES -----------------
+
 DADOS_BATERIA ler_dados_bms();
-
 ALERTAS_BATERIA ler_alertas_bms();
-
+CELULAS_INDIVIDUAIS ler_celulas_bms();
 ALERTAS_BATERIA interpretador(byte resposta[13]);
 
-void setup() {
-  Serial.begin(115200);
-  Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2); // UART2
-  
-  // Controle do RS485. A escrita estar em LOW / HIGH nos diz se esta em modo de leitura ou transmissao -> LOW = Modo de leitura (ou espera) / HIGH = Transmitindo dados
-  pinMode(RS485_CONTROL, OUTPUT);
-  digitalWrite(RS485_CONTROL, LOW); // Modo de espera
-  
-  Serial.println("RS485 iniciado...");
-}
+// ----------------- FUNÇÕES -----------------
 
-void loop() {
+DADOS_BATERIA ler_dados_bms() {
 
-  // Transmissao HIGH
-  digitalWrite(RS485_CONTROL, HIGH);
-  delay(10);    
-  DADOS_BATERIA BMS_dados = ler_dados_bms();
+    byte resposta[64];
+    int n = 0;
 
-  digitalWrite(RS485_CONTROL, HIGH);
-  delay(10);
-  ALERTAS_BATERIA BMS_alertas = ler_alertas_bms();
+    DADOS_BATERIA dados;
 
-  digitalWrite(RS485_CONTROL, LOW);
-  
-  delay(1000);
-}
-
-DADOS_BATERIA ler_dados_bms(){
-
-  byte resposta[64];
-  int n = 0;
-
-  DADOS_BATERIA dados;
-
-  Serial2.write(status_geral, 8);
-  Serial2.flush();
-
-  Serial.println("Comandos enviados!");
-  delay(10);
-
-  // Ativa o modo de recepção de dados
-  digitalWrite(RS485_CONTROL, LOW);
-  delay(50);
-  
-  // Leitura da resposta bit a bit
-  while (Serial2.available() && n < 64) {
-    resposta[n++] = Serial2.read();
-  }
-
-  // A resposta SEMPRE tem 13 bytes pra esse comando. Se a resposta do BMS nao retornar com no minimo esse valor, algo deu errado no BMS ou na comunicação. Os valores serão descartados se isso acontecer.
-  if (n < 13) {
-    Serial.printf("Resposta incompleta!!");
-
-    dados.tensao = NAN;
-    dados.corrente = NAN;
-    dados.porcentagem = NAN;
-    
-    return dados;
-  }
-  
-  // Verifica se realmente o que veio é do BMS usando a primeira informaçao. Se ela nao for o HEADER 0x45, ta errdo.
-  if (resposta[0] != 0xA5) {
-    Serial.println("Pacote inválido");
-    
+    // Inicializa como inválido. Se algo der errado, não enviaremos lixo.
     dados.tensao = NAN;
     dados.corrente = NAN;
     dados.porcentagem = NAN;
 
+    // Limpa qlqr byte antigo do buffer
+    while (Serial2.available())
+    {
+        Serial2.read();
+    }
+
+    // Transmissão HIGH
+    digitalWrite(RS485_CONTROL, HIGH);
+
+    Serial2.write(status_geral, sizeof(status_geral));
+    Serial2.flush();
+
+    Serial.println("Comando de dados enviado!");
+
+    // Transmissão LOW
+    digitalWrite(RS485_CONTROL, LOW);
+
+    // Espera a resposta
+    unsigned long inicio_leitura = millis();
+
+    while (n < 64 && (millis() - inicio_leitura < 250))
+    {
+        if (Serial2.available())
+            resposta[n++] = Serial2.read();
+    }
+
+    // Verifica o tamanho (13 bytes)
+    if (n < 13)
+    {
+        Serial.print("Resposta incompleta! Bytes recebidos: ");
+        Serial.println(n);
+
+        return dados;
+    }
+
+    // Mostra a resposta no serial (pode ser ocultado, mas é bom pra fazer teste)
+    Serial.print("Resposta BMS: ");
+
+    for (int i = 0; i < n; i++)
+    {
+        Serial.printf("%02X ", resposta[i]);
+    }
+
+    Serial.println();
+
+    // Verifica o Header da mensagem. Se nao for '0x45', a mensagem nao é valida, pois esse nao é o byte inicial da mensagem (provavelmente pode ser lixo ou algum tipo de interferencia)
+    if (resposta[0] != 0xA5)
+    {
+
+        Serial.println("Pacote invalido: HEADER incorreto.");
+
+        return dados;
+    }
+
+    // Verifica o comando da resposta
+    if (resposta[2] != 0x90)
+    {
+
+        Serial.println("Pacote invalido: comando incorreto.");
+
+        return dados;
+    }
+
+    // Interpreta os dados brutos
+    uint16_t tensao_bruta = ((int)resposta[4] << 8) | resposta[5];
+    uint16_t corrente_bruta = ((int)resposta[8] << 8) | resposta[9];
+    uint16_t porcentagem_bruta = ((int)resposta[10] << 8) | resposta[11];
+
+    // Converte para algo mais 'refinado'
+    dados.tensao = tensao_bruta / 10.0;
+    dados.corrente = (corrente_bruta - 30000) / 10.0;
+    dados.porcentagem = porcentagem_bruta / 10.0;
+
+    // Área para monitorar no vscode
+    Serial.print("Tensao: ");
+    Serial.println(dados.tensao);
+
+    Serial.print("Corrente: ");
+    Serial.println(dados.corrente);
+
+    Serial.print("Porcentagem: ");
+    Serial.println(dados.porcentagem);
+
     return dados;
-  }
-
-  // Faz o bruto de todos os dados que precisaremos
-  int tensao_bruta      = (resposta[4] << 8) | resposta[5];
-  int corrente_bruta    = (resposta[6] << 8) | resposta[7];
-  int porcentagem_bruta = (resposta[8] << 8) | resposta[9];
-
-  // Faz o tratamento de todos os dados que usaremos e os assimila aos valores da estrutura com tensao, corrente e porcentagem
-  dados.tensao      = tensao_bruta / 100.0;
-  dados.corrente    = (corrente_bruta - 30000) / 10.0;  
-  dados.porcentagem = porcentagem_bruta / 10.0;
-
-  return dados;
 }
 
-ALERTAS_BATERIA ler_alertas_bms(){
+ALERTAS_BATERIA ler_alertas_bms() {
 
-  byte resposta[64];
-  int n = 0;
+    byte resposta[64];
+    int n = 0;
 
-  // Envio do comando pra alertas
-  Serial2.write(falhas, 8);
-  Serial2.flush();
+    // Começa sem nenhum alerta
+    ALERTAS_BATERIA alertas = {};
 
-  Serial.println("Comando enviado.");
-  delay(10);
+    // Limpa buffer
+    while (Serial2.available())
+    {
+        Serial2.read();
+    }
 
-  // Desliga o modo de envio de dados
-  digitalWrite(RS485_CONTROL, LOW);
-  delay(50);
+    // Transmissão HIGH
+    digitalWrite(RS485_CONTROL, HIGH);
 
-  // Lê a resposta
-  while (Serial2.available() && n < 64) {
-  resposta[n++] = Serial2.read();
-  }
+    Serial2.write(falhas, sizeof(falhas));
+    Serial2.flush();
 
-  // A resposta SEMPRE tem 13 bytes pra esse comando. Se a resposta do BMS nao retornar com no minimo esse valor, algo deu errado no BMS ou na comunicação. Os valores serão descartados se isso acontecer.
-  if (n < 13) {
-    Serial.printf("Resposta incompleta!!");
-    return {};
-  }
+    Serial.println("Comando de alertas enviado!");
 
-  // Se houver uma resposta okay, verifica se ela ta completa
-  if (n < 13) {
-    Serial.print("Erro no recebimento de alertas!!");
-    return {};
-  }
+    // Transmissão LOW
+    digitalWrite(RS485_CONTROL, LOW);
 
-  ALERTAS_BATERIA alertas = interpretador(resposta);
+    unsigned long inicio_leitura = millis();
 
-  return alertas;
-}
+    while (n < 64 && (millis() - inicio_leitura < 250))
+    {
+        if (Serial2.available())
+            resposta[n++] = Serial2.read();
+    }
 
-ALERTAS_BATERIA interpretador(byte resposta[13]){
+    // Checagem de tamanho
+    if (n < 13)
+    {
 
-  byte alerta1 = resposta[4];
-  byte alerta2 = resposta[5];
+        Serial.print("Resposta de alertas incompleta! Bytes: ");
+        Serial.println(n);
+        return alertas;
+    }
 
-  // Inicializa todos os alertas dentro da struct como falsos
-  ALERTAS_BATERIA alertas = {};
-  
-  if (alerta1 == 0 && alerta2 == 0){
-    Serial.println("Nenhum erro detectado!");
+    // Checagem de Header
+    if (resposta[0] != 0xA5)
+    {
+
+        Serial.println("Resposta de alertas invalida: HEADER.");
+        return alertas;
+    }
+
+    // Checagem de comando de resposta
+    if (resposta[2] != 0x98)
+    {
+        Serial.println("Resposta de alertas invalida: comando.");
+        return alertas;
+    }
+
+    // Interpreta a resposta (tem outra função pra isso)
+    alertas = interpretador(resposta);
+
     return alertas;
-  }
-
-  // Erros nas celulas:
-  alertas.celula_sobretensao = (alerta1 & (1 << 0)) != 0;
-  alertas.celula_subtensao   = (alerta1 & (1 << 1)) != 0;
-
-  // Erros nos packs
-  alertas.pack_sobretensao   = (alerta1 & (1 << 2)) != 0;
-  alertas.pack_subtensao     = (alerta1 & (1 << 3)) != 0;
-
-  // Erros de temperatura
-  alertas.temp_carga_alta    = (alerta1 & (1 << 4)) != 0;
-  alertas.temp_carga_baixa   = (alerta1 & (1 << 5)) != 0;
-  alertas.temp_descarga_alta = (alerta1 & (1 << 6)) != 0;
-  alertas.mosfet_temp_alta   = (alerta1 & (1 << 7)) != 0;
-  
-  // Erros mais gerais 
-  alertas.corrente_carga_alta    = (alerta2 & (1 << 0)) != 0;
-  alertas.corrente_descarga_alta = (alerta2 & (1 << 1)) != 0;
-  alertas.curto_circuito         = (alerta2 & (1 << 2)) != 0;
-  alertas.mosfet_travado         = (alerta2 & (1 << 3)) != 0;
-
-  alertas.alerta_ativo = (alertas.celula_sobretensao || alertas.celula_subtensao || alertas.corrente_carga_alta || alertas.corrente_descarga_alta || alertas.curto_circuito || alertas.mosfet_temp_alta || alertas.mosfet_travado || alertas.pack_sobretensao || alertas.pack_subtensao || alertas.temp_carga_alta || alertas.temp_carga_baixa || alertas.temp_descarga_alta);
-    
-  return alertas;
 }
+
+CELULAS_INDIVIDUAIS ler_celulas_bms() {
+    CELULAS_INDIVIDUAIS packs;
+
+    // Inicializa as 16 células com zero
+    for (int i = 0; i < 16; i++) packs.celulas[i] = 0.0;
+
+    byte resposta[13];
+
+    byte comando_celulas[] = {0xA5, 0x40, 0x95, 0x08, 0x00, 0x00, 0x00, 0x82};
+
+    Serial2.write(comando_celulas, sizeof(comando_celulas));
+    Serial2.flush();
+
+    delay(10);
+
+    digitalWrite(RS485_CONTROL, LOW);
+
+    unsigned long inicio_leitura = millis();
+    int frames_lidos = 0;
+
+    while (frames_lidos < 6 && (millis() - inicio_leitura < 250)) {
+
+        if (Serial2.available() >= 13) {
+            int n = 0;
+
+            while (n < 13) resposta[n++] = Serial2.read();
+
+            if (resposta[0] == 0xA5 && resposta[2] == 0x95) {
+
+                int frame = resposta[4];
+
+                if (frame >= 1 && frame <= 6) {
+
+                    int indice = (frame - 1) * 3;
+
+                    if (indice < 16) {
+                        packs.celulas[indice] =
+                            ((resposta[5] << 8) | resposta[6]) / 1000.0;
+                    }
+
+                    if (indice + 1 < 16) {
+                        packs.celulas[indice + 1] =
+                            ((resposta[7] << 8) | resposta[8]) / 1000.0;
+                    }
+
+                    if (indice + 2 < 16) {
+                        packs.celulas[indice + 2] =
+                            ((resposta[9] << 8) | resposta[10]) / 1000.0;
+                    }
+
+                    frames_lidos++;
+                }
+            }
+        }
+    }
+
+    return packs;
+}
+
+ALERTAS_BATERIA interpretador(byte resposta[13]) {
+
+    byte alerta1 = resposta[4];
+    byte alerta2 = resposta[5];
+
+    // Inicializa todos os alertas dentro da struct como falsos
+    ALERTAS_BATERIA alertas = {};
+
+    if (alerta1 == 0 && alerta2 == 0)
+    {
+        Serial.println("Nenhum erro detectado!");
+        Serial.println();
+        return alertas;
+    }
+
+    // Erros nas celulas:
+    alertas.celula_sobretensao = (alerta1 & (1 << 0)) != 0;
+    alertas.celula_subtensao = (alerta1 & (1 << 1)) != 0;
+
+    // Erros nos packs
+    alertas.pack_sobretensao = (alerta1 & (1 << 2)) != 0;
+    alertas.pack_subtensao = (alerta1 & (1 << 3)) != 0;
+
+    // Erros de temperatura
+    alertas.temp_carga_alta = (alerta1 & (1 << 4)) != 0;
+    alertas.temp_carga_baixa = (alerta1 & (1 << 5)) != 0;
+    alertas.temp_descarga_alta = (alerta1 & (1 << 6)) != 0;
+    alertas.mosfet_temp_alta = (alerta1 & (1 << 7)) != 0;
+
+    // Erros mais gerais
+    alertas.corrente_carga_alta = (alerta2 & (1 << 0)) != 0;
+    alertas.corrente_descarga_alta = (alerta2 & (1 << 1)) != 0;
+    alertas.curto_circuito = (alerta2 & (1 << 2)) != 0;
+    alertas.mosfet_travado = (alerta2 & (1 << 3)) != 0;
+
+    alertas.alerta_ativo = (alertas.celula_sobretensao || alertas.celula_subtensao || alertas.corrente_carga_alta || alertas.corrente_descarga_alta || alertas.curto_circuito || alertas.mosfet_temp_alta || alertas.mosfet_travado || alertas.pack_sobretensao || alertas.pack_subtensao || alertas.temp_carga_alta || alertas.temp_carga_baixa || alertas.temp_descarga_alta);
+
+    return alertas;
+}
+
