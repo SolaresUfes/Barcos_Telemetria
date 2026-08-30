@@ -129,4 +129,3 @@ void visualizar_ADS(resposta_ADS valores_ADS, bool ads0=false, bool ads1=false, 
     if (ads1) Serial.printf("ADS1: %fV \n", valores_ADS.ADS1);
     if (ads2) Serial.printf("ADS2: %fV \n", valores_ADS.ADS2);
 }
-
