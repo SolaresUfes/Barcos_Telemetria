@@ -11,8 +11,6 @@
 // OFFSET DO SENSOR HALL
 #define numero_magico 2.500125 // Esse número foi coletado experimentalmente como o valor "padrão" do 0V vindos da resposta do sensor de efeito hall. Subtrimos ele do vlaor recebido pra termos uma resposta que gira em torno de um 0V
 
-unsigned long tempo_anterior = 0;
-
 // Vamos usar o ADS para 4 coisas, a priori: Os sensores de efeito hall (3) nos tres primeiros canais [A0, A1, A2] e um canal para referencia [A3] (não vamos mexer pra nao interferir)
 // Criei essa estrutura pra nao precisar ficar enviando 3 funções por loop. Essa estrutura recebera os valores de cada ads em cada variavel, se for pedido o valor da medição daquele canal do ADS
 struct resposta_ADS {
@@ -22,40 +20,12 @@ struct resposta_ADS {
 // Cria o objeto do ADS1115.
 Adafruit_ADS1115 ads;
 
+// Inicia o ADS usando os pinos do I2C
+void iniciar_ADS(int SDA, int SCL);
 // Essa função coleta os dados do ADS. Voce escolhe de quais portas serao coletados colocando "true" dentro da função no loop. Ex.: "coleta_ADS(true, false, true)" retornará os valores para os canais A0 e A2 do ADS, enquanto o A1 não é verificado
 resposta_ADS coleta_ADS(bool ads0=false, bool ads1=false, bool ads2=false, bool subtrair_magico=false);
-
 // A lógica dessa função acerca da escolha é igual a da função anterior, com a escolha dependendo do "true" ou "false", mas essa é so pra imprimir os valores no Serial.
 void visualizar_ADS(resposta_ADS valores_ADS, bool ads0=false, bool ads1=false, bool ads2=false);
-
-
-// ==================Setup e Loop==================
-
-void setup() {
-
-    Serial.begin(115200);
-
-    iniciar_ADS(SDA_ADS, SCL_ADS);
-
-    // O "Gain" (Ganho) define a faixa máxima de tensão que o módulo pode ler.
-    // GAIN_TWOTHIRDS permite ler de -6.144V até +6.144V (Faixa padrão, mas nao sei o que eles vao querer usar)
-    // GAIN_ONE permite ler de -4.096V até +4.096V
-    ads.setGain(GAIN_ONE);
-
-}
-
-void loop() {
-
-    unsigned long tempo_atual = millis();   // Vamos usar millis() pra "contar" 100ms pra cada iteração desse código, ou seja: ele vai rodar a cada 1/10 segundo
-
-    if (tempo_atual - tempo_anterior >= 100){
-        resposta_ADS valores_ADS = coleta_ADS();
-        visualizar_ADS(valores_ADS);
-
-        tempo_anterior = tempo_atual;
-    }
-}
-
 
 // ===============Funções auxiliares===============
 
@@ -75,7 +45,7 @@ void iniciar_ADS(int SDA, int SCL) {
     Serial.println("ADS iniciado com sucesso!");
 }
 
-resposta_ADS coleta_ADS(bool ads0=false, bool ads1=false, bool ads2=false, bool subtrair_magico=false){
+resposta_ADS coleta_ADS(bool ads0, bool ads1, bool ads2, bool subtrair_magico){
     
     double soma0 = 0, soma1 = 0, soma2 = 0;                 // Variável da soma total pra média em cada canal do ADS
     double resultado0 = 0, resultado1 = 0, resultado2 = 0;  // Variável do valor final a ser inserido na estrutura em cada canal do ADSss
@@ -123,7 +93,7 @@ resposta_ADS coleta_ADS(bool ads0=false, bool ads1=false, bool ads2=false, bool 
     return (resposta_ADS){resultado0, resultado1, resultado2};
 }
 
-void visualizar_ADS(resposta_ADS valores_ADS, bool ads0=false, bool ads1=false, bool ads2=false){
+void visualizar_ADS(resposta_ADS valores_ADS, bool ads0, bool ads1, bool ads2){
 
     if (ads0) Serial.printf("ADS0: %fV \n", valores_ADS.ADS0);
     if (ads1) Serial.printf("ADS1: %fV \n", valores_ADS.ADS1);
