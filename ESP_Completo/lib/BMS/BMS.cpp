@@ -345,3 +345,4 @@ ALERTAS_BATERIA interpretador(byte resposta[13]) {
     return alertas;
 }
 
+
