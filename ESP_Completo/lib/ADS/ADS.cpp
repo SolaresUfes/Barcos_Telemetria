@@ -16,6 +16,10 @@
 // Cria o objeto do ADS1115.
 Adafruit_ADS1115 ads;
 
+// Fator de conversão exato para o Ganho de 2x (±2.048V) -> NAO ESTA SENDO USADO, MAS PODE SER UTIL!!!
+// 2.048 Volts / 32768 Passos = 0.0000625 Volts por bit
+const double VOLTS_PER_BIT = 0.000125; // 0,0000625
+
 
 // ===============Funções auxiliares===============
 
@@ -33,6 +37,8 @@ void iniciar_ADS(int SDA, int SCL) {
     }
 
     Serial.println("ADS iniciado com sucesso!");
+
+    ads.setGain(GAIN_ONE);
 }
 
 resposta_ADS coleta_ADS(bool ads0, bool ads1, bool ads2, bool subtrair_magico){
