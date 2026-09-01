@@ -19,16 +19,14 @@ Adafruit_ADS1115 ads;
 // ----------------- ESTRUTURAS DOS DADOS -----------------
 
 // Estrutura com as variaveis dos dados do BMS
-struct DADOS_BATERIA
-{
+struct DADOS_BATERIA {
     float tensao;
     float corrente;
     float porcentagem;
 };
 
 // Estrutura com os valores (TRUE or FALSE) dos alertas do BMS
-struct ALERTAS_BATERIA
-{
+struct ALERTAS_BATERIA {
     bool celula_sobretensao;
     bool celula_subtensao;
 
@@ -49,8 +47,7 @@ struct ALERTAS_BATERIA
 };
 
 // Estrutura com dados individuais de tensao para cada celula
-struct CELULAS_INDIVIDUAIS
-{
+struct CELULAS_INDIVIDUAIS {
     float celulas[16] = {0};
 };
 
@@ -121,28 +118,18 @@ void setup()
     // Conecta Wi-Fi
     conectar_wifi(ssid, password);
 
-    if (!ads.begin())
-        Serial.println("Falha ao iniciar o ADS1115!");
+    if (!ads.begin()) Serial.println("Falha ao iniciar o ADS1115!");
 
     ads.setGain(GAIN_ONE);
 }
 
 // ----------------- LOOP -----------------
 
-void loop()
-{
-
-    // Tenta reconectar caso o Wi-Fi tenha caído
-    if (WiFi.status() != WL_CONNECTED)
-    {
-        conectar_wifi(ssid, password);
-    }
-
+void loop() {
     unsigned long tempo_atual = millis();
 
     // Executa a leitura a cada intervalo_leitura
-    if (tempo_atual - tempo_anterior >= intervalo_leitura)
-    {
+    if (tempo_atual - tempo_anterior >= intervalo_leitura) {
 
         tempo_anterior = tempo_atual;
 
