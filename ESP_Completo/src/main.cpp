@@ -27,7 +27,7 @@ const unsigned long intervalo_leitura = 2000;
 void setup() {
 
     // Inicio do serial do monitor
-    Serial.begin(115200);
+    Serial.begin(BAUD_SERIAL);
 
     // Inicia o BMS e as coisas relacionadas a comunicação pemo MAX485
     iniciar_BMS();
