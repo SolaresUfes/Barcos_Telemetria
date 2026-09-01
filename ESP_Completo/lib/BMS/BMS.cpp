@@ -1,43 +1,9 @@
+#include "BMS.h"
+#include "Config.h"
 #include <Arduino.h>
 
-#define RXD2 16
-#define TXD2 17
-#define RS485_CONTROL 23
 
-// ----------------- ESTRUTURAS DOS DADOS -----------------
-
-// Estrutura com as variaveis dos dados do BMS
-struct DADOS_BATERIA {
-    float tensao;
-    float corrente;
-    float porcentagem;
-};
-// Estrutura com os valores (TRUE or FALSE) dos alertas do BMS
-struct ALERTAS_BATERIA {
-  bool celula_sobretensao;
-  bool celula_subtensao;
-
-  bool pack_sobretensao;
-  bool pack_subtensao;
-
-  bool temp_carga_alta;
-  bool temp_carga_baixa;
-  bool temp_descarga_alta;
-  bool mosfet_temp_alta;
-
-  bool corrente_carga_alta;
-  bool corrente_descarga_alta;
-  bool curto_circuito;
-  bool mosfet_travado;
-
-  bool alerta_ativo;
-};
-// Estrutura com dados individuais de tensao para cada celula
-struct CELULAS_INDIVIDUAIS {
-  float celulas[16] = {0};
-};
-
-// ----------------- VARIAVEIS E CONSTANTES -----------------
+// ===================Definições==================
 
 // Comando geral que pode ser usado para tensao, corrente e porcentagem
 byte status_geral[]   = {0xA5, 0x40, 0x90, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x7D}; // 381 -> 125 = 0x7D
@@ -76,14 +42,9 @@ byte falhas[]         = {0xA5, 0x40, 0x98, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0
   Onde o n sera o byte que queremos analisar. Para cada comando, o byte pode mudar, entao o codigo nao tem somente um valor pra "n"
 */
 
-// ----------------- FUNCOES AUXILIARES -----------------
 
-DADOS_BATERIA ler_dados_bms();
-ALERTAS_BATERIA ler_alertas_bms();
-CELULAS_INDIVIDUAIS ler_celulas_bms();
-ALERTAS_BATERIA interpretador(byte resposta[13]);
+// ===============Funções auxiliares===============
 
-// ----------------- FUNÇÕES -----------------
 
 DADOS_BATERIA ler_dados_bms() {
 
