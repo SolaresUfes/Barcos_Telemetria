@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Estruturas.h"
 #include <Arduino.h>
+#include "Estruturas.h"
 
 
 /* --- DECLARAÇÕES --- */
