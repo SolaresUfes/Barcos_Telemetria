@@ -19,4 +19,4 @@ void enviar_dados_celulas(CELULAS_INDIVIDUAIS individuais);
 String retornar_alertas(ALERTAS_BATERIA alertas);
 
 // Conecta no Wi-fi que for compartilhado
-void conectar_wifi(const char *nome_rede, const char *senha);
+void conectar_wifi();

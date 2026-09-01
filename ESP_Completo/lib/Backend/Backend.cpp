@@ -21,7 +21,7 @@ const char *Url_celulas = "https://painel-f8r7.vercel.app/api/celulas";
 
 // ----------------- FUNÇÕES -----------------
 
-void conectar_wifi(const char *nome_rede, const char *senha){
+void conectar_wifi(){
 
     // A ideia é tentar por pouco tempo e depois desistir da conexão. Isso é melhor do que so deixar o codigo preso num loop infinito pra tentar conectar em algo que nao vai conectar
     if (WiFi.status() == WL_CONNECTED)
@@ -29,7 +29,7 @@ void conectar_wifi(const char *nome_rede, const char *senha){
 
     Serial.println("Tentando conectar ao Wi-Fi...");
 
-    WiFi.begin(nome_rede, senha);
+    WiFi.begin(ssid, password);
 
     unsigned long inicio = millis();
 
