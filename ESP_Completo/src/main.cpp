@@ -1,3 +1,6 @@
+#include "Config.h"
+#include "Estruturas.h"
+
 #include <Arduino.h>          // Basicos do Arduino_ESP
 #include <WiFi.h>             // Wi-Fi
 #include <Wire.h>             // I2C
@@ -5,9 +8,9 @@
 #include <ArduinoJson.h>      // Json
 #include <Adafruit_ADS1X15.h> // ADS
 
-#define RXD2 16
-#define TXD2 17
-#define RS485_CONTROL 23
+// #define RXD2 16
+// #define TXD2 17
+// #define RS485_CONTROL 23
 
 #define SCL_ADS 22 // D22
 #define SDA_ADS 21 // D21
@@ -16,40 +19,40 @@
 
 Adafruit_ADS1115 ads;
 
-// ----------------- ESTRUTURAS DOS DADOS -----------------
+// // ----------------- ESTRUTURAS DOS DADOS -----------------
 
-// Estrutura com as variaveis dos dados do BMS
-struct DADOS_BATERIA {
-    float tensao;
-    float corrente;
-    float porcentagem;
-};
+// // Estrutura com as variaveis dos dados do BMS
+// struct DADOS_BATERIA {
+//     float tensao;
+//     float corrente;
+//     float porcentagem;
+// };
 
-// Estrutura com os valores (TRUE or FALSE) dos alertas do BMS
-struct ALERTAS_BATERIA {
-    bool celula_sobretensao;
-    bool celula_subtensao;
+// // Estrutura com os valores (TRUE or FALSE) dos alertas do BMS
+// struct ALERTAS_BATERIA {
+//     bool celula_sobretensao;
+//     bool celula_subtensao;
 
-    bool pack_sobretensao;
-    bool pack_subtensao;
+//     bool pack_sobretensao;
+//     bool pack_subtensao;
 
-    bool temp_carga_alta;
-    bool temp_carga_baixa;
-    bool temp_descarga_alta;
-    bool mosfet_temp_alta;
+//     bool temp_carga_alta;
+//     bool temp_carga_baixa;
+//     bool temp_descarga_alta;
+//     bool mosfet_temp_alta;
 
-    bool corrente_carga_alta;
-    bool corrente_descarga_alta;
-    bool curto_circuito;
-    bool mosfet_travado;
+//     bool corrente_carga_alta;
+//     bool corrente_descarga_alta;
+//     bool curto_circuito;
+//     bool mosfet_travado;
 
-    bool alerta_ativo;
-};
+//     bool alerta_ativo;
+// };
 
-// Estrutura com dados individuais de tensao para cada celula
-struct CELULAS_INDIVIDUAIS {
-    float celulas[16] = {0};
-};
+// // Estrutura com dados individuais de tensao para cada celula
+// struct CELULAS_INDIVIDUAIS {
+//     float celulas[16] = {0};
+// };
 
 // ----------------- VARIAVEIS E CONSTANTES -----------------
 
