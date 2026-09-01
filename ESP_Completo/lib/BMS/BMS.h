@@ -6,6 +6,9 @@
 
 /* --- DECLARAÇÕES --- */
 
+// Inicia as coisas relacionadas ao BMS (pino de comunicação, definições iniciais de leitura/escrita e coisas do MAX485)
+void iniciar_BMS();
+
 // Lê os dados do bms relacionados a "status_geral[]"
 DADOS_BATERIA ler_dados_bms();
 

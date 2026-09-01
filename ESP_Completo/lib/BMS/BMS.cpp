@@ -45,6 +45,19 @@ byte falhas[]         = {0xA5, 0x40, 0x98, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0
 
 // ===============Funções auxiliares===============
 
+void iniciar_BMS() {
+
+    // Dá start no serial do BMS
+    Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
+
+    // Define o pino de controle do RS485 como OUTPUT
+    pinMode(RS485_CONTROL, OUTPUT);
+
+    // Começa sempre em modo de RECEPÇÃO
+    digitalWrite(RS485_CONTROL, LOW);
+
+    return;
+}
 
 DADOS_BATERIA ler_dados_bms() {
 
