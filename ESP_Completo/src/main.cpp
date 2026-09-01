@@ -4,18 +4,8 @@
 #include "ADS.h"
 #include "BMS.h"
 
-// #include <Arduino.h>          // Basicos do Arduino_ESP
-#include <WiFi.h>             // Wi-Fi
-// #include <Wire.h>             // I2C
-#include <HTTPClient.h>       // HTTP
-#include <ArduinoJson.h>      // Json
-// #include <Adafruit_ADS1X15.h> // ADS
-
-// Adafruit_ADS1115 ads;
-
 
 // ----------------- VARIAVEIS E CONSTANTES -----------------
-
 
 // Variaveis de controle de tempo para substituir o delay no loop -> ADICIONADO
 unsigned long tempo_anterior = 0;
