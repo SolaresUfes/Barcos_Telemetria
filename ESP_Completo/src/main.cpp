@@ -1,6 +1,10 @@
 #include "Config.h"
 #include "Estruturas.h"
 
+#include "Backend.h"
+#include "ADS.h"
+// #include "BMS.h"
+
 #include <Arduino.h>          // Basicos do Arduino_ESP
 #include <WiFi.h>             // Wi-Fi
 #include <Wire.h>             // I2C
@@ -45,12 +49,6 @@ DADOS_BATERIA ler_dados_bms();
 ALERTAS_BATERIA ler_alertas_bms();
 CELULAS_INDIVIDUAIS ler_celulas_bms();
 ALERTAS_BATERIA interpretador(byte resposta[13]);
-
-void enviar_dados_bateria(DADOS_BATERIA dado_bateria);
-void enviar_alertas_bateria(ALERTAS_BATERIA alerta_bateria);
-void enviar_dados_celulas(CELULAS_INDIVIDUAIS individuais);
-
-void dados_ads();
 
 void conectar_wifi(const char *nome_rede, const char *senha);
 // Pega a estrutura de alertas e ve quem ta verdadeiro ou falso. Se houver verdadeira, adiciona ao json e depois cria a string de alertas pra serem enviados
@@ -106,8 +104,6 @@ void loop() {
         // Células
         CELULAS_INDIVIDUAIS BMS_celulas = ler_celulas_bms();
         enviar_dados_celulas(BMS_celulas);
-
-        dados_ads();
     }
 }
 
@@ -376,248 +372,6 @@ ALERTAS_BATERIA interpretador(byte resposta[13])
 
     return alertas;
 }
-
-void conectar_wifi(const char *nome_rede, const char *senha)
-{
-
-    // A ideia é tentar por pouco tempo e depois desistir da conexão. Isso é melhor do que so deixar o codigo preso num loop infinito pra tentar conectar em algo que nao vai conectar
-    if (WiFi.status() == WL_CONNECTED)
-        return;
-
-    Serial.println("Tentando conectar ao Wi-Fi...");
-
-    WiFi.begin(nome_rede, senha);
-
-    unsigned long inicio = millis();
-
-    while (WiFi.status() != WL_CONNECTED && millis() - inicio < 10000)
-    {
-        delay(250);
-        Serial.print(".");
-    }
-    Serial.println();
-
-    if (WiFi.status() == WL_CONNECTED)
-    {
-
-        Serial.println("WiFi conectado!");
-        Serial.print("IP: ");
-        Serial.println(WiFi.localIP());
-        Serial.println();
-    }
-    else
-    {
-        Serial.println("Nao foi possivel conectar ao WiFi.");
-        Serial.println("O ESP continuara funcionando sem internet.");
-    }
-}
-
-void enviar_dados_bateria(DADOS_BATERIA dados)
-{
-
-    // Nao tenta enviar se nao tiver internet (evita travamento do ESP32)
-    if (WiFi.status() != WL_CONNECTED)
-        conectar_wifi(ssid, password);
-
-    // Impede o envio de lixo (NAN) ao servidor caso a leitura falhe
-    if (isnan(dados.tensao))
-        return;
-
-    // Cria o client HTTP
-    HTTPClient http;
-
-    // Inicia uma conexão com o backend usando a URL da rota do envio de dados (POST)
-    http.begin(Url_dados);
-
-    // Informa que os dados passados serão do tipo 'json'
-    http.addHeader(
-        "content-Type",
-        "application/json");
-
-    // Cria o json "cru", responsavel por, inicialmente, fazer o que sera enviado
-    StaticJsonDocument<200> json_cru;
-
-    // Insere, no arquivo "cru", os valores de tensao, corrente e porcentagem nas suas devidas colunas
-    json_cru["tensao"] = dados.tensao;
-    json_cru["corrente"] = dados.corrente;
-    json_cru["porcentagem"] = dados.porcentagem;
-
-    // Essa string sera o json que iremos enviar. Ela sera completa com os valores de "json_cru"
-    String json_refinado;
-
-    // Faz a inserção dos dados de forma segura nessa nova variavel
-    serializeJson(json_cru, json_refinado);
-
-    // Envia o json (POST) para o backend e coleta o dado de resposta dese envio. 200 - OK, 404 - nao encontrado...
-    int codigo_resposta_http = http.POST(json_refinado);
-
-    // Apenas uma forma de entender o que ta chegando e o que foi recebido de volta
-    Serial.print("Tentativa de envio: ");
-    Serial.println(json_refinado);
-    Serial.print("Codigo de resposta: ");
-    Serial.println(codigo_resposta_http);
-    Serial.println("");
-
-    // Finaliza as comunicações
-    http.end();
-}
-
-void enviar_alertas_bateria(ALERTAS_BATERIA alertas)
-{
-
-    // Nao tenta enviar se nao tiver internet (evita travamento do ESP32)
-    if (WiFi.status() != WL_CONNECTED)
-        conectar_wifi(ssid, password);
-
-    if (!alertas.alerta_ativo)
-        return;
-
-    String json_refinado = retornar_alertas(alertas);
-
-    HTTPClient http;
-
-    http.begin(Url_alertas);
-
-    http.addHeader(
-        "Content-Type",
-        "application/json");
-
-    int codigo_resposta_http = http.POST(json_refinado);
-
-    Serial.print("Tentativa de envio: ");
-    Serial.println(json_refinado);
-    Serial.print("Codigo de resposta: ");
-    Serial.println(codigo_resposta_http);
-    Serial.println("");
-
-    http.end();
-}
-
-void enviar_dados_celulas(CELULAS_INDIVIDUAIS dados)
-{
-    // Não tenta enviar se não tiver internet
-    if (WiFi.status() != WL_CONNECTED)
-        conectar_wifi(ssid, password);
-
-    // Cria o client HTTP
-    HTTPClient http;
-
-    // Inicia uma conexão com o backend usando a URL da rota
-    http.begin(Url_celulas);
-
-    // Informa que os dados serão enviados como JSON
-    http.addHeader(
-        "content-Type",
-        "application/json");
-
-    // Cria o JSON que será enviado
-    StaticJsonDocument<300> json_cru;
-
-    // Cria o array "celula" dentro do JSON
-    JsonArray array_celulas = json_cru["celula"].to<JsonArray>();
-
-    // Insere as 16 células no array
-    for (int i = 0; i < 16; i++)
-    {
-        array_celulas.add(dados.celulas[i]);
-    }
-
-    // String que receberá o JSON final
-    String json_refinado;
-
-    // Converte o JSON para String
-    serializeJson(json_cru, json_refinado);
-
-    // Envia o JSON para o backend
-    int codigo_resposta_http = http.POST(json_refinado);
-
-    // Mostra o que foi enviado e a resposta
-    Serial.print("Tentativa de envio: ");
-    Serial.println(json_refinado);
-
-    Serial.print("Codigo de resposta: ");
-    Serial.println(codigo_resposta_http);
-
-    Serial.println("");
-
-    // Finaliza a comunicação
-    http.end();
-}
-
-String retornar_alertas(ALERTAS_BATERIA alertas)
-{
-
-    // Cria o arquivo json cru pra colocar as coisas
-    StaticJsonDocument<200> doc;
-
-    JsonArray erros = doc.createNestedArray("codigos");
-
-    if (alertas.celula_sobretensao == true)
-        erros.add(1);
-    if (alertas.celula_subtensao == true)
-        erros.add(2);
-    if (alertas.pack_sobretensao == true)
-        erros.add(3);
-    if (alertas.pack_subtensao == true)
-        erros.add(4);
-    if (alertas.temp_carga_alta == true)
-        erros.add(5);
-    if (alertas.temp_carga_baixa == true)
-        erros.add(6);
-    if (alertas.temp_descarga_alta == true)
-        erros.add(7);
-    if (alertas.mosfet_temp_alta == true)
-        erros.add(8);
-    if (alertas.corrente_carga_alta == true)
-        erros.add(9);
-    if (alertas.corrente_descarga_alta == true)
-        erros.add(10);
-    if (alertas.curto_circuito == true)
-        erros.add(11);
-    if (alertas.mosfet_travado == true)
-        erros.add(12);
-
-    String json_refinado;
-    serializeJson(doc, json_refinado);
-
-    return json_refinado;
-}
-
-void dados_ads()
-{
-    // Lê a diferença real entre AIN0 (Sensor) e AIN1 (Referência de 2.5V)
-
-    int16_t a0 = ads.readADC_SingleEnded(0);
-    int16_t a1 = ads.readADC_SingleEnded(1);
-    int16_t a2 = ads.readADC_SingleEnded(2);
-    int16_t a3 = ads.readADC_SingleEnded(3);
-    // int16_t a2 = ads.readADC_Differential_0_3();
-
-    Serial.printf("RAW: A0=%d | A1=%d | A2=%d | A3=%d\n", a0, a1, a2, a3);
-
-    // Converte a leitura de bits para a diferença em Volts
-    double a_diferencial0 = a0 * VOLTS_PER_BIT;
-    double a_diferencial1 = a1 * VOLTS_PER_BIT;
-    double a_diferencial2 = a2 * VOLTS_PER_BIT;
-    double a_diferencial3 = a3 * VOLTS_PER_BIT;
-
-    // Soma a referência para obter a tensão real do sensor
-    double v_sensor0 = a_diferencial0 - a_diferencial3; // + V_REF;
-    double v_sensor1 = a_diferencial1 - a_diferencial2; // + V_REF;
-
-    // Imprime o resultado formatado com 5 casas decimais
-    // Usamos 'double' no ESP32 pois ele suporta 15 dígitos de precisão total
-    Serial.print("Tensao do Sensor Hall 0: ");
-    Serial.print(v_sensor0, 5);
-    Serial.println(" V");
-
-    Serial.print("Tensao do Sensor Hall 1: ");
-    Serial.print(v_sensor1, 5);
-    Serial.println(" V");
-
-    Serial.println();
-}
-
 
 /*
 #include <Arduino.h>     // Basicos do Arduino_ESP
