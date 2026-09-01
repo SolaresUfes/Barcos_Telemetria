@@ -58,7 +58,7 @@ void conectar_wifi(){
 void enviar_dados_bateria(DADOS_BATERIA dados){
 
     // Nao tenta enviar se nao tiver internet (evita travamento do ESP32)
-    if (WiFi.status() != WL_CONNECTED) conectar_wifi(ssid, password);
+    if (WiFi.status() != WL_CONNECTED) conectar_wifi();
 
     // Impede o envio de lixo (NAN) ao servidor caso a leitura falhe
     if (isnan(dados.tensao))
@@ -106,7 +106,7 @@ void enviar_dados_bateria(DADOS_BATERIA dados){
 void enviar_alertas_bateria(ALERTAS_BATERIA alertas){
 
     // Nao tenta enviar se nao tiver internet (evita travamento do ESP32)
-    if (WiFi.status() != WL_CONNECTED) conectar_wifi(ssid, password);
+    if (WiFi.status() != WL_CONNECTED) conectar_wifi();
 
     if (!alertas.alerta_ativo)
         return;
@@ -135,7 +135,7 @@ void enviar_alertas_bateria(ALERTAS_BATERIA alertas){
 void enviar_dados_celulas(CELULAS_INDIVIDUAIS dados){
     
   // Não tenta enviar se não tiver internet
-    if (WiFi.status() != WL_CONNECTED) conectar_wifi(ssid, password);
+    if (WiFi.status() != WL_CONNECTED) conectar_wifi();
 
     // Cria o client HTTP
     HTTPClient http;
