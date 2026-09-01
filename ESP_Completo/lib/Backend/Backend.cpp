@@ -1,43 +1,10 @@
+#include "Backend.h"
+
 #include <Arduino.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <math.h>
-
-// ----------------- ESTRUTURAS DOS DADOS -----------------
-
-// Estrutura com as variaveis dos dados do BMS
-struct DADOS_BATERIA {
-    float tensao;
-    float corrente;
-    float porcentagem;
-};
-
-// Estrutura com os valores (TRUE or FALSE) dos alertas do BMS
-struct ALERTAS_BATERIA {
-    bool celula_sobretensao;
-    bool celula_subtensao;
-
-    bool pack_sobretensao;
-    bool pack_subtensao;
-
-    bool temp_carga_alta;
-    bool temp_carga_baixa;
-    bool temp_descarga_alta;
-    bool mosfet_temp_alta;
-
-    bool corrente_carga_alta;
-    bool corrente_descarga_alta;
-    bool curto_circuito;
-    bool mosfet_travado;
-
-    bool alerta_ativo;
-};
-
-// Estrutura com dados individuais de tensao para cada celula
-struct CELULAS_INDIVIDUAIS {
-    float celulas[16] = {0};
-};
 
 // ----------------- VARIAVEIS E CONSTANTES -----------------
 
@@ -51,18 +18,6 @@ const char *Url_dados = "https://painel-f8r7.vercel.app/api/sensores";
 const char *Url_alertas = "https://painel-f8r7.vercel.app/api/alertas";
 const char *Url_celulas = "https://painel-f8r7.vercel.app/api/celulas";
 
-// ----------------- FUNCOES AUXILIARES -----------------
-
-// Usa o link para a inserção de DADOS no backend e insere os dados que vierem
-void enviar_dados_bateria(DADOS_BATERIA dado_bateria);
-// Usa o link para a inserção de ALERTAS no backend e insere os dados que vierem
-void enviar_alertas_bateria(ALERTAS_BATERIA alerta_bateria);
-// Usa o link para a inserção de VALORES DAS CELULAS no backend e insere os dados que vierem
-void enviar_dados_celulas(CELULAS_INDIVIDUAIS individuais);
-// Usa os alertas que vierem pra deixar no padrçao que o backend aceita e que fique mais fácil pra adicionar em outros lugares
-String retornar_alertas(ALERTAS_BATERIA alertas);
-// Conecta no Wi-fi que for compartilhado
-void conectar_wifi(const char *nome_rede, const char *senha);
 
 // ----------------- FUNÇÕES -----------------
 
