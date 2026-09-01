@@ -176,27 +176,6 @@ Durante a inicialização, o módulo:
 5. Configura o ganho do ADS1115;
 6. Exibe uma mensagem de sucesso quando o dispositivo é iniciado.
 
-### Comportamento em caso de falha
-
-Caso o ADS1115 não seja encontrado, o código executa repetidamente:
-
-```text
-Tenta inicializar
-       |
-       v
-Falhou?
-   |       |
-  Sim     Não
-   |       |
-   v       v
-Aguarda   Continua
-1 segundo funcionando
-   |
-   └────> Tenta novamente
-```
-
-Portanto, enquanto o ADS1115 não for inicializado corretamente, a execução permanece nesse processo de tentativa.
-
 ---
 
 # API
@@ -273,31 +252,6 @@ Os canais são lidos utilizando entradas diferenciais:
 | `ads0`  | Diferencial `0-3` |
 | `ads1`  | Diferencial `1-3` |
 | `ads2`  | Diferencial `2-3` |
-
-### Média das leituras
-
-Para cada canal selecionado, o processo é:
-
-```text
-Leitura 1
-Leitura 2
-Leitura 3
-   .
-   .
-   .
-Leitura 20
-     |
-     v
- Soma das leituras
-     |
-     v
-Divisão por 20
-     |
-     v
-Valor médio
-```
-
-Essa média ajuda a reduzir parte das flutuações presentes nas leituras individuais.
 
 ### Aplicação do offset
 
@@ -440,51 +394,6 @@ Nesse exemplo:
 6. O offset experimental é aplicado;
 7. Os resultados são armazenados em `resposta_ADS`;
 8. Os valores são exibidos no monitor Serial.
-
----
-
-# Fluxo de Funcionamento
-
-O funcionamento geral do módulo pode ser representado da seguinte forma:
-
-```text
-                iniciar_ADS()
-                      |
-                      v
-              Inicialização do I2C
-                      |
-                      v
-             Inicialização do ADS1115
-                      |
-                      v
-              Configuração do ganho
-                      |
-                      v
-               coleta_ADS(...)
-                      |
-          +-----------+-----------+
-          |           |           |
-          v           v           v
-       Canal 0     Canal 1     Canal 2
-       (se ativo)  (se ativo)  (se ativo)
-          |           |           |
-          +-----------+-----------+
-                      |
-                      v
-            20 leituras por canal
-                      |
-                      v
-              Cálculo da média
-                      |
-                      v
-        Aplicação opcional do offset
-                      |
-                      v
-            Retorno de resposta_ADS
-                      |
-                      v
-            visualizar_ADS(...) opcional
-```
 
 ---
 
