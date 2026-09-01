@@ -1,31 +1,21 @@
+#include "ADS.h"
+
 #include <Arduino.h>
 #include <Wire.h>             // I2C
 #include <Adafruit_ADS1X15.h> // ADS
 
+
 // ===================Definições==================
 
-// Pinos I2C
-#define SDA_ADS 21
-#define SCL_ADS 22
-
 // OFFSET DO SENSOR HALL
-#define numero_magico 2.500125 // Esse número foi coletado experimentalmente como o valor "padrão" do 0V vindos da resposta do sensor de efeito hall. Subtrimos ele do vlaor recebido pra termos uma resposta que gira em torno de um 0V
+// Esse número foi coletado experimentalmente como o valor "padrão" do 0V vindos da resposta do sensor de efeito hall. Subtrimos ele do vlaor recebido pra termos uma resposta que gira em torno de um 0V
+#define numero_magico 2.500125 
 
 // Vamos usar o ADS para 4 coisas, a priori: Os sensores de efeito hall (3) nos tres primeiros canais [A0, A1, A2] e um canal para referencia [A3] (não vamos mexer pra nao interferir)
-// Criei essa estrutura pra nao precisar ficar enviando 3 funções por loop. Essa estrutura recebera os valores de cada ads em cada variavel, se for pedido o valor da medição daquele canal do ADS
-struct resposta_ADS {
-    double ADS0, ADS1, ADS2;
-};
 
 // Cria o objeto do ADS1115.
 Adafruit_ADS1115 ads;
 
-// Inicia o ADS usando os pinos do I2C
-void iniciar_ADS(int SDA, int SCL);
-// Essa função coleta os dados do ADS. Voce escolhe de quais portas serao coletados colocando "true" dentro da função no loop. Ex.: "coleta_ADS(true, false, true)" retornará os valores para os canais A0 e A2 do ADS, enquanto o A1 não é verificado
-resposta_ADS coleta_ADS(bool ads0=false, bool ads1=false, bool ads2=false, bool subtrair_magico=false);
-// A lógica dessa função acerca da escolha é igual a da função anterior, com a escolha dependendo do "true" ou "false", mas essa é so pra imprimir os valores no Serial.
-void visualizar_ADS(resposta_ADS valores_ADS, bool ads0=false, bool ads1=false, bool ads2=false);
 
 // ===============Funções auxiliares===============
 
