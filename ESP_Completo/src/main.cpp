@@ -4,6 +4,8 @@
 #include "ADS.h"
 #include "BMS.h"
 
+#include "Teste.h"
+
 
 // ----------------- VARIAVEIS E CONSTANTES -----------------
 
