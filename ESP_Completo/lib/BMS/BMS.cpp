@@ -48,7 +48,7 @@ byte falhas[]         = {0xA5, 0x40, 0x98, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0
 void iniciar_BMS() {
 
     // Dá start no serial do BMS
-    Serial2.begin(9600, BAUD_BMS, RXD2, TXD2);
+    Serial2.begin(BAUD_SERIAL, BAUD_BMS, RXD2, TXD2);
 
     // Define o pino de controle do RS485 como OUTPUT
     pinMode(RS485_CONTROL, OUTPUT);
