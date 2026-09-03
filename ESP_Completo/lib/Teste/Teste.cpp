@@ -25,6 +25,8 @@ void enviar_ler(byte comando[]){
     while (n < 64 && millis() - tempo_anterior < 250) {
         if (Serial2.available()) {
             resposta[n++] = Serial2.read();
+            Serial.print("Resposta: ");
+            Serial.println(resposta[n]);
         }
     }
 
