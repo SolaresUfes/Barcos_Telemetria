@@ -23,10 +23,10 @@ const double VOLTS_PER_BIT = 0.000125; // 0,0000625
 
 // ===============Funções auxiliares===============
 
-void iniciar_ADS(int SDA, int SCL) {
+void iniciar_ADS() {
 
     // Inicia a comunicação I2C nos pinos 21 e 22
-    Wire.begin(SDA, SCL);
+    Wire.begin(SDA_ADS, SCL_ADS);
 
     Serial.println("Inicializando o ADS");
 
