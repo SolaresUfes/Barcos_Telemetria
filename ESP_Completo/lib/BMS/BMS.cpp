@@ -48,13 +48,7 @@ byte falhas[]         = {0xA5, 0x40, 0x98, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0
 void iniciar_BMS() {
 
     // Dá start no serial do BMS
-    Serial2.begin(BAUD_SERIAL, BAUD_BMS, RXD2, TXD2);
-
-    // Define o pino de controle do RS485 como OUTPUT
-    pinMode(RS485_CONTROL, OUTPUT);
-
-    // Começa sempre em modo de RECEPÇÃO
-    digitalWrite(RS485_CONTROL, LOW);
+    Serial2.begin(BAUD_BMS, SERIAL_8N1, RXD2, TXD2);
 
     return;
 }
@@ -72,34 +66,20 @@ DADOS_BATERIA ler_dados_bms() {
     dados.porcentagem = NAN;
 
     // Limpa qlqr byte antigo do buffer
-    while (Serial2.available())
-    {
-        Serial2.read();
-    }
-
-    // Transmissão HIGH
-    digitalWrite(RS485_CONTROL, HIGH);
+    while (Serial2.available()) Serial2.read();
 
     Serial2.write(status_geral, sizeof(status_geral));
     Serial2.flush();
 
     Serial.println("Comando de dados enviado!");
 
-    // Transmissão LOW
-    digitalWrite(RS485_CONTROL, LOW);
-
     // Espera a resposta
     unsigned long inicio_leitura = millis();
 
-    while (n < 64 && (millis() - inicio_leitura < 250))
-    {
-        if (Serial2.available())
-            resposta[n++] = Serial2.read();
-    }
+    while (n < 64 && (millis() - inicio_leitura < 250))  if (Serial2.available())  resposta[n++] = Serial2.read();
 
     // Verifica o tamanho (13 bytes)
-    if (n < 13)
-    {
+    if (n < 13) {
         Serial.print("Resposta incompleta! Bytes recebidos: ");
         Serial.println(n);
 
@@ -109,26 +89,21 @@ DADOS_BATERIA ler_dados_bms() {
     // Mostra a resposta no serial (pode ser ocultado, mas é bom pra fazer teste)
     Serial.print("Resposta BMS: ");
 
-    for (int i = 0; i < n; i++)
-    {
+    for (int i = 0; i < n; i++) {
         Serial.printf("%02X ", resposta[i]);
     }
 
     Serial.println();
 
-    // Verifica o Header da mensagem. Se nao for '0x45', a mensagem nao é valida, pois esse nao é o byte inicial da mensagem (provavelmente pode ser lixo ou algum tipo de interferencia)
-    if (resposta[0] != 0xA5)
-    {
-
+    // Verifica o Header da mensagem. Se nao for '0xA5', a mensagem nao é valida, pois esse nao é o byte inicial da mensagem (provavelmente pode ser lixo ou algum tipo de interferencia)
+    if (resposta[0] != 0xA5) {
         Serial.println("Pacote invalido: HEADER incorreto.");
 
         return dados;
     }
 
     // Verifica o comando da resposta
-    if (resposta[2] != 0x90)
-    {
-
+    if (resposta[2] != 0x90) {
         Serial.println("Pacote invalido: comando incorreto.");
 
         return dados;
@@ -166,50 +141,32 @@ ALERTAS_BATERIA ler_alertas_bms() {
     ALERTAS_BATERIA alertas = {};
 
     // Limpa buffer
-    while (Serial2.available())
-    {
-        Serial2.read();
-    }
-
-    // Transmissão HIGH
-    digitalWrite(RS485_CONTROL, HIGH);
+    while (Serial2.available()) Serial2.read();
 
     Serial2.write(falhas, sizeof(falhas));
     Serial2.flush();
 
     Serial.println("Comando de alertas enviado!");
 
-    // Transmissão LOW
-    digitalWrite(RS485_CONTROL, LOW);
-
     unsigned long inicio_leitura = millis();
 
-    while (n < 64 && (millis() - inicio_leitura < 250))
-    {
-        if (Serial2.available())
-            resposta[n++] = Serial2.read();
-    }
+    while (n < 64 && (millis() - inicio_leitura < 250))  if (Serial2.available())  resposta[n++] = Serial2.read();
 
     // Checagem de tamanho
-    if (n < 13)
-    {
-
+    if (n < 13) {
         Serial.print("Resposta de alertas incompleta! Bytes: ");
         Serial.println(n);
         return alertas;
     }
 
     // Checagem de Header
-    if (resposta[0] != 0xA5)
-    {
-
+    if (resposta[0] != 0xA5) {
         Serial.println("Resposta de alertas invalida: HEADER.");
         return alertas;
     }
 
     // Checagem de comando de resposta
-    if (resposta[2] != 0x98)
-    {
+    if (resposta[2] != 0x98) {
         Serial.println("Resposta de alertas invalida: comando.");
         return alertas;
     }
@@ -221,21 +178,21 @@ ALERTAS_BATERIA ler_alertas_bms() {
 }
 
 CELULAS_INDIVIDUAIS ler_celulas_bms() {
+
     CELULAS_INDIVIDUAIS packs;
+
+    // Limpeza de buffer
+    while (Serial2.available()) Serial2.read();
 
     // Inicializa as 16 células com zero
     for (int i = 0; i < 16; i++) packs.celulas[i] = 0.0;
 
     byte resposta[13];
 
-    byte comando_celulas[] = {0xA5, 0x40, 0x95, 0x08, 0x00, 0x00, 0x00, 0x82};
-
-    Serial2.write(comando_celulas, sizeof(comando_celulas));
+    Serial2.write(cel_individual, sizeof(cel_individual));
     Serial2.flush();
 
     delay(10);
-
-    digitalWrite(RS485_CONTROL, LOW);
 
     unsigned long inicio_leitura = millis();
     int frames_lidos = 0;
