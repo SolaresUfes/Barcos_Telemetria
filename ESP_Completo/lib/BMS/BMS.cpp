@@ -45,7 +45,7 @@ byte falhas[]         = {0xA5, 0x40, 0x98, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0
 
 // ===============Funções auxiliares===============
 
-void iniciar_BMS() {
+void BMS_iniciar() {
 
     // Dá start no serial do BMS
     Serial2.begin(BAUD_BMS, SERIAL_8N1, RXD2, TXD2);
@@ -53,7 +53,7 @@ void iniciar_BMS() {
     return;
 }
 
-DADOS_BATERIA ler_dados_bms() {
+DADOS_BATERIA BMS_ler_dados() {
 
     byte resposta[64];
     int n = 0;
@@ -132,7 +132,7 @@ DADOS_BATERIA ler_dados_bms() {
     return dados;
 }
 
-ALERTAS_BATERIA ler_alertas_bms() {
+ALERTAS_BATERIA BMS_ler_alertas() {
 
     byte resposta[64];
     int n = 0;
@@ -172,12 +172,12 @@ ALERTAS_BATERIA ler_alertas_bms() {
     }
 
     // Interpreta a resposta (tem outra função pra isso)
-    alertas = interpretador(resposta);
+    alertas = BMS_interpretador(resposta);
 
     return alertas;
 }
 
-CELULAS_INDIVIDUAIS ler_celulas_bms() {
+CELULAS_INDIVIDUAIS BMS_ler_celulas() {
 
     CELULAS_INDIVIDUAIS packs;
 
@@ -236,7 +236,7 @@ CELULAS_INDIVIDUAIS ler_celulas_bms() {
     return packs;
 }
 
-ALERTAS_BATERIA interpretador(byte resposta[13]) {
+ALERTAS_BATERIA BMS_interpretador(byte resposta[13]) {
 
     byte alerta1 = resposta[4];
     byte alerta2 = resposta[5];

@@ -7,16 +7,16 @@
 /* --- DECLARAÇÕES --- */
 
 // Inicia as coisas relacionadas ao BMS (pino de comunicação, definições iniciais de leitura/escrita e coisas do MAX485)
-void iniciar_BMS();
+void BMS_iniciar();
 
 // Lê os dados do bms relacionados a "status_geral[]"
-DADOS_BATERIA ler_dados_bms();
+DADOS_BATERIA BMS_ler_dados();
 
 // Lê os dados do bms relacionados a "falhas[]"
-ALERTAS_BATERIA ler_alertas_bms();
+ALERTAS_BATERIA BMS_ler_alertas();
 
 // Lê os dados do bms relacionados a "cel_individual[]"
-CELULAS_INDIVIDUAIS ler_celulas_bms();
+CELULAS_INDIVIDUAIS BMS_ler_celulas();
 
 // Interpreta os dados de falhas/alertas vindos do BMS pra uma melhor manipulação dos mesmos
-ALERTAS_BATERIA interpretador(byte resposta[13]);
+ALERTAS_BATERIA BMS_interpretador(byte resposta[13]);
