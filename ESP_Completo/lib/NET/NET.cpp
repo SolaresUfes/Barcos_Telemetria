@@ -21,7 +21,7 @@ const char *Url_celulas = "https://painel-f8r7.vercel.app/api/celulas";
 
 // ----------------- FUNÇÕES -----------------
 
-void conectar_wifi(){
+void NET_conectar_wifi(){
 
     // A ideia é tentar por pouco tempo e depois desistir da conexão. Isso é melhor do que so deixar o codigo preso num loop infinito pra tentar conectar em algo que nao vai conectar
     if (WiFi.status() == WL_CONNECTED)
@@ -55,10 +55,10 @@ void conectar_wifi(){
     }
 }
 
-void enviar_dados_bateria(DADOS_BATERIA dados){
+void NET_enviar_dados_bateria(DADOS_BATERIA dados){
 
     // Nao tenta enviar se nao tiver internet (evita travamento do ESP32)
-    if (WiFi.status() != WL_CONNECTED) conectar_wifi();
+    if (WiFi.status() != WL_CONNECTED) NET_conectar_wifi();
 
     // Impede o envio de lixo (NAN) ao servidor caso a leitura falhe
     if (isnan(dados.tensao))
@@ -103,15 +103,15 @@ void enviar_dados_bateria(DADOS_BATERIA dados){
     http.end();
 }
 
-void enviar_alertas_bateria(ALERTAS_BATERIA alertas){
+void NET_enviar_alertas_bateria(ALERTAS_BATERIA alertas){
 
     // Nao tenta enviar se nao tiver internet (evita travamento do ESP32)
-    if (WiFi.status() != WL_CONNECTED) conectar_wifi();
+    if (WiFi.status() != WL_CONNECTED) NET_conectar_wifi();
 
     if (!alertas.alerta_ativo)
         return;
 
-    String json_refinado = retornar_alertas(alertas);
+    String json_refinado = NET_retornar_alertas(alertas);
 
     HTTPClient http;
 
@@ -132,10 +132,10 @@ void enviar_alertas_bateria(ALERTAS_BATERIA alertas){
     http.end();
 }
 
-void enviar_dados_celulas(CELULAS_INDIVIDUAIS dados){
+void NET_enviar_dados_celulas(CELULAS_INDIVIDUAIS dados){
     
   // Não tenta enviar se não tiver internet
-    if (WiFi.status() != WL_CONNECTED) conectar_wifi();
+    if (WiFi.status() != WL_CONNECTED) NET_conectar_wifi();
 
     // Cria o client HTTP
     HTTPClient http;
@@ -182,7 +182,7 @@ void enviar_dados_celulas(CELULAS_INDIVIDUAIS dados){
     http.end();
 }
 
-String retornar_alertas(ALERTAS_BATERIA alertas){
+String NET_retornar_alertas(ALERTAS_BATERIA alertas){
 
     // Cria o arquivo json cru pra colocar as coisas
     StaticJsonDocument<200> doc;
