@@ -151,8 +151,8 @@ void enviar_dados_celulas(CELULAS_INDIVIDUAIS dados){
     // Cria o JSON que será enviado
     StaticJsonDocument<300> json_cru;
 
-    // Cria o array "celula" dentro do JSON
-    JsonArray array_celulas = json_cru["celula"].to<JsonArray>();
+    // Cria o array "cells" dentro do JSON
+    JsonArray array_celulas = json_cru["cells"].to<JsonArray>();
 
     // Insere as 16 células no array
     for (int i = 0; i < 16; i++)
