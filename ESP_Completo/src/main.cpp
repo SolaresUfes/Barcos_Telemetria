@@ -21,13 +21,13 @@ void setup() {
     Serial.begin(BAUD_SERIAL);
 
     // Inicia o BMS e as coisas relacionadas a comunicação pemo MAX485
-    iniciar_BMS();
+    BMS_iniciar();
 
     // Inicia o ADS e o barramento I2C
-    iniciar_ADS();
+    ADS_iniciar();
 
     // Conecta Wi-Fi
-    conectar_wifi();
+    NET_conectar_wifi();
 }
 
 // ----------------- LOOP -----------------
@@ -41,18 +41,18 @@ void loop() {
         tempo_anterior = tempo_atual;
 
         // leitura dos dados gerais
-        DADOS_BATERIA BMS_dados = ler_dados_bms();
-        enviar_dados_bateria(BMS_dados);
+        DADOS_BATERIA BMS_dados = BMS_ler_dados();
+        NET_enviar_dados_bateria(BMS_dados);
 
         // Alertas
-        ALERTAS_BATERIA BMS_alertas = ler_alertas_bms();
-        enviar_alertas_bateria(BMS_alertas);
+        ALERTAS_BATERIA BMS_alertas = BMS_ler_alertas();
+        NET_enviar_alertas_bateria(BMS_alertas);
 
         // Células
-        CELULAS_INDIVIDUAIS BMS_celulas = ler_celulas_bms();
+        CELULAS_INDIVIDUAIS BMS_celulas = BMS_ler_celulas();
         enviar_dados_celulas(BMS_celulas);
 
-        resposta_ADS resposta_ads = coleta_ADS(true, true, true, true);
-        visualizar_ADS(resposta_ads, true, true, true);
+        resposta_ADS resposta_ads = ADS_coleta(true, true, true, true);
+        ADS_visualizar(resposta_ads, true, true, true);
     }
 }
