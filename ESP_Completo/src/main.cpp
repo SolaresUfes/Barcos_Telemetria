@@ -50,7 +50,7 @@ void loop() {
 
         // Células
         CELULAS_INDIVIDUAIS BMS_celulas = BMS_ler_celulas();
-        enviar_dados_celulas(BMS_celulas);
+        NET_enviar_dados_celulas(BMS_celulas);
 
         resposta_ADS resposta_ads = ADS_coleta(true, true, true, true);
         ADS_visualizar(resposta_ads, true, true, true);
