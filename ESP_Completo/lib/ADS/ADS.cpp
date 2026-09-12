@@ -23,7 +23,7 @@ const double VOLTS_PER_BIT = 0.000125; // 0,0000625
 
 // ===============Funções auxiliares===============
 
-void iniciar_ADS() {
+void ADS_iniciar() {
 
     // Inicia a comunicação I2C nos pinos 21 e 22
     Wire.begin(SDA_ADS, SCL_ADS);
@@ -41,7 +41,7 @@ void iniciar_ADS() {
     ads.setGain(GAIN_ONE);
 }
 
-resposta_ADS coleta_ADS(bool ads0, bool ads1, bool ads2, bool subtrair_magico){
+resposta_ADS ADS_coleta(bool ads0, bool ads1, bool ads2, bool subtrair_magico){
     
     double soma0 = 0, soma1 = 0, soma2 = 0;                 // Variável da soma total pra média em cada canal do ADS
     double resultado0 = 0, resultado1 = 0, resultado2 = 0;  // Variável do valor final a ser inserido na estrutura em cada canal do ADSss
@@ -89,7 +89,7 @@ resposta_ADS coleta_ADS(bool ads0, bool ads1, bool ads2, bool subtrair_magico){
     return (resposta_ADS){resultado0, resultado1, resultado2};
 }
 
-void visualizar_ADS(resposta_ADS valores_ADS, bool ads0, bool ads1, bool ads2){
+void ADS_visualizar(resposta_ADS valores_ADS, bool ads0, bool ads1, bool ads2){
 
     if (ads0) Serial.printf("ADS0: %fV \n", valores_ADS.ADS0);
     if (ads1) Serial.printf("ADS1: %fV \n", valores_ADS.ADS1);
