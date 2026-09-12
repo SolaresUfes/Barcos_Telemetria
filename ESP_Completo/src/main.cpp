@@ -4,7 +4,7 @@
 #include "ADS.h"
 #include "BMS.h"
 
-#include "Teste.h"
+// #include "Teste.h"
 
 
 // ----------------- VARIAVEIS E CONSTANTES -----------------
@@ -38,21 +38,21 @@ void loop() {
     // Executa a leitura a cada intervalo_leitura
     if (tempo_atual - tempo_anterior >= intervalo_leitura) {
 
-    //     tempo_anterior = tempo_atual;
+        tempo_anterior = tempo_atual;
 
-    //     // leitura dos dados gerais
-    //     DADOS_BATERIA BMS_dados = ler_dados_bms();
+        // leitura dos dados gerais
+        DADOS_BATERIA BMS_dados = ler_dados_bms();
+        enviar_dados_bateria(BMS_dados);
 
-    //     // Envio dos dados
-    //     enviar_dados_bateria(BMS_dados);
+        // Alertas
+        ALERTAS_BATERIA BMS_alertas = ler_alertas_bms();
+        enviar_alertas_bateria(BMS_alertas);
 
-    //     // Alertas
-    //     ALERTAS_BATERIA BMS_alertas = ler_alertas_bms();
-    //     enviar_alertas_bateria(BMS_alertas);
+        // Células
+        CELULAS_INDIVIDUAIS BMS_celulas = ler_celulas_bms();
+        enviar_dados_celulas(BMS_celulas);
 
-    //     // Células
-    //     CELULAS_INDIVIDUAIS BMS_celulas = ler_celulas_bms();
-    //     enviar_dados_celulas(BMS_celulas);
+        resposta_ADS resposta_ads = coleta_ADS(true, true, true, true);
+        visualizar_ADS(resposta_ads, true, true, true);
     }
 }
-
