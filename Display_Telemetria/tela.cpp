@@ -166,7 +166,9 @@ static void criar_interface()
   rotulo_corrente = criar_rotulo_central(tela, "C: -1.00 A", 82);
   criar_separador(tela, 119);
 
-  rotulo_hora = criar_rotulo_central(tela, "HORA: 14:35", 139);
+  // O relógio começa zerado e recebe o horário real somente depois que o RTC
+  // é lido, evitando mostrar um horário fixo durante a inicialização.
+  rotulo_hora = criar_rotulo_central(tela, "HORA: 00:00", 139);
 
   // A bateria do próprio display mantém a posição, mas usa uma fonte bem menor.
   rotulo_bateria_display = lv_label_create(tela);
