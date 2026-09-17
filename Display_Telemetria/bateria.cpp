@@ -13,9 +13,10 @@ static adc_oneshot_unit_handle_t adc = nullptr;
 static adc_cali_handle_t calibracao = nullptr;
 static bool medidor_inicializado = false;
 
-// Limites usados pelo programa original de fábrica da Waveshare.
+// O limite cheio foi calibrado com a bateria carregada e a placa funcionando
+// fora do USB. Sob a carga normal do rádio e da tela, ela estabiliza em 4,05 V.
 static constexpr uint16_t TENSAO_BATERIA_VAZIA_MV = 3000;
-static constexpr uint16_t TENSAO_BATERIA_CHEIA_MV = 4120;
+static constexpr uint16_t TENSAO_BATERIA_CHEIA_MV = 4050;
 
 // Reproduz a conversão linear usada pela tela original da placa.
 static uint8_t converter_tensao_em_percentual(uint16_t milivolts)
