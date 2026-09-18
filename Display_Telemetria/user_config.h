@@ -4,6 +4,9 @@
 #define EPD_SPI_NUM        SPI2_HOST
 #define ESP32_I2C_DEV_NUM  I2C_NUM_0
 
+// As duas ESPs usam este canal fixo, sem exigir internet no transmissor.
+#define ESPNOW_CHANNEL 1
+
 #define EPD_WIDTH  200
 #define EPD_HEIGHT 200
 #define LVGL_SPIRAM_BUFF_LEN (EPD_WIDTH * EPD_HEIGHT * 2)

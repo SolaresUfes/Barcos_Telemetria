@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <esp_timer.h>
+#include <esp_sleep.h>
 
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
@@ -89,8 +90,17 @@ static void tarefa_led_e_botao(void *)
       digitalWrite(PINO_LED_VERDE, LED_DESLIGADO);
       gpio_set_level(VBAT_PWR_PIN, 0);
 
-      // Pela bateria a energia acaba aqui; com USB, a ESP permanece alimentada.
-      vTaskDelete(nullptr);
+      // Pela bateria a energia termina aqui. Com USB, esperamos o botão ser
+      // solto e entramos em sono profundo para impedir novas atualizações.
+      while (digitalRead(PWR_BUTTON_PIN) == LOW) {
+        vTaskDelay(pdMS_TO_TICKS(20));
+      }
+
+      // Um novo pressionamento do PWR acorda a ESP mesmo com o USB conectado.
+      esp_sleep_enable_ext0_wakeup(PWR_BUTTON_PIN, 0);
+      Serial.println("USB ativo: entrando em sono profundo.");
+      Serial.flush();
+      esp_deep_sleep_start();
     }
 
     vTaskDelay(pdMS_TO_TICKS(20));

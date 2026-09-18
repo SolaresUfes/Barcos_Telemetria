@@ -1,4 +1,6 @@
 #include <Arduino.h>
+#include <esp_sleep.h>
+#include <esp_timer.h>
 
 #include "bateria.h"
 #include "espnow.h"
@@ -9,8 +11,12 @@
 // Guarda o minuto já processado para sincronizar relógio e bateria do display.
 static uint8_t ultimo_minuto_da_bateria = 255;
 
+// O display acorda uma vez por segundo, pede a amostra e volta a dormir.
+static constexpr int64_t INTERVALO_CONSULTA_US = 1000000;
+static constexpr uint32_t TEMPO_RESPOSTA_ESPNOW_MS = 150;
+
 // Transfere para a tela o pacote mais recente recebido por ESP-NOW.
-static void receber_telemetria()
+static bool receber_telemetria()
 {
   TelemetriaBarco telemetria;
   if (obter_nova_telemetria(telemetria)) {
@@ -18,7 +24,9 @@ static void receber_telemetria()
       telemetria.bateria_percentual,
       telemetria.corrente_amperes
     );
+    return true;
   }
+  return false;
 }
 
 // Lê a bateria quando solicitado e atualiza a interface.
@@ -80,10 +88,34 @@ void setup()
 
 void loop()
 {
-  // O loop apenas coordena os três módulos da aplicação.
+  const int64_t inicio_ciclo = esp_timer_get_time();
+
+  // Se a hora ainda não foi obtida, esta chamada aproveita uma eventual
+  // reconexão. Depois da sincronização, ela retorna imediatamente.
   processar_wifi_e_horario();
-  receber_telemetria();
+
+  // O rádio só permanece ativo durante a solicitação e a pequena janela de
+  // resposta. O transmissor devolve bateria e corrente no mesmo pacote.
+  solicitar_telemetria();
+  const uint32_t inicio_espera = millis();
+  while (millis() - inicio_espera < TEMPO_RESPOSTA_ESPNOW_MS) {
+    if (receber_telemetria()) {
+      break;
+    }
+    delay(5);
+  }
+
   atualizar_relogio_e_bateria();
   processar_atualizacoes_da_tela();
-  delay(200);
+
+  // Nunca corta o relógio da CPU no meio de uma transferência para a e-paper.
+  aguardar_tela_ociosa(1500);
+
+  // Mantém o início das consultas separado por aproximadamente um segundo.
+  // Se o desenho já consumiu esse tempo, começa o próximo ciclo sem dormir.
+  const int64_t tempo_usado = esp_timer_get_time() - inicio_ciclo;
+  if (tempo_usado < INTERVALO_CONSULTA_US) {
+    esp_sleep_enable_timer_wakeup(INTERVALO_CONSULTA_US - tempo_usado);
+    esp_light_sleep_start();
+  }
 }

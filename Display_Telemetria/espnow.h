@@ -5,6 +5,15 @@
 
 // A versão permite rejeitar formatos antigos ou incompatíveis.
 constexpr uint16_t VERSAO_PACOTE_TELEMETRIA = 1;
+constexpr uint32_t ASSINATURA_PEDIDO_TELEMETRIA = 0x534F4C52;
+
+// Pedido curto enviado pelo display sempre que ele acorda.
+struct __attribute__((packed)) PacotePedidoTelemetriaEspNow {
+  uint32_t assinatura;
+  uint16_t versao;
+  uint16_t tamanho;
+  uint32_t sequencia;
+};
 
 // A ESP transmissora deve enviar exatamente esta estrutura.
 struct __attribute__((packed)) PacoteTelemetriaEspNow {
@@ -24,6 +33,9 @@ struct TelemetriaBarco {
 
 // Inicia o receptor no canal em que o Wi-Fi já está conectado.
 bool iniciar_espnow();
+
+// Solicita ao transmissor uma amostra atual de bateria e corrente.
+bool solicitar_telemetria();
 
 // Copia o último pacote válido uma única vez para o loop principal.
 bool obter_nova_telemetria(TelemetriaBarco &telemetria);

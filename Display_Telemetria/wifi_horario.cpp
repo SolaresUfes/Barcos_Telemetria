@@ -8,6 +8,7 @@
 #include "configuracao_wifi.h"
 #include "src/i2c_bsp.h"
 #include "src/i2c_equipment.h"
+#include "user_config.h"
 
 // Os limites impedem que a inicialização fique presa indefinidamente.
 static constexpr uint32_t TEMPO_LIMITE_WIFI_MS = 20000;
@@ -43,19 +44,17 @@ static bool sincronizar_rtc_pela_internet()
     horario_ntp.tm_sec
   );
 
-  // O ESP-NOW usa o mesmo rádio, então preservamos o canal antes de sair do roteador.
-  const uint8_t canal_espnow = WiFi.channel();
   horario_foi_sincronizado = true;
 
   // Encerra somente a associação com a internet; o rádio continua em modo STA.
   WiFi.setAutoReconnect(false);
   WiFi.disconnect(false, false);
   delay(50);
-  esp_wifi_set_channel(canal_espnow, WIFI_SECOND_CHAN_NONE);
+  esp_wifi_set_channel(ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE);
 
   Serial.printf(
     "RTC sincronizado. Roteador desconectado; ESP-NOW mantido no canal %u.\n",
-    canal_espnow
+    ESPNOW_CHANNEL
   );
   return true;
 }

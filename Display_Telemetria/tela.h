@@ -21,4 +21,7 @@ void mostrar_desligamento_na_tela();
 // Aplica atualizações pendentes sem provocar refresh excessivo da e-paper.
 void processar_atualizacoes_da_tela();
 
+// Aguarda uma atualização física em andamento antes de colocar a ESP em sono.
+bool aguardar_tela_ociosa(uint32_t tempo_limite_ms);
+
 #endif
