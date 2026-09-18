@@ -31,17 +31,6 @@ static bool dados_validos(const DADOS_BATERIA &dados) {
            isfinite(dados.corrente);
 }
 
-void NOW_atualizar_dados(const DADOS_BATERIA &dados) {
-    if (!dados_validos(dados)) {
-        return;
-    }
-
-    portENTER_CRITICAL(&trava_dados);
-    ultimos_dados = dados;
-    ha_dados_validos = true;
-    portEXIT_CRITICAL(&trava_dados);
-}
-
 // Responde imediatamente ao pedido usando a Ãºltima leitura completa do BMS.
 static void enviar_telemetria() {
     DADOS_BATERIA dados;
@@ -179,4 +168,15 @@ bool NOW_iniciar() {
     espnow_pronto = true;
     Serial.printf("ESP-NOW pronto no canal Wi-Fi %u.\n", canal_atual);
     return true;
+}
+
+void NOW_atualizar_dados(const DADOS_BATERIA &dados) {
+    if (!dados_validos(dados)) {
+        return;
+    }
+
+    portENTER_CRITICAL(&trava_dados);
+    ultimos_dados = dados;
+    ha_dados_validos = true;
+    portEXIT_CRITICAL(&trava_dados);
 }
