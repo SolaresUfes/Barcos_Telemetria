@@ -294,6 +294,18 @@ void epaper_driver_display::EPD_DisplayPartBaseImage() {
     EPD_TurnOnDisplay();
 }
 
+// Recarrega nos dois bancos do controlador a imagem que já está visível.
+// Isso preserva a referência exigida pela atualização parcial depois que a
+// alimentação da e-paper foi desligada, sem provocar uma piscada na tela.
+void epaper_driver_display::EPD_LoadPartBaseImage() {
+    int buffer_len = lcd_spi_data.buffer_len;
+    assert(buffer);
+    EPD_SendCommand(0x24);
+    writeBytes(buffer, buffer_len);
+    EPD_SendCommand(0x26);
+    writeBytes(buffer, buffer_len);
+}
+
 void epaper_driver_display::EPD_Init_Partial() {
     set_rst_1();
   	vTaskDelay(pdMS_TO_TICKS(50));

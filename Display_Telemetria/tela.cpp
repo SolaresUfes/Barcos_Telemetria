@@ -23,11 +23,15 @@ LV_FONT_DECLARE(lv_font_montserrat_10);
 // A e-paper é atualizada no máximo uma vez por segundo para telemetria.
 static constexpr uint32_t INTERVALO_MINIMO_TELEMETRIA_MS = 1000;
 
+// Cinco centiampères equivalem à tolerância visual de 0,05 A.
+static constexpr int LIMIAR_CORRENTE_CENTIAMPERES = 5;
+
 // Estes objetos pertencem ao módulo da tela e não ficam expostos à aplicação.
 static epaper_driver_display *driver = nullptr;
 static board_power_bsp_t energia(EPD_PWR_PIN, Audio_PWR_PIN, VBAT_PWR_PIN);
 static SemaphoreHandle_t mutex_lvgl = nullptr;
 static TaskHandle_t tarefa_lvgl_handle = nullptr;
+static volatile bool atualizacao_tela_pendente = false;
 
 // A interface guarda apenas os rótulos que mudam durante o funcionamento.
 static lv_obj_t *rotulo_bateria_barco = nullptr;
@@ -65,6 +69,7 @@ static void desbloquear_lvgl()
 // Acorda o LVGL quando um texto muda, sem esperar a verificação de segurança.
 static void solicitar_atualizacao_lvgl()
 {
+  atualizacao_tela_pendente = true;
   if (tarefa_lvgl_handle != nullptr) {
     xTaskNotifyGive(tarefa_lvgl_handle);
   }
@@ -73,6 +78,14 @@ static void solicitar_atualizacao_lvgl()
 // Converte cada pixel do LVGL para preto ou branco e o envia à e-paper.
 static void enviar_quadro_para_tela(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *cores)
 {
+  // O controlador perde sua RAM ao ficar sem alimentação. Ao religá-lo,
+  // reconstruímos a imagem anterior antes de fazer a atualização parcial.
+  energia.POWEER_EPD_ON();
+  delay(10);
+  driver->EPD_Init();
+  driver->EPD_Init_Partial();
+  driver->EPD_LoadPartBaseImage();
+
   uint16_t *pixel = reinterpret_cast<uint16_t *>(cores);
   driver->EPD_Clear();
 
@@ -90,6 +103,8 @@ static void enviar_quadro_para_tela(lv_disp_drv_t *disp, const lv_area_t *area, 
   }
 
   driver->EPD_DisplayPart();
+  energia.POWEER_EPD_OFF();
+  atualizacao_tela_pendente = false;
   lv_disp_flush_ready(disp);
 }
 
@@ -108,6 +123,9 @@ static void tarefa_lvgl(void *)
 
     if (bloquear_lvgl()) {
       lv_timer_handler();
+      // Também libera a espera quando o LVGL conclui sem precisar transferir
+      // outro quadro para a e-paper.
+      atualizacao_tela_pendente = false;
       desbloquear_lvgl();
     }
   }
@@ -324,33 +342,50 @@ void processar_atualizacoes_da_tela()
     return;
   }
 
-  // A comparação usa a mesma precisão mostrada na tela: bateria inteira e
-  // corrente com duas casas decimais. Pacotes diferentes que resultem no
-  // mesmo texto são consumidos sem gastar uma atualização da e-paper.
+  // A bateria muda a cada ponto percentual. Na corrente, variações menores
+  // que 0,05 A em relação ao último valor exibido são tratadas como ruído.
   const int nova_bateria_exibida = static_cast<int>(lroundf(bateria_pendente));
   const int nova_corrente_centiamperes = static_cast<int>(lroundf(corrente_pendente * 100.0f));
+  const bool bateria_mudou = nova_bateria_exibida != bateria_exibida;
+  const bool corrente_mudou =
+    corrente_centiamperes_exibida == INT_MIN ||
+    abs(nova_corrente_centiamperes - corrente_centiamperes_exibida) >=
+      LIMIAR_CORRENTE_CENTIAMPERES;
 
-  if (nova_bateria_exibida == bateria_exibida &&
-      nova_corrente_centiamperes == corrente_centiamperes_exibida) {
+  if (!bateria_mudou && !corrente_mudou) {
     ha_telemetria_pendente = false;
     return;
   }
 
-  char bateria[24];
-  char corrente[28];
-  snprintf(bateria, sizeof(bateria), "BATERIA: %d %%", nova_bateria_exibida);
-  snprintf(corrente, sizeof(corrente), "C: %.2f A", nova_corrente_centiamperes / 100.0f);
-
-  // Os dois campos mudam juntos para gerar um único ciclo de redesenho.
+  // Altera somente os rótulos cujo valor realmente cruzou seu limite.
   if (bloquear_lvgl()) {
-    lv_label_set_text(rotulo_bateria_barco, bateria);
-    lv_label_set_text(rotulo_corrente, corrente);
+    if (bateria_mudou) {
+      char bateria[24];
+      snprintf(bateria, sizeof(bateria), "BATERIA: %d %%", nova_bateria_exibida);
+      lv_label_set_text(rotulo_bateria_barco, bateria);
+      bateria_exibida = nova_bateria_exibida;
+    }
+
+    if (corrente_mudou) {
+      char corrente[28];
+      snprintf(corrente, sizeof(corrente), "C: %.2f A", nova_corrente_centiamperes / 100.0f);
+      lv_label_set_text(rotulo_corrente, corrente);
+      corrente_centiamperes_exibida = nova_corrente_centiamperes;
+    }
+
     desbloquear_lvgl();
     solicitar_atualizacao_lvgl();
 
     ha_telemetria_pendente = false;
     ultima_atualizacao_telemetria = millis();
-    bateria_exibida = nova_bateria_exibida;
-    corrente_centiamperes_exibida = nova_corrente_centiamperes;
   }
+}
+
+bool aguardar_tela_ociosa(uint32_t tempo_limite_ms)
+{
+  const uint32_t inicio = millis();
+  while (atualizacao_tela_pendente && millis() - inicio < tempo_limite_ms) {
+    delay(5);
+  }
+  return !atualizacao_tela_pendente;
 }

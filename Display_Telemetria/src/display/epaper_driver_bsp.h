@@ -62,6 +62,7 @@ public:
     
     /*局部刷新*/
     void EPD_DisplayPartBaseImage();
+    void EPD_LoadPartBaseImage();
     void EPD_Init_Partial();
     void EPD_DisplayPart();
     void EPD_DrawColorPixel(uint16_t x, uint16_t y,uint8_t color);
