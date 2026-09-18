@@ -104,7 +104,7 @@ static void enviar_telemetria()
 
 void setup()
 {
-  Serial.begin(115200);
+  Serial.begin(BAUD_SERIAL);
   delay(500);
 
   Serial.println();
