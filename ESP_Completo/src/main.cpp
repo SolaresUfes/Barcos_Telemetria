@@ -3,6 +3,7 @@
 #include "NET.h"
 #include "ADS.h"
 #include "BMS.h"
+#include "NOW.h"
 
 // #include "Teste.h"
 
@@ -28,6 +29,9 @@ void setup() {
 
     // Conecta Wi-Fi
     NET_conectar_wifi();
+
+    // O ESP-NOW compartilha o canal da conexão Wi-Fi e aguarda o display.
+    NOW_iniciar();
 }
 
 // ----------------- LOOP -----------------
@@ -42,6 +46,7 @@ void loop() {
 
         // leitura dos dados gerais
         DADOS_BATERIA BMS_dados = BMS_ler_dados();
+        NOW_atualizar_dados(BMS_dados);
         NET_enviar_dados_bateria(BMS_dados);
 
         // Alertas
