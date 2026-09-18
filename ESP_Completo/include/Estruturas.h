@@ -36,11 +36,15 @@ struct CELULAS_INDIVIDUAIS {
     float celulas[16] = {0};
 };
 
+
 /* --- ESTRUTURA DO ADS --- */
 
 struct resposta_ADS {
     double ADS0, ADS1, ADS2;
 };
+
+
+/* --- ESTRUTURAS PRO ESP-NOW ---*/
 
 // Estrutura exata esperada pelo firmware do display.
 struct __attribute__((packed)) PacoteTelemetriaEspNow {
