@@ -10,12 +10,12 @@
 #include <esp_arduino_version.h>
 #endif
 
-// O broadcast dispensa cadastrar previamente o endereço MAC do display.
+// O broadcast dispensa cadastrar previamente o endereÃ§o MAC do display.
 static const uint8_t ENDERECO_BROADCAST[6] = {
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 };
 
-// A interrupção do rádio e o loop principal compartilham a última leitura.
+// A interrupÃ§Ã£o do rÃ¡dio e o loop principal compartilham a Ãºltima leitura.
 static portMUX_TYPE trava_dados = portMUX_INITIALIZER_UNLOCKED;
 static DADOS_BATERIA ultimos_dados = {NAN, NAN, NAN};
 static bool ha_dados_validos = false;
@@ -42,7 +42,7 @@ void NOW_atualizar_dados(const DADOS_BATERIA &dados) {
     portEXIT_CRITICAL(&trava_dados);
 }
 
-// Responde imediatamente ao pedido usando a última leitura completa do BMS.
+// Responde imediatamente ao pedido usando a Ãºltima leitura completa do BMS.
 static void enviar_telemetria() {
     DADOS_BATERIA dados;
     bool disponivel;
@@ -52,8 +52,8 @@ static void enviar_telemetria() {
     disponivel = ha_dados_validos;
     portEXIT_CRITICAL(&trava_dados);
 
-    // Antes da primeira leitura válida, não responde. Assim o círculo ou o X
-    // informa corretamente que ainda não existe telemetria disponível.
+    // Antes da primeira leitura vÃ¡lida, nÃ£o responde. Assim o cÃ­rculo ou o X
+    // informa corretamente que ainda nÃ£o existe telemetria disponÃ­vel.
     if (!disponivel) {
         return;
     }
@@ -76,7 +76,7 @@ static void enviar_telemetria() {
     }
 }
 
-// Valida o conteúdo recebido antes de executar qualquer ação.
+// Valida o conteÃºdo recebido antes de executar qualquer aÃ§Ã£o.
 static void processar_pacote_recebido(const uint8_t *dados, int tamanho) {
     if (tamanho == static_cast<int>(sizeof(PacotePedidoTelemetriaEspNow))) {
         PacotePedidoTelemetriaEspNow pedido;
@@ -98,13 +98,13 @@ static void processar_pacote_recebido(const uint8_t *dados, int tamanho) {
             comando.versao == VERSAO_PACOTE_TELEMETRIA &&
             comando.tamanho == sizeof(PacoteReinicioRemotoEspNow) &&
             comando.chave == CHAVE_REINICIO_REMOTO) {
-            // Não exige confirmação de volta. Basta uma das três cópias chegar.
+            // NÃ£o exige confirmaÃ§Ã£o de volta. Basta uma das trÃªs cÃ³pias chegar.
             reinicio_pendente = true;
         }
     }
 }
 
-// A assinatura da função mudou entre as versões 2 e 3 do Arduino ESP32.
+// A assinatura da funÃ§Ã£o mudou entre as versÃµes 2 e 3 do Arduino ESP32.
 #if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
 static void receber_pacote(
     const esp_now_recv_info_t *,
@@ -123,7 +123,7 @@ static void receber_pacote(
 }
 #endif
 
-// Uma tarefa própria permite reiniciar mesmo se o envio HTTP estiver lento.
+// Uma tarefa prÃ³pria permite reiniciar mesmo se o envio HTTP estiver lento.
 static void tarefa_reinicio(void *) {
     for (;;) {
         if (reinicio_pendente) {
@@ -158,7 +158,7 @@ bool NOW_iniciar() {
 
     esp_now_peer_info_t destino = {};
     memcpy(destino.peer_addr, ENDERECO_BROADCAST, sizeof(ENDERECO_BROADCAST));
-    // Canal zero acompanha o canal atual do rádio, inclusive após reconexão.
+    // Canal zero acompanha o canal atual do rÃ¡dio, inclusive apÃ³s reconexÃ£o.
     destino.channel = 0;
     destino.ifidx = WIFI_IF_STA;
     destino.encrypt = false;

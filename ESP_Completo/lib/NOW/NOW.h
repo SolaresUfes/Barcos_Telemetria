@@ -18,7 +18,7 @@ struct __attribute__((packed)) PacotePedidoTelemetriaEspNow {
     uint32_t sequencia;
 };
 
-// O botão esquerdo do display envia este comando três vezes por segurança.
+// O botÃ£o esquerdo do display envia este comando trÃªs vezes por seguranÃ§a.
 struct __attribute__((packed)) PacoteReinicioRemotoEspNow {
     uint32_t assinatura;
     uint16_t versao;
@@ -27,16 +27,7 @@ struct __attribute__((packed)) PacoteReinicioRemotoEspNow {
     uint32_t chave;
 };
 
-// Resposta com os dois valores que o piloto precisa ver no display.
-struct __attribute__((packed)) PacoteTelemetriaEspNow {
-    uint16_t versao;
-    uint16_t tamanho;
-    uint32_t sequencia;
-    float bateria_barco_percentual;
-    float corrente_amperes;
-};
-
-// Inicia o receptor ESP-NOW no mesmo canal usado pela conexão Wi-Fi.
+// Inicia o receptor ESP-NOW no mesmo canal usado pela conexÃ£o Wi-Fi.
 bool NOW_iniciar();
 
 // Guarda a leitura mais recente do BMS para responder rapidamente ao display.
