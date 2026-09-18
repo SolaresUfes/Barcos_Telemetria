@@ -39,6 +39,17 @@ static lv_obj_t *rotulo_corrente = nullptr;
 static lv_obj_t *rotulo_hora = nullptr;
 static lv_obj_t *rotulo_bateria_display = nullptr;
 static lv_obj_t *rotulo_estado = nullptr;
+static lv_obj_t *icone_circulo = nullptr;
+static lv_obj_t *icone_check = nullptr;
+static lv_obj_t *icone_x_1 = nullptr;
+static lv_obj_t *icone_x_2 = nullptr;
+static EstadoComunicacao estado_comunicacao_exibido =
+  EstadoComunicacao::AGUARDANDO_PRIMEIRA_RESPOSTA;
+
+// Os pontos permanecem válidos durante toda a execução, como exige o LVGL.
+static lv_point_t pontos_check[] = {{1, 7}, {5, 11}, {13, 2}};
+static lv_point_t pontos_x_1[] = {{2, 2}, {12, 12}};
+static lv_point_t pontos_x_2[] = {{12, 2}, {2, 12}};
 
 // Valores recebidos ficam pendentes até chegar o momento seguro de redesenhar.
 // Menos um representa somente o estado anterior ao primeiro pacote ESP-NOW.
@@ -202,6 +213,42 @@ static void criar_interface()
   lv_obj_set_style_text_font(rotulo_estado, &lv_font_montserrat_10, 0);
   lv_obj_align(rotulo_estado, LV_ALIGN_BOTTOM_RIGHT, -7, -7);
 
+  // Indicador central: círculo aguardando, check conectado e X sem resposta.
+  lv_obj_t *area_conexao = lv_obj_create(tela);
+  lv_obj_set_size(area_conexao, 16, 16);
+  lv_obj_set_style_bg_opa(area_conexao, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(area_conexao, 0, 0);
+  lv_obj_set_style_pad_all(area_conexao, 0, 0);
+  lv_obj_clear_flag(area_conexao, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_align(area_conexao, LV_ALIGN_BOTTOM_MID, 0, -3);
+
+  icone_circulo = lv_obj_create(area_conexao);
+  lv_obj_set_size(icone_circulo, 10, 10);
+  lv_obj_set_style_bg_opa(icone_circulo, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_color(icone_circulo, lv_color_black(), 0);
+  lv_obj_set_style_border_width(icone_circulo, 1, 0);
+  lv_obj_set_style_radius(icone_circulo, LV_RADIUS_CIRCLE, 0);
+  lv_obj_set_style_pad_all(icone_circulo, 0, 0);
+  lv_obj_align(icone_circulo, LV_ALIGN_CENTER, 0, 0);
+
+  icone_check = lv_line_create(area_conexao);
+  lv_line_set_points(icone_check, pontos_check, 3);
+  lv_obj_set_style_line_color(icone_check, lv_color_black(), 0);
+  lv_obj_set_style_line_width(icone_check, 2, 0);
+  lv_obj_add_flag(icone_check, LV_OBJ_FLAG_HIDDEN);
+
+  icone_x_1 = lv_line_create(area_conexao);
+  lv_line_set_points(icone_x_1, pontos_x_1, 2);
+  lv_obj_set_style_line_color(icone_x_1, lv_color_black(), 0);
+  lv_obj_set_style_line_width(icone_x_1, 2, 0);
+  lv_obj_add_flag(icone_x_1, LV_OBJ_FLAG_HIDDEN);
+
+  icone_x_2 = lv_line_create(area_conexao);
+  lv_line_set_points(icone_x_2, pontos_x_2, 2);
+  lv_obj_set_style_line_color(icone_x_2, lv_color_black(), 0);
+  lv_obj_set_style_line_width(icone_x_2, 2, 0);
+  lv_obj_add_flag(icone_x_2, LV_OBJ_FLAG_HIDDEN);
+
   lv_scr_load(tela);
 }
 
@@ -320,6 +367,32 @@ void atualizar_bateria_display_na_tela(uint8_t percentual)
     desbloquear_lvgl();
     solicitar_atualizacao_lvgl();
   }
+}
+
+void atualizar_estado_comunicacao_na_tela(EstadoComunicacao estado)
+{
+  if (estado == estado_comunicacao_exibido || !bloquear_lvgl()) {
+    return;
+  }
+
+  // Primeiro esconde todas as formas; depois revela somente o novo estado.
+  lv_obj_add_flag(icone_circulo, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(icone_check, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(icone_x_1, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(icone_x_2, LV_OBJ_FLAG_HIDDEN);
+
+  if (estado == EstadoComunicacao::AGUARDANDO_PRIMEIRA_RESPOSTA) {
+    lv_obj_clear_flag(icone_circulo, LV_OBJ_FLAG_HIDDEN);
+  } else if (estado == EstadoComunicacao::CONECTADO) {
+    lv_obj_clear_flag(icone_check, LV_OBJ_FLAG_HIDDEN);
+  } else {
+    lv_obj_clear_flag(icone_x_1, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(icone_x_2, LV_OBJ_FLAG_HIDDEN);
+  }
+
+  estado_comunicacao_exibido = estado;
+  desbloquear_lvgl();
+  solicitar_atualizacao_lvgl();
 }
 
 void mostrar_desligamento_na_tela()

@@ -14,6 +14,7 @@ static portMUX_TYPE trava_telemetria = portMUX_INITIALIZER_UNLOCKED;
 static TelemetriaBarco ultima_telemetria = {};
 static bool ha_telemetria_nova = false;
 static uint32_t proxima_solicitacao = 0;
+static uint32_t proximo_reinicio = 0;
 static const uint8_t ENDERECO_BROADCAST[6] = {
   0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 };
@@ -102,6 +103,28 @@ bool solicitar_telemetria()
     reinterpret_cast<const uint8_t *>(&pedido),
     sizeof(pedido)
   ) == ESP_OK;
+}
+
+bool solicitar_reinicio_remoto()
+{
+  PacoteReinicioRemotoEspNow comando = {};
+  comando.assinatura = ASSINATURA_REINICIO_REMOTO;
+  comando.versao = VERSAO_PACOTE_TELEMETRIA;
+  comando.tamanho = sizeof(PacoteReinicioRemotoEspNow);
+  comando.sequencia = proximo_reinicio++;
+  comando.chave = CHAVE_REINICIO_REMOTO;
+
+  bool algum_envio_aceito = false;
+  for (uint8_t tentativa = 0; tentativa < 3; ++tentativa) {
+    const esp_err_t resultado = esp_now_send(
+      ENDERECO_BROADCAST,
+      reinterpret_cast<const uint8_t *>(&comando),
+      sizeof(comando)
+    );
+    algum_envio_aceito = algum_envio_aceito || resultado == ESP_OK;
+    delay(30);
+  }
+  return algum_envio_aceito;
 }
 
 bool obter_nova_telemetria(TelemetriaBarco &telemetria)

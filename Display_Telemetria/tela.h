@@ -3,6 +3,12 @@
 
 #include <stdint.h>
 
+enum class EstadoComunicacao : uint8_t {
+  AGUARDANDO_PRIMEIRA_RESPOSTA,
+  CONECTADO,
+  SEM_RESPOSTA
+};
+
 // Liga e configura a e-paper, inicia o LVGL e monta a interface.
 void inicializar_tela();
 
@@ -14,6 +20,9 @@ void atualizar_horario_na_tela(uint8_t hora, uint8_t minuto);
 
 // Substitui o valor fixo pela porcentagem medida da bateria do display.
 void atualizar_bateria_display_na_tela(uint8_t percentual);
+
+// Mostra círculo, check ou X no rodapé conforme o enlace ESP-NOW.
+void atualizar_estado_comunicacao_na_tela(EstadoComunicacao estado);
 
 // Grava OFF na e-paper antes que o circuito corte a alimentação da bateria.
 void mostrar_desligamento_na_tela();

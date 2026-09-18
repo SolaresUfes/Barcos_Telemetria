@@ -1,138 +1,182 @@
 #include "NOW.h"
 
+#include <WiFi.h>
+#include <esp_now.h>
+#include <esp_wifi.h>
+#include <math.h>
+#include <string.h>
 
-// ===============Funções auxiliares===============
+#if __has_include(<esp_arduino_version.h>)
+#include <esp_arduino_version.h>
+#endif
 
-// Substitua o retorno pela leitura real da bateria do barco.
-static float ler_bateria_barco_percentual()
-{
-  return rand()%101;
+// O broadcast dispensa cadastrar previamente o endereÃ§o MAC do display.
+static const uint8_t ENDERECO_BROADCAST[6] = {
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+};
+
+// A interrupÃ§Ã£o do rÃ¡dio e o loop principal compartilham a Ãºltima leitura.
+static portMUX_TYPE trava_dados = portMUX_INITIALIZER_UNLOCKED;
+static DADOS_BATERIA ultimos_dados = {NAN, NAN, NAN};
+static bool ha_dados_validos = false;
+static uint32_t proxima_sequencia = 0;
+static volatile bool reinicio_pendente = false;
+static bool espnow_pronto = false;
+
+// Confere se a leitura do BMS pode ser mostrada sem enviar lixo ao display.
+static bool dados_validos(const DADOS_BATERIA &dados) {
+    return isfinite(dados.porcentagem) &&
+           dados.porcentagem >= 0.0f &&
+           dados.porcentagem <= 100.0f &&
+           isfinite(dados.corrente);
 }
 
-// Substitua o retorno pela leitura real do sensor de corrente.
-static float ler_corrente_amperes()
-{
-  return (((float)rand()/RAND_MAX)*120.0);
+void NOW_atualizar_dados(const DADOS_BATERIA &dados) {
+    if (!dados_validos(dados)) {
+        return;
+    }
+
+    portENTER_CRITICAL(&trava_dados);
+    ultimos_dados = dados;
+    ha_dados_validos = true;
+    portEXIT_CRITICAL(&trava_dados);
 }
 
-// Conecta brevemente ao roteador apenas para descobrir o canal de rádio.
-static uint8_t descobrir_canal_do_display()
-{
-  Serial.printf("Procurando a rede %s para descobrir o canal...\n", NOME_REDE_WIFI);
-  WiFi.begin(NOME_REDE_WIFI, SENHA_REDE_WIFI);
+// Responde imediatamente ao pedido usando a Ãºltima leitura completa do BMS.
+static void enviar_telemetria() {
+    DADOS_BATERIA dados;
+    bool disponivel;
 
-  const uint32_t inicio = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - inicio < 15000) {
-    delay(100);
-  }
+    portENTER_CRITICAL(&trava_dados);
+    dados = ultimos_dados;
+    disponivel = ha_dados_validos;
+    portEXIT_CRITICAL(&trava_dados);
 
-  uint8_t canal = CANAL_ESPNOW_RESERVA;
-  if (WiFi.status() == WL_CONNECTED) {
-    canal = WiFi.channel();
-    Serial.printf("Canal encontrado: %u.\n", canal);
-  } else {
-    Serial.printf("Rede não encontrada. Usando o canal reserva %u.\n", canal);
-  }
+    // Antes da primeira leitura vÃ¡lida, nÃ£o responde. Assim o cÃ­rculo ou o X
+    // informa corretamente que ainda nÃ£o existe telemetria disponÃ­vel.
+    if (!disponivel) {
+        return;
+    }
 
-  // Mantém o rádio ligado para o ESP-NOW, mas encerra a conexão com o roteador.
-  WiFi.disconnect(false, false);
-  delay(100);
-  return canal;
-}
+    PacoteTelemetriaEspNow pacote = {};
+    pacote.versao = VERSAO_PACOTE_TELEMETRIA;
+    pacote.tamanho = sizeof(PacoteTelemetriaEspNow);
+    pacote.sequencia = proxima_sequencia++;
+    pacote.bateria_barco_percentual = dados.porcentagem;
+    pacote.corrente_amperes = dados.corrente;
 
-static bool iniciar_espnow()
-{
-  WiFi.mode(WIFI_STA);
-  canal_espnow = descobrir_canal_do_display();
-
-  if (esp_wifi_set_channel(canal_espnow, WIFI_SECOND_CHAN_NONE) != ESP_OK) {
-    Serial.println("Falha ao selecionar o canal do ESP-NOW.");
-    return false;
-  }
-
-  if (esp_now_init() != ESP_OK) {
-    Serial.println("Falha ao iniciar o ESP-NOW.");
-    return false;
-  }
-
-  esp_now_peer_info_t destino = {};
-  memcpy(destino.peer_addr, ENDERECO_BROADCAST, sizeof(ENDERECO_BROADCAST));
-  destino.channel = canal_espnow;
-  destino.ifidx = WIFI_IF_STA;
-  destino.encrypt = false;
-
-  if (esp_now_add_peer(&destino) != ESP_OK) {
-    Serial.println("Falha ao cadastrar o endereço de broadcast.");
-    esp_now_deinit();
-    return false;
-  }
-
-  Serial.printf("ESP-NOW pronto no canal %u.\n", canal_espnow);
-  Serial.print("MAC deste transmissor: ");
-  Serial.println(WiFi.macAddress());
-  return true;
-}
-
-static void enviar_telemetria()
-{
-  PacoteTelemetriaEspNow pacote = {};
-  pacote.versao = VERSAO_PACOTE_TELEMETRIA;
-  pacote.tamanho = sizeof(PacoteTelemetriaEspNow);
-  pacote.sequencia = proxima_sequencia++;
-  pacote.bateria_barco_percentual = constrain(
-    ler_bateria_barco_percentual(), 0.0f, 100.0f
-  );
-  pacote.corrente_amperes = ler_corrente_amperes();
-
-  const esp_err_t resultado = esp_now_send(
-    ENDERECO_BROADCAST,
-    reinterpret_cast<const uint8_t *>(&pacote),
-    sizeof(pacote)
-  );
-
-  if (resultado == ESP_OK) {
-    Serial.printf(
-      "Pacote %lu enviado: bateria %.1f%%, corrente %.2f A.\n",
-      static_cast<unsigned long>(pacote.sequencia),
-      pacote.bateria_barco_percentual,
-      pacote.corrente_amperes
+    const esp_err_t resultado = esp_now_send(
+        ENDERECO_BROADCAST,
+        reinterpret_cast<const uint8_t *>(&pacote),
+        sizeof(pacote)
     );
-  } else {
-    Serial.printf("Falha imediata no envio: %s.\n", esp_err_to_name(resultado));
-  }
+
+    if (resultado != ESP_OK) {
+        Serial.printf("ESP-NOW: falha ao responder telemetria: %d.\n", resultado);
+    }
 }
 
-void setup()
-{
-  Serial.begin(BAUD_SERIAL);
-  delay(500);
+// Valida o conteÃºdo recebido antes de executar qualquer aÃ§Ã£o.
+static void processar_pacote_recebido(const uint8_t *dados, int tamanho) {
+    if (tamanho == static_cast<int>(sizeof(PacotePedidoTelemetriaEspNow))) {
+        PacotePedidoTelemetriaEspNow pedido;
+        memcpy(&pedido, dados, sizeof(pedido));
 
-  Serial.println();
-  Serial.println("Transmissor de telemetria Solares iniciando.");
+        if (pedido.assinatura == ASSINATURA_PEDIDO_TELEMETRIA &&
+            pedido.versao == VERSAO_PACOTE_TELEMETRIA &&
+            pedido.tamanho == sizeof(PacotePedidoTelemetriaEspNow)) {
+            enviar_telemetria();
+        }
+        return;
+    }
 
-  espnow_pronto = iniciar_espnow();
-  if (!espnow_pronto) {
-    Serial.println("Inicialização interrompida. Reinicie a placa para tentar novamente.");
-    return;
-  }
+    if (tamanho == static_cast<int>(sizeof(PacoteReinicioRemotoEspNow))) {
+        PacoteReinicioRemotoEspNow comando;
+        memcpy(&comando, dados, sizeof(comando));
 
-  // Permite que o primeiro pacote seja enviado imediatamente.
-  ultimo_envio_ms = millis() - INTERVALO_ENVIO_MS;
+        if (comando.assinatura == ASSINATURA_REINICIO_REMOTO &&
+            comando.versao == VERSAO_PACOTE_TELEMETRIA &&
+            comando.tamanho == sizeof(PacoteReinicioRemotoEspNow) &&
+            comando.chave == CHAVE_REINICIO_REMOTO) {
+            // NÃ£o exige confirmaÃ§Ã£o de volta. Basta uma das trÃªs cÃ³pias chegar.
+            reinicio_pendente = true;
+        }
+    }
 }
 
-void loop()
-{
-  if (!espnow_pronto) {
-    delay(1000);
-    return;
-  }
+// A assinatura da funÃ§Ã£o mudou entre as versÃµes 2 e 3 do Arduino ESP32.
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
+static void receber_pacote(
+    const esp_now_recv_info_t *,
+    const uint8_t *dados,
+    int tamanho
+) {
+    processar_pacote_recebido(dados, tamanho);
+}
+#else
+static void receber_pacote(
+    const uint8_t *,
+    const uint8_t *dados,
+    int tamanho
+) {
+    processar_pacote_recebido(dados, tamanho);
+}
+#endif
 
-  const uint32_t agora = millis();
-  if (agora - ultimo_envio_ms >= INTERVALO_ENVIO_MS) {
-    ultimo_envio_ms = agora;
-    enviar_telemetria();
-  }
+// Uma tarefa prÃ³pria permite reiniciar mesmo se o envio HTTP estiver lento.
+static void tarefa_reinicio(void *) {
+    for (;;) {
+        if (reinicio_pendente) {
+            Serial.println("ESP-NOW: reinicio remoto recebido.");
+            Serial.flush();
+            delay(120);
+            ESP.restart();
+        }
+        vTaskDelay(pdMS_TO_TICKS(20));
+    }
+}
 
-  // Pequena pausa reduz o uso de processador sem afetar o intervalo de um segundo.
-  delay(5);
+bool NOW_iniciar() {
+    if (espnow_pronto) {
+        return true;
+    }
+
+    // A ESP continua ligada ao roteador. O ESP-NOW compartilha o canal atual.
+    WiFi.mode(WIFI_STA);
+    const uint8_t canal_atual = WiFi.channel();
+
+    if (esp_now_init() != ESP_OK) {
+        Serial.println("ESP-NOW: falha ao iniciar.");
+        return false;
+    }
+
+    if (esp_now_register_recv_cb(receber_pacote) != ESP_OK) {
+        Serial.println("ESP-NOW: falha ao registrar o recebimento.");
+        esp_now_deinit();
+        return false;
+    }
+
+    esp_now_peer_info_t destino = {};
+    memcpy(destino.peer_addr, ENDERECO_BROADCAST, sizeof(ENDERECO_BROADCAST));
+    // Canal zero acompanha o canal atual do rÃ¡dio, inclusive apÃ³s reconexÃ£o.
+    destino.channel = 0;
+    destino.ifidx = WIFI_IF_STA;
+    destino.encrypt = false;
+
+    if (!esp_now_is_peer_exist(ENDERECO_BROADCAST) &&
+        esp_now_add_peer(&destino) != ESP_OK) {
+        Serial.println("ESP-NOW: falha ao cadastrar o broadcast.");
+        esp_now_deinit();
+        return false;
+    }
+
+    if (xTaskCreate(tarefa_reinicio, "reinicio-remoto", 2048, nullptr, 3, nullptr) != pdPASS) {
+        Serial.println("ESP-NOW: falha ao criar a tarefa de reinicio.");
+        esp_now_deinit();
+        return false;
+    }
+
+    espnow_pronto = true;
+    Serial.printf("ESP-NOW pronto no canal Wi-Fi %u.\n", canal_atual);
+    return true;
 }

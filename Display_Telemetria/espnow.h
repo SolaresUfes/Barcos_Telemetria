@@ -6,6 +6,8 @@
 // A versão permite rejeitar formatos antigos ou incompatíveis.
 constexpr uint16_t VERSAO_PACOTE_TELEMETRIA = 1;
 constexpr uint32_t ASSINATURA_PEDIDO_TELEMETRIA = 0x534F4C52;
+constexpr uint32_t ASSINATURA_REINICIO_REMOTO = 0x52535452;
+constexpr uint32_t CHAVE_REINICIO_REMOTO = 0xA57C31E2;
 
 // Pedido curto enviado pelo display sempre que ele acorda.
 struct __attribute__((packed)) PacotePedidoTelemetriaEspNow {
@@ -13,6 +15,15 @@ struct __attribute__((packed)) PacotePedidoTelemetriaEspNow {
   uint16_t versao;
   uint16_t tamanho;
   uint32_t sequencia;
+};
+
+// Comando separado evita interpretar telemetria corrompida como reinício.
+struct __attribute__((packed)) PacoteReinicioRemotoEspNow {
+  uint32_t assinatura;
+  uint16_t versao;
+  uint16_t tamanho;
+  uint32_t sequencia;
+  uint32_t chave;
 };
 
 // A ESP transmissora deve enviar exatamente esta estrutura.
@@ -36,6 +47,9 @@ bool iniciar_espnow();
 
 // Solicita ao transmissor uma amostra atual de bateria e corrente.
 bool solicitar_telemetria();
+
+// Envia o mesmo comando três vezes para tolerar uma perda isolada de rádio.
+bool solicitar_reinicio_remoto();
 
 // Copia o último pacote válido uma única vez para o loop principal.
 bool obter_nova_telemetria(TelemetriaBarco &telemetria);

@@ -1,53 +1,34 @@
 #pragma once
 
-#include "Estruturas.h"
-#include "Config.h"
-
 #include <Arduino.h>
-#include <WiFi.h>
-#include <esp_now.h>
-#include <esp_wifi.h>
-#include <cstring>
 
-#define RAND_MAX __RAND_MAX
+#include "Estruturas.h"
 
+// O display e a ESP do barco precisam usar exatamente estes mesmos valores.
+constexpr uint16_t VERSAO_PACOTE_TELEMETRIA = 1;
+constexpr uint32_t ASSINATURA_PEDIDO_TELEMETRIA = 0x534F4C52;
+constexpr uint32_t ASSINATURA_REINICIO_REMOTO = 0x52535452;
+constexpr uint32_t CHAVE_REINICIO_REMOTO = 0xA57C31E2;
 
-/* --- DEFINIÇÕES --- */
+// O display envia este pacote uma vez por segundo para pedir os dados atuais.
+struct __attribute__((packed)) PacotePedidoTelemetriaEspNow {
+    uint32_t assinatura;
+    uint16_t versao;
+    uint16_t tamanho;
+    uint32_t sequencia;
+};
 
-// O transmissor usa o Wi-Fi apenas para descobrir o canal do display.
-// Depois disso, ele sai do roteador e transmite somente por ESP-NOW.
-static constexpr char NOME_REDE_WIFI[] = "Telemeteam";
-static constexpr char SENHA_REDE_WIFI[] = "telemeteam157";
+// O botÃ£o esquerdo do display envia este comando trÃªs vezes por seguranÃ§a.
+struct __attribute__((packed)) PacoteReinicioRemotoEspNow {
+    uint32_t assinatura;
+    uint16_t versao;
+    uint16_t tamanho;
+    uint32_t sequencia;
+    uint32_t chave;
+};
 
-// Canal usado somente se o roteador não estiver disponível ao iniciar.
-static constexpr uint8_t CANAL_ESPNOW_RESERVA = 1;
+// Inicia o receptor ESP-NOW no mesmo canal usado pela conexÃ£o Wi-Fi.
+bool NOW_iniciar();
 
-// Envia uma amostra nova a cada segundo.
-static constexpr uint32_t INTERVALO_ENVIO_MS = 1000;
-
-// Broadcast permite transmitir sem cadastrar o MAC do display.
-static const uint8_t ENDERECO_BROADCAST[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-
-// Estes valores são idênticos aos usados pelo receptor do display.
-static constexpr uint16_t VERSAO_PACOTE_TELEMETRIA = 1;
-
-static uint8_t canal_espnow = CANAL_ESPNOW_RESERVA;
-static uint32_t proxima_sequencia = 0;
-static uint32_t ultimo_envio_ms = 0;
-static bool espnow_pronto = false;
-
-
-/* --- DECLARAÇÕES --- */
-
-static float ler_bateria_barco_percentual();
-
-static float ler_corrente_amperes();
-
-// Conecta brevemente ao roteador apenas para descobrir o canal de rádio.
-static uint8_t descobrir_canal_do_display();
-
-// Faz a inicialização da comunicação usando ESP_NOW
-static bool iniciar_espnow();
-
-// Envio dos dados para a tela do barco usando ESP_NOW
-static void enviar_telemetria();
+// Guarda a leitura mais recente do BMS para responder rapidamente ao display.
+void NOW_atualizar_dados(const DADOS_BATERIA &dados);

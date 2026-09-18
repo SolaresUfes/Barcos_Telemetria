@@ -6,6 +6,7 @@
 #include "espnow.h"
 #include "led_status.h"
 #include "tela.h"
+#include "user_config.h"
 #include "wifi_horario.h"
 
 // Guarda o minuto já processado para sincronizar relógio e bateria do display.
@@ -14,6 +15,45 @@ static uint8_t ultimo_minuto_da_bateria = 255;
 // O display acorda uma vez por segundo, pede a amostra e volta a dormir.
 static constexpr int64_t INTERVALO_CONSULTA_US = 1000000;
 static constexpr uint32_t TEMPO_RESPOSTA_ESPNOW_MS = 150;
+static constexpr uint32_t TEMPO_BOTAO_REINICIO_MS = 3000;
+static constexpr uint8_t LIMITE_PEDIDOS_SEM_RESPOSTA = 3;
+
+static uint8_t pedidos_sem_resposta = 0;
+static bool contando_botao_reinicio = false;
+static bool reinicio_ja_enviado_nesta_pressao = false;
+static uint32_t inicio_botao_reinicio = 0;
+
+// Um pressionamento longo evita reiniciar a ESP do barco por toque acidental.
+static void processar_botao_reinicio_remoto()
+{
+  const bool pressionado = digitalRead(BOOT_BUTTON_PIN) == LOW;
+  if (!pressionado) {
+    contando_botao_reinicio = false;
+    reinicio_ja_enviado_nesta_pressao = false;
+    return;
+  }
+
+  if (!contando_botao_reinicio) {
+    contando_botao_reinicio = true;
+    inicio_botao_reinicio = millis();
+    return;
+  }
+
+  if (!reinicio_ja_enviado_nesta_pressao &&
+      millis() - inicio_botao_reinicio >= TEMPO_BOTAO_REINICIO_MS) {
+    reinicio_ja_enviado_nesta_pressao = true;
+    pedidos_sem_resposta = 0;
+    atualizar_estado_comunicacao_na_tela(
+      EstadoComunicacao::AGUARDANDO_PRIMEIRA_RESPOSTA
+    );
+
+    if (solicitar_reinicio_remoto()) {
+      Serial.println("Comando de reinicio remoto enviado tres vezes.");
+    } else {
+      Serial.println("Falha imediata ao enviar o reinicio remoto.");
+    }
+  }
+}
 
 // Transfere para a tela o pacote mais recente recebido por ESP-NOW.
 static bool receber_telemetria()
@@ -69,6 +109,7 @@ void setup()
 {
   // A serial mostra diagnósticos de Wi-Fi, RTC e ESP-NOW.
   Serial.begin(115200);
+  pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP);
 
   // O LED confirma a partida e depois apaga para economizar bateria.
   inicializar_led_status();
@@ -89,6 +130,7 @@ void setup()
 void loop()
 {
   const int64_t inicio_ciclo = esp_timer_get_time();
+  processar_botao_reinicio_remoto();
 
   // Se a hora ainda não foi obtida, esta chamada aproveita uma eventual
   // reconexão. Depois da sincronização, ela retorna imediatamente.
@@ -98,11 +140,25 @@ void loop()
   // resposta. O transmissor devolve bateria e corrente no mesmo pacote.
   solicitar_telemetria();
   const uint32_t inicio_espera = millis();
+  bool recebeu_resposta = false;
   while (millis() - inicio_espera < TEMPO_RESPOSTA_ESPNOW_MS) {
     if (receber_telemetria()) {
+      recebeu_resposta = true;
       break;
     }
     delay(5);
+  }
+
+  if (recebeu_resposta) {
+    pedidos_sem_resposta = 0;
+    atualizar_estado_comunicacao_na_tela(EstadoComunicacao::CONECTADO);
+  } else {
+    if (pedidos_sem_resposta < LIMITE_PEDIDOS_SEM_RESPOSTA) {
+      ++pedidos_sem_resposta;
+    }
+    if (pedidos_sem_resposta >= LIMITE_PEDIDOS_SEM_RESPOSTA) {
+      atualizar_estado_comunicacao_na_tela(EstadoComunicacao::SEM_RESPOSTA);
+    }
   }
 
   atualizar_relogio_e_bateria();
