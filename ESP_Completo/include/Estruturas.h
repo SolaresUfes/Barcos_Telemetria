@@ -41,3 +41,12 @@ struct CELULAS_INDIVIDUAIS {
 struct resposta_ADS {
     double ADS0, ADS1, ADS2;
 };
+
+// Estrutura exata esperada pelo firmware do display.
+struct __attribute__((packed)) PacoteTelemetriaEspNow {
+  uint16_t versao;
+  uint16_t tamanho;
+  uint32_t sequencia;
+  float bateria_barco_percentual;
+  float corrente_amperes;
+};
