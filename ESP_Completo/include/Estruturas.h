@@ -50,3 +50,20 @@ struct __attribute__((packed)) PacoteTelemetriaEspNow {
   float bateria_barco_percentual;
   float corrente_amperes;
 };
+
+// O display envia este pacote uma vez por segundo para pedir os dados atuais.
+struct __attribute__((packed)) PacotePedidoTelemetriaEspNow {
+    uint32_t assinatura;
+    uint16_t versao;
+    uint16_t tamanho;
+    uint32_t sequencia;
+};
+
+// O botÃ£o esquerdo do display envia este comando trÃªs vezes por seguranÃ§a.
+struct __attribute__((packed)) PacoteReinicioRemotoEspNow {
+    uint32_t assinatura;
+    uint16_t versao;
+    uint16_t tamanho;
+    uint32_t sequencia;
+    uint32_t chave;
+};
