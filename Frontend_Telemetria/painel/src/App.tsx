@@ -249,13 +249,14 @@ export default function App() {
   // #region Estados - Dados de Telemetria
   const initialMainData: number[] = []                                // Array vazio de numeros
   const [mainData, setMainData] = useState(initialMainData);          // Valores para a construção do grafico   
-  const [tensaoReal, set_tensaoReal] = useState(0)                    // Tensao total da bateria
-  const [correnteRealBateria, set_correnteRealBateria] = useState(0)  // Corrente da bateria
-  const [battery, setBattery] = useState(0);                          // Porcentagem da bateria
+  const [tensaoReal, set_tensaoReal] = useState(-1)                    // Tensao total da bateria
+  const [correnteRealBateria, set_correnteRealBateria] = useState(-1)  // Corrente da bateria
+  const [correnteMotor, set_correnteMotor] = useState(-1)
+  const [battery, setBattery] = useState(-1);                          // Porcentagem da bateria
   const [cells, setCells] = useState(Array.from({ length:16 }, (_, i) => ({ id: i, voltage: 0, temperature: 0 })));  // Parte das celulas
   const [currentTime, setCurrentTime] = useState(new Date());         // Horário atual
-  const [rpm, setRpm] = useState(0);                                  // Rpm motor
-  const [speed, setSpeed] = useState(0);                              // Velocidade do motor (em Km/h)
+  const [rpm, setRpm] = useState(-1);                                  // Rpm motor
+  const [speed, setSpeed] = useState(-1);                              // Velocidade do motor (em Km/h)
   // #endregion
 
   // #region Efeitos
@@ -486,7 +487,6 @@ export default function App() {
   const estHours = Math.floor(estimatedTimeRaw);
   const estMinutes = Math.floor((estimatedTimeRaw - estHours) * 60);
 
-  const correnteMotor = 'algo'; //((currentPower * 1000) / tensaoReal).toFixed(1);
 
   const userProfileSubtitle = currentUser?.isModerador
     ? currentUser.mainRole
@@ -508,8 +508,8 @@ export default function App() {
         // 2. Atualiza as variáveis da tela com os dados reais
         if (medicao.tensao != null) set_tensaoReal(medicao.tensao);
         if (medicao.corrente != null) set_correnteRealBateria(medicao.corrente);
+        if (medicao.corrente_2 != null) set_correnteMotor(medicao.corrente_2);
         if (medicao.potencia != null) setMainData(prev => [medicao.potencia, ...prev].slice(0,40));
-        // if (medicao.potencia != null) setMainData(prev => [...prev.slice(1), medicao.potencia]);
         if (medicao.porcentagem != null) setBattery(medicao.porcentagem);
         if (medicao.rpm != null) setRpm(medicao.rpm);
         if (medicao.velocidade != null) setSpeed(medicao.velocidade);
