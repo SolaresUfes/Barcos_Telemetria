@@ -7,10 +7,6 @@
 
 // ===================Definições==================
 
-// OFFSET DO SENSOR HALL
-// Esse número foi coletado experimentalmente como o valor "padrão" do 0V vindos da resposta do sensor de efeito hall. Subtrimos ele do vlaor recebido pra termos uma resposta que gira em torno de um 0V
-#define numero_magico 0.0 //2.500125 
-
 // Vamos usar o ADS para 4 coisas, a priori: Os sensores de efeito hall (3) nos tres primeiros canais [A0, A1, A2] e um canal para referencia [A3] (não vamos mexer pra nao interferir)
 
 // Cria o objeto do ADS1115.
@@ -41,7 +37,7 @@ void ADS_iniciar() {
     ads.setGain(GAIN_ONE);
 }
 
-resposta_ADS ADS_coleta(bool ads0, bool ads1, bool ads2, bool subtrair_magico){
+resposta_ADS ADS_coleta(bool ads0, bool ads1, bool ads2){
     
     double soma0 = 0, soma1 = 0, soma2 = 0;                 // Variável da soma total pra média em cada canal do ADS
     double resultado0 = 0, resultado1 = 0, resultado2 = 0;  // Variável do valor final a ser inserido na estrutura em cada canal do ADSss
@@ -51,38 +47,25 @@ resposta_ADS ADS_coleta(bool ads0, bool ads1, bool ads2, bool subtrair_magico){
         // Lê 20 vezes o canal e, no fim, tira a média das 20 leituras. Isso diminui um pouco a flutuação natural e filtra um pouco dos ruidos
         for (int i = 0; i < 20; i++) {
             int16_t raw = ads.readADC_Differential_0_3();
-            soma0 += ads.computeVolts(raw);
+            resultado0 += ads.computeVolts(raw);
         }
-        soma0 = soma0 / 20.0;
-
-        // Subtrai o valor pelo "número mágico" (variável nomeada pelo Dudu) que é o valor experimental pra dar 0V na saída, se o programador quiser
-        resultado0 = soma0;
-        if (subtrair_magico) resultado0 -= numero_magico;
     }
 
     if (ads1){
         
         for (int i = 0; i < 20; i++) {
             int16_t raw = ads.readADC_Differential_1_3();
-            soma1 += ads.computeVolts(raw);
+            resultado1 += ads.computeVolts(raw);
         }
-        soma1 = soma1 / 20.0;
-
-        resultado1 = soma1;
-        if (subtrair_magico) resultado1 -= numero_magico;
-
     }
 
     if (ads2){
         
         for (int i = 0; i < 20; i++) {
             int16_t raw = ads.readADC_Differential_2_3();
-            soma2 += ads.computeVolts(raw);
+            resultado2 += ads.computeVolts(raw);
         }
-        soma2 = soma2 / 20.0;
-
-        resultado2 = soma2;
-        if (subtrair_magico) resultado2 -= numero_magico;
+        resultado2 *= 3;
     }
     
     // Esse "return" retorna um valor do tipo "(resposta_ADS)", que é uma estrutura, com os valores "{resultado0, resultado1, resultado2}". É como retornar um vetor...
