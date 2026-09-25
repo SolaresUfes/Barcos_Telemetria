@@ -257,6 +257,9 @@ export default function App() {
   const [currentTime, setCurrentTime] = useState(new Date());         // Horário atual
   const [rpm, setRpm] = useState(-1);                                  // Rpm motor
   const [speed, setSpeed] = useState(-1);                              // Velocidade do motor (em Km/h)
+  const [string_1, setString_1] = useState(-1);
+  const [string_2, setString_2] = useState(-1);
+  
   // #endregion
 
   // #region Efeitos
@@ -506,13 +509,15 @@ export default function App() {
         const medicao = data[0];
         
         // 2. Atualiza as variáveis da tela com os dados reais
-        if (medicao.tensao != null) set_tensaoReal(medicao.tensao);
-        if (medicao.corrente != null) set_correnteRealBateria(medicao.corrente);
-        if (medicao.corrente_2 != null) set_correnteMotor(medicao.corrente_2);
-        if (medicao.potencia != null) setMainData(prev => [medicao.potencia, ...prev].slice(0,40));
+        if (medicao.tensao      != null) set_tensaoReal(medicao.tensao);
+        if (medicao.corrente    != null) set_correnteRealBateria(medicao.corrente);
+        if (medicao.corrente_2  != null) set_correnteMotor(medicao.corrente_2);
+        if (medicao.potencia    != null) setMainData(prev => [medicao.potencia, ...prev].slice(0,40));
         if (medicao.porcentagem != null) setBattery(medicao.porcentagem);
-        if (medicao.rpm != null) setRpm(medicao.rpm);
-        if (medicao.velocidade != null) setSpeed(medicao.velocidade);
+        if (medicao.rpm         != null) setRpm(medicao.rpm);
+        if (medicao.velocidade  != null) setSpeed(medicao.velocidade);
+        if (medicao.string_1    != null) setString_1(medicao.string_1); 
+        if (medicao.string_2    != null) setString_2(medicao.string_2); 
       }
     } catch (error) {
       console.error("Erro na comunicação com o backend:", error);
@@ -1839,7 +1844,7 @@ export default function App() {
                       <span
                         className={`text-base lg:text-4xl font-bold ${darkMode ? "text-green-400" : "text-green-600"}`}
                       >
-                        OK
+                        {string_1}
                       </span>
                     </div>
                   </div>
@@ -1854,7 +1859,7 @@ export default function App() {
                       <span
                         className={`text-base lg:text-4xl font-bold ${darkMode ? "text-rose-400" : "text-rose-600"}`}
                       >
-                        WARN
+                        {string_2}
                       </span>
                     </div>
                   </div>
