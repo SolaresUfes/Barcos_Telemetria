@@ -9,8 +9,8 @@
 // ----------------- VARIAVEIS E CONSTANTES -----------------
 
 // Dados pra conexão WiFi
-const char *ssid = "aaa";
-const char *password = "12345678";
+const char *ssid = "Telemeteam";
+const char *password = "telemeteam157";
 
 // Dados pra conexão com o backend
 // Para conexão, colocamos o endereço do backend rodando no vercel
@@ -55,13 +55,13 @@ void NET_conectar_wifi(){
     }
 }
 
-void NET_enviar_dados_bateria(DADOS_BATERIA dados){
+void NET_enviar_dados(DADOS_BATERIA dado_bateria, resposta_ADS dado_ads){
 
     // Nao tenta enviar se nao tiver internet (evita travamento do ESP32)
     if (WiFi.status() != WL_CONNECTED) NET_conectar_wifi();
 
     // Impede o envio de lixo (NAN) ao servidor caso a leitura falhe
-    if (isnan(dados.tensao))
+    if (isnan(dado_bateria.tensao))
         return;
 
     // Cria o client HTTP
@@ -79,9 +79,13 @@ void NET_enviar_dados_bateria(DADOS_BATERIA dados){
     StaticJsonDocument<200> json_cru;
 
     // Insere, no arquivo "cru", os valores de tensao, corrente e porcentagem nas suas devidas colunas
-    json_cru["tensao"] = dados.tensao;
-    json_cru["corrente"] = dados.corrente;
-    json_cru["porcentagem"] = dados.porcentagem;
+    json_cru["tensao"]      = dado_bateria.tensao;
+    json_cru["corrente"]    = dado_bateria.corrente;
+    json_cru["porcentagem"] = dado_bateria.porcentagem;
+    json_cru["string_1"]    = dado_ads.ADS0;
+    json_cru["string_2"]    = dado_ads.ADS1;
+    json_cru["corrente_2"]  = dado_ads.ADS2;
+
 
     // Essa string sera o json que iremos enviar. Ela sera completa com os valores de "json_cru"
     String json_refinado;

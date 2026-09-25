@@ -7,7 +7,7 @@
 /* --- DECLARAÇÕES --- */
 
 // Usa o link para a inserção de DADOS no backend e insere os dados que vierem
-void NET_enviar_dados_bateria(DADOS_BATERIA dado_bateria);
+void NET_enviar_dados(DADOS_BATERIA dado_bateria, resposta_ADS dado_ads);
 
 // Usa o link para a inserção de ALERTAS no backend e insere os dados que vierem
 void NET_enviar_alertas_bateria(ALERTAS_BATERIA alerta_bateria);
