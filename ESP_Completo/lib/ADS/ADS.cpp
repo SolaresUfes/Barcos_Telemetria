@@ -9,7 +9,7 @@
 
 // OFFSET DO SENSOR HALL
 // Esse número foi coletado experimentalmente como o valor "padrão" do 0V vindos da resposta do sensor de efeito hall. Subtrimos ele do vlaor recebido pra termos uma resposta que gira em torno de um 0V
-#define numero_magico 2.500125 
+#define numero_magico 0.0 //2.500125 
 
 // Vamos usar o ADS para 4 coisas, a priori: Os sensores de efeito hall (3) nos tres primeiros canais [A0, A1, A2] e um canal para referencia [A3] (não vamos mexer pra nao interferir)
 

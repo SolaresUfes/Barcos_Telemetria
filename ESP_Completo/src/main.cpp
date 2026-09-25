@@ -1,5 +1,7 @@
 #include "Config.h"
 
+#include <WiFi.h>
+
 #include "NET.h"
 #include "ADS.h"
 #include "BMS.h"
@@ -32,6 +34,12 @@ void setup() {
 
     // O ESP-NOW compartilha o canal da conexão Wi-Fi e aguarda o display.
     NOW_iniciar();
+
+    WiFi.mode(WIFI_STA);
+    delay(100);
+
+    Serial.print("MAC: ");
+    Serial.println(WiFi.macAddress());    
 }
 
 // ----------------- LOOP -----------------
@@ -47,7 +55,11 @@ void loop() {
         // leitura dos dados gerais
         DADOS_BATERIA BMS_dados = BMS_ler_dados();
         NOW_atualizar_dados(BMS_dados);
-        NET_enviar_dados_bateria(BMS_dados);
+
+        resposta_ADS resposta_ads = ADS_coleta(true, true, true, true);
+        ADS_visualizar(resposta_ads, true, true, true);
+
+        NET_enviar_dados(BMS_dados, resposta_ads);
 
         // Alertas
         ALERTAS_BATERIA BMS_alertas = BMS_ler_alertas();
@@ -57,7 +69,5 @@ void loop() {
         CELULAS_INDIVIDUAIS BMS_celulas = BMS_ler_celulas();
         NET_enviar_dados_celulas(BMS_celulas);
 
-        resposta_ADS resposta_ads = ADS_coleta(true, true, true, true);
-        ADS_visualizar(resposta_ads, true, true, true);
     }
 }
