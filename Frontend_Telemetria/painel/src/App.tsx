@@ -1844,7 +1844,7 @@ export default function App() {
                       <span
                         className={`text-base lg:text-4xl font-bold ${darkMode ? "text-green-400" : "text-green-600"}`}
                       >
-                        {string_1}
+                        {string_1} AAA
                       </span>
                     </div>
                   </div>
@@ -1859,7 +1859,7 @@ export default function App() {
                       <span
                         className={`text-base lg:text-4xl font-bold ${darkMode ? "text-rose-400" : "text-rose-600"}`}
                       >
-                        {string_2}
+                        {string_2} AAAA
                       </span>
                     </div>
                   </div>

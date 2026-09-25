@@ -16,7 +16,7 @@ static bool ha_telemetria_nova = false;
 static uint32_t proxima_solicitacao = 0;
 static uint32_t proximo_reinicio = 0;
 static const uint8_t ENDERECO_BROADCAST[6] = {
-  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+  0xAC, 0x15, 0x18, 0xE9, 0x64, 0xFC
 };
 
 // Rejeita pacotes quebrados antes que qualquer valor chegue à interface.
