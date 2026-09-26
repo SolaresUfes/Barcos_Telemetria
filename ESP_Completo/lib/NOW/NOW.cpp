@@ -21,6 +21,8 @@ static DADOS_BATERIA ultimos_dados = {NAN, NAN, NAN};
 static bool ha_dados_validos = false;
 static uint32_t proxima_sequencia = 0;
 static volatile bool reinicio_pendente = false;
+static volatile bool resposta_pendente = false;
+static uint8_t destino_resposta[6] = {};
 static bool espnow_pronto = false;
 
 // Confere se a leitura do BMS pode ser mostrada sem enviar lixo ao display.
@@ -32,7 +34,7 @@ static bool dados_validos(const DADOS_BATERIA &dados) {
 }
 
 // Responde imediatamente ao pedido usando a Ãºltima leitura completa do BMS.
-static void enviar_telemetria() {
+static void enviar_telemetria(const uint8_t *destinatario) {
     DADOS_BATERIA dados;
     bool disponivel;
 
@@ -41,23 +43,37 @@ static void enviar_telemetria() {
     disponivel = ha_dados_validos;
     portEXIT_CRITICAL(&trava_dados);
 
-    // Antes da primeira leitura vÃ¡lida, nÃ£o responde. Assim o cÃ­rculo ou o X
-    // informa corretamente que ainda nÃ£o existe telemetria disponÃ­vel.
-    if (!disponivel) {
-        return;
-    }
-
     PacoteTelemetriaEspNow pacote = {};
     pacote.versao = VERSAO_PACOTE_TELEMETRIA;
     pacote.tamanho = sizeof(PacoteTelemetriaEspNow);
     pacote.sequencia = proxima_sequencia++;
-    pacote.bateria_barco_percentual = dados.porcentagem;
-    pacote.corrente_amperes = dados.corrente;
+    // A resposta também funciona como sinal de vida. Enquanto o BMS ainda não
+    // forneceu uma leitura válida, -2 distingue falha do valor inicial -1.
+    pacote.bateria_barco_percentual = disponivel ? dados.porcentagem : -2.0f;
+    pacote.corrente_amperes = disponivel ? dados.corrente : -2.0f;
+
+    if (!esp_now_is_peer_exist(destinatario)) {
+        esp_now_peer_info_t destino = {};
+        memcpy(destino.peer_addr, destinatario, 6);
+        destino.channel = 0;
+        destino.ifidx = WIFI_IF_STA;
+        destino.encrypt = false;
+        if (esp_now_add_peer(&destino) != ESP_OK) {
+            Serial.println("ESP-NOW: falha ao cadastrar o display para resposta direta.");
+            return;
+        }
+    }
 
     const esp_err_t resultado = esp_now_send(
-        ENDERECO_BROADCAST,
+        destinatario,
         reinterpret_cast<const uint8_t *>(&pacote),
         sizeof(pacote)
+    );
+
+    Serial.printf(
+        "ESP-NOW: resposta de telemetria solicitada, dados %s, envio %d.\n",
+        disponivel ? "validos" : "indisponiveis (-2)",
+        resultado
     );
 
     if (resultado != ESP_OK) {
@@ -66,7 +82,11 @@ static void enviar_telemetria() {
 }
 
 // Valida o conteÃºdo recebido antes de executar qualquer aÃ§Ã£o.
-static void processar_pacote_recebido(const uint8_t *dados, int tamanho) {
+static void processar_pacote_recebido(
+    const uint8_t *remetente,
+    const uint8_t *dados,
+    int tamanho
+) {
     if (tamanho == static_cast<int>(sizeof(PacotePedidoTelemetriaEspNow))) {
         PacotePedidoTelemetriaEspNow pedido;
         memcpy(&pedido, dados, sizeof(pedido));
@@ -74,7 +94,10 @@ static void processar_pacote_recebido(const uint8_t *dados, int tamanho) {
         if (pedido.assinatura == ASSINATURA_PEDIDO_TELEMETRIA &&
             pedido.versao == VERSAO_PACOTE_TELEMETRIA &&
             pedido.tamanho == sizeof(PacotePedidoTelemetriaEspNow)) {
-            enviar_telemetria();
+            portENTER_CRITICAL(&trava_dados);
+            memcpy(destino_resposta, remetente, sizeof(destino_resposta));
+            resposta_pendente = true;
+            portEXIT_CRITICAL(&trava_dados);
         }
         return;
     }
@@ -96,25 +119,39 @@ static void processar_pacote_recebido(const uint8_t *dados, int tamanho) {
 // A assinatura da funÃ§Ã£o mudou entre as versÃµes 2 e 3 do Arduino ESP32.
 #if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
 static void receber_pacote(
-    const esp_now_recv_info_t *,
+    const esp_now_recv_info_t *informacoes,
     const uint8_t *dados,
     int tamanho
 ) {
-    processar_pacote_recebido(dados, tamanho);
+    processar_pacote_recebido(informacoes->src_addr, dados, tamanho);
 }
 #else
 static void receber_pacote(
-    const uint8_t *,
+    const uint8_t *remetente,
     const uint8_t *dados,
     int tamanho
 ) {
-    processar_pacote_recebido(dados, tamanho);
+    processar_pacote_recebido(remetente, dados, tamanho);
 }
 #endif
 
 // Uma tarefa prÃ³pria permite reiniciar mesmo se o envio HTTP estiver lento.
 static void tarefa_reinicio(void *) {
     for (;;) {
+        bool deve_responder = false;
+        uint8_t destino[6] = {};
+        portENTER_CRITICAL(&trava_dados);
+        if (resposta_pendente) {
+            memcpy(destino, destino_resposta, sizeof(destino));
+            resposta_pendente = false;
+            deve_responder = true;
+        }
+        portEXIT_CRITICAL(&trava_dados);
+
+        if (deve_responder) {
+            enviar_telemetria(destino);
+        }
+
         if (reinicio_pendente) {
             Serial.println("ESP-NOW: reinicio remoto recebido.");
             Serial.flush();

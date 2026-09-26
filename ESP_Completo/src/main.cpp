@@ -56,7 +56,7 @@ void loop() {
         DADOS_BATERIA BMS_dados = BMS_ler_dados();
         NOW_atualizar_dados(BMS_dados);
 
-        resposta_ADS resposta_ads = ADS_coleta(true, true, true, true);
+        resposta_ADS resposta_ads = ADS_coleta(true, true, true);
         ADS_visualizar(resposta_ads, true, true, true);
 
         NET_enviar_dados(BMS_dados, resposta_ads);

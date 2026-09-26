@@ -11,6 +11,8 @@
 
 // Cria o objeto do ADS1115.
 Adafruit_ADS1115 ads;
+static bool ads_disponivel = false;
+static unsigned long ultima_tentativa_ads = 0;
 
 // Fator de conversão exato para o Ganho de 2x (±2.048V) -> NAO ESTA SENDO USADO, MAS PODE SER UTIL!!!
 // 2.048 Volts / 32768 Passos = 0.0000625 Volts por bit
@@ -26,21 +28,37 @@ void ADS_iniciar() {
 
     Serial.println("Inicializando o ADS");
 
-    // Tenta iniciar o módulo ADS.
-    while (!ads.begin()) {
-        Serial.println("Falha ao iniciar o ADS. Verifique as conexões!");
-        delay(1000); // Se deu ruim, tenta de novo de segundo em segundo até termos alguma coisa diferente
+    // A ausência do ADS não pode impedir Wi-Fi, ESP-NOW e BMS de iniciarem.
+    ads_disponivel = ads.begin();
+    ultima_tentativa_ads = millis();
+
+    if (ads_disponivel) {
+        ads.setGain(GAIN_ONE);
+        Serial.println("ADS iniciado com sucesso!");
+    } else {
+        Serial.println("ADS indisponível; a telemetria seguirá ativa e tentará novamente.");
     }
-
-    Serial.println("ADS iniciado com sucesso!");
-
-    ads.setGain(GAIN_ONE);
 }
 
 resposta_ADS ADS_coleta(bool ads0, bool ads1, bool ads2){
     
     double soma0 = 0, soma1 = 0, soma2 = 0;                 // Variável da soma total pra média em cada canal do ADS
     double resultado0 = 0, resultado1 = 0, resultado2 = 0;  // Variável do valor final a ser inserido na estrutura em cada canal do ADSss
+
+    if (!ads_disponivel) {
+        if (millis() - ultima_tentativa_ads >= 5000) {
+            ultima_tentativa_ads = millis();
+            ads_disponivel = ads.begin();
+            if (ads_disponivel) {
+                ads.setGain(GAIN_ONE);
+                Serial.println("ADS reconectado com sucesso!");
+            }
+        }
+
+        if (!ads_disponivel) {
+            return (resposta_ADS){-2, -2, -2};
+        }
+    }
 
     if (ads0){
 

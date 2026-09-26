@@ -20,6 +20,7 @@ static constexpr char FUSO_SAO_PAULO[] = "BRT3";
 static i2c_equipment *rtc = nullptr;
 static bool horario_foi_sincronizado = false;
 static uint32_t instante_ultima_tentativa = 0;
+static uint8_t canal_espnow = ESPNOW_CHANNEL;
 
 // Tenta obter a hora da internet e gravá-la no RTC, sem reiniciar a placa.
 static bool sincronizar_rtc_pela_internet()
@@ -46,15 +47,19 @@ static bool sincronizar_rtc_pela_internet()
 
   horario_foi_sincronizado = true;
 
+  // Guarda o canal antes de sair do roteador. A ESP do barco continua ligada
+  // à mesma rede, portanto o ESP-NOW precisa permanecer neste canal.
+  canal_espnow = WiFi.channel();
+
   // Encerra somente a associação com a internet; o rádio continua em modo STA.
   WiFi.setAutoReconnect(false);
   WiFi.disconnect(false, false);
   delay(50);
-  esp_wifi_set_channel(ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE);
+  esp_wifi_set_channel(canal_espnow, WIFI_SECOND_CHAN_NONE);
 
   Serial.printf(
     "RTC sincronizado. Roteador desconectado; ESP-NOW mantido no canal %u.\n",
-    ESPNOW_CHANNEL
+    canal_espnow
   );
   return true;
 }
@@ -70,7 +75,16 @@ static bool conectar_wifi()
   while (WiFi.status() != WL_CONNECTED && millis() - inicio < TEMPO_LIMITE_WIFI_MS) {
     delay(250);
   }
-  return WiFi.status() == WL_CONNECTED;
+  if (WiFi.status() == WL_CONNECTED) {
+    canal_espnow = WiFi.channel();
+    return true;
+  }
+  return false;
+}
+
+uint8_t obter_canal_espnow()
+{
+  return canal_espnow;
 }
 
 void inicializar_wifi_e_horario()

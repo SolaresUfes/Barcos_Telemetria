@@ -18,6 +18,9 @@ void inicializar_wifi_e_horario();
 // Tenta sincronizar o RTC; depois disso, abandona o roteador e mantém o ESP-NOW.
 void processar_wifi_e_horario();
 
+// Retorna o canal usado pelo roteador, para o ESP-NOW ficar no mesmo canal.
+uint8_t obter_canal_espnow();
+
 // Lê diretamente o PCF85063; a internet não é necessária depois da sincronização.
 HorarioRtc ler_horario_rtc();
 

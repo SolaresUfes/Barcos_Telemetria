@@ -48,6 +48,9 @@ bool iniciar_espnow();
 // Solicita ao transmissor uma amostra atual de bateria e corrente.
 bool solicitar_telemetria();
 
+// Troca para o próximo canal quando a ESP do barco não responde.
+void procurar_proximo_canal_espnow();
+
 // Envia o mesmo comando três vezes para tolerar uma perda isolada de rádio.
 bool solicitar_reinicio_remoto();
 

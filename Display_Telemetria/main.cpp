@@ -17,8 +17,10 @@ static constexpr int64_t INTERVALO_CONSULTA_US = 1000000;
 static constexpr uint32_t TEMPO_RESPOSTA_ESPNOW_MS = 150;
 static constexpr uint32_t TEMPO_BOTAO_REINICIO_MS = 3000;
 static constexpr uint8_t LIMITE_PEDIDOS_SEM_RESPOSTA = 3;
+static constexpr uint8_t LIMITE_FALHAS_PARA_X_CONECTADO = 10;
 
 static uint8_t pedidos_sem_resposta = 0;
+static bool canal_ja_confirmado = false;
 static bool contando_botao_reinicio = false;
 static bool reinicio_ja_enviado_nesta_pressao = false;
 static uint32_t inicio_botao_reinicio = 0;
@@ -151,13 +153,25 @@ void loop()
 
   if (recebeu_resposta) {
     pedidos_sem_resposta = 0;
+    canal_ja_confirmado = true;
     atualizar_estado_comunicacao_na_tela(EstadoComunicacao::CONECTADO);
   } else {
-    if (pedidos_sem_resposta < LIMITE_PEDIDOS_SEM_RESPOSTA) {
+    const uint8_t limite_para_x = canal_ja_confirmado
+      ? LIMITE_FALHAS_PARA_X_CONECTADO
+      : LIMITE_PEDIDOS_SEM_RESPOSTA;
+    if (pedidos_sem_resposta < limite_para_x) {
       ++pedidos_sem_resposta;
     }
-    if (pedidos_sem_resposta >= LIMITE_PEDIDOS_SEM_RESPOSTA) {
+    if (pedidos_sem_resposta >= limite_para_x) {
       atualizar_estado_comunicacao_na_tela(EstadoComunicacao::SEM_RESPOSTA);
+    }
+
+    // A varredura existe apenas antes do primeiro contato. Depois que uma
+    // resposta confirma o canal, ele permanece travado até o próximo boot.
+    if (!canal_ja_confirmado &&
+        pedidos_sem_resposta >= LIMITE_PEDIDOS_SEM_RESPOSTA) {
+      procurar_proximo_canal_espnow();
+      pedidos_sem_resposta = 0;
     }
   }
 
