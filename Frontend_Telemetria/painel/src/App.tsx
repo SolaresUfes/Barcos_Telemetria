@@ -249,14 +249,17 @@ export default function App() {
   // #region Estados - Dados de Telemetria
   const initialMainData: number[] = []                                // Array vazio de numeros
   const [mainData, setMainData] = useState(initialMainData);          // Valores para a construção do grafico   
-  const [tensaoReal, set_tensaoReal] = useState(0)                    // Tensao total da bateria
-  const [correnteRealBateria, set_correnteRealBateria] = useState(0)  // Corrente da bateria
+  const [tensaoReal, set_tensaoReal] = useState(-1)                    // Tensao total da bateria
+  const [correnteRealBateria, set_correnteRealBateria] = useState(-1)  // Corrente da bateria
   const [correnteMotor, set_correnteMotor] = useState(-1)
-  const [battery, setBattery] = useState(0);                          // Porcentagem da bateria
+  const [battery, setBattery] = useState(-1);                          // Porcentagem da bateria
   const [cells, setCells] = useState(Array.from({ length:16 }, (_, i) => ({ id: i, voltage: 0, temperature: 0 })));  // Parte das celulas
   const [currentTime, setCurrentTime] = useState(new Date());         // Horário atual
-  const [rpm, setRpm] = useState(0);                                  // Rpm motor
-  const [speed, setSpeed] = useState(0);                              // Velocidade do motor (em Km/h)
+  const [rpm, setRpm] = useState(-1);                                  // Rpm motor
+  const [speed, setSpeed] = useState(-1);                              // Velocidade do motor (em Km/h)
+  const [string_1, setString_1] = useState(-1);
+  const [string_2, setString_2] = useState(-1);
+  
   // #endregion
 
   // #region Efeitos
@@ -505,14 +508,15 @@ export default function App() {
         const medicao = data[0];
         
         // 2. Atualiza as variáveis da tela com os dados reais
-        if (medicao.tensao != null) set_tensaoReal(medicao.tensao);
-        if (medicao.corrente != null) set_correnteRealBateria(medicao.corrente);
-        if (medicao.potencia != null) setMainData(prev => [medicao.potencia, ...prev].slice(0,40));
-        if (medicao.corrente_2 != null) set_correnteMotor(medicao.corrente_2);
-        // if (medicao.potencia != null) setMainData(prev => [...prev.slice(1), medicao.potencia]);
+        if (medicao.tensao      != null) set_tensaoReal(medicao.tensao);
+        if (medicao.corrente    != null) set_correnteRealBateria(medicao.corrente);
+        if (medicao.corrente_2  != null) set_correnteMotor(medicao.corrente_2);
+        if (medicao.potencia    != null) setMainData(prev => [medicao.potencia, ...prev].slice(0,40));
         if (medicao.porcentagem != null) setBattery(medicao.porcentagem);
-        if (medicao.rpm != null) setRpm(medicao.rpm);
-        if (medicao.velocidade != null) setSpeed(medicao.velocidade);
+        if (medicao.rpm         != null) setRpm(medicao.rpm);
+        if (medicao.velocidade  != null) setSpeed(medicao.velocidade);
+        if (medicao.string_1    != null) setString_1(medicao.string_1); 
+        if (medicao.string_2    != null) setString_2(medicao.string_2); 
       }
     } catch (error) {
       console.error("Erro na comunicação com o backend:", error);
@@ -1853,44 +1857,38 @@ export default function App() {
                   </div>
 
                   <div
-                    className={`p-2 lg:p-6 flex flex-col items-center justify-center w-full min-h-[55px] lg:min-h-0 ${darkMode ? "bg-gray-800" : "bg-white"}`}
+                    className={`p-2 lg:p-6 flex flex-col items-center justify-center w-full h-full ${darkMode ? "bg-gray-800" : "bg-white"}`}
                   >
                     <span className="text-[10px] lg:text-[13px] font-black uppercase tracking-wider text-gray-500 mb-1 text-center w-full">
                       S1 Status
                     </span>
-
                     <div className="flex items-baseline justify-center">
                       <span
-                        className={`text-base lg:text-4xl font-bold ${
-                          darkMode ? "text-green-400" : "text-green-600"
-                        }`}
+                        className={`text-base lg:text-4xl font-bold ${darkMode ? "text-green-400" : "text-green-600"}`}
                       >
-                        OK
+                        {string_1} AAA
                       </span>
                     </div>
                   </div>
 
                   <div
-                    className={`p-2 lg:p-6 flex flex-col items-center justify-center w-full min-h-[55px] lg:min-h-0 ${darkMode ? "bg-gray-800" : "bg-white"}`}
+                    className={`p-2 lg:p-6 flex flex-col items-center justify-center w-full h-full ${darkMode ? "bg-gray-800" : "bg-white"}`}
                   >
                     <span className="text-[10px] lg:text-[13px] font-black uppercase tracking-wider text-gray-500 mb-1 text-center w-full">
                       S2 Status
                     </span>
-
                     <div className="flex items-baseline justify-center">
                       <span
-                        className={`text-base lg:text-4xl font-bold ${
-                          darkMode ? "text-rose-400" : "text-rose-600"
-                        }`}
+                        className={`text-base lg:text-4xl font-bold ${darkMode ? "text-rose-400" : "text-rose-600"}`}
                       >
-                        WARN
+                        {string_2} AAAA
                       </span>
                     </div>
                   </div>
-
                 </div>
               </div>
             </div>
+
           ) : activeTab === "Logs de Dados" ? (
             <div className="h-full w-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 min-h-0">
               <div className="flex items-center space-x-3 mb-6 shrink-0">
