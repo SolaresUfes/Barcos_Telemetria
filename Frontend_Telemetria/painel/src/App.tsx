@@ -27,7 +27,7 @@ interface Member {
 // #region --- Funções Auxiliares ---
 
 const generatePolyline = (data: number[], width: number, height: number, maxVal: number) => {
-  if (data.length === 0) return "1000, ${height /2}";
+  if (data.length === 0) return "1000,${height / 2}";
   
   const stepX = width / 39; // Trava a distância para 40 pontos máximos
   
@@ -40,7 +40,7 @@ const generatePolyline = (data: number[], width: number, height: number, maxVal:
   return reversedData
     .map((val: number, index: number) => {
       const x = offsetX + (index * stepX);
-      const y = (height / 2) - (val / maxVal) * (height / 2); // alterando o offset pra ficar no meio e aceitar valores negativos
+      const y = (height / 2) - (val / maxVal) * (height / 2);
       return `${x},${y}`;
     })
     .join(" ");
@@ -249,17 +249,14 @@ export default function App() {
   // #region Estados - Dados de Telemetria
   const initialMainData: number[] = []                                // Array vazio de numeros
   const [mainData, setMainData] = useState(initialMainData);          // Valores para a construção do grafico   
-  const [tensaoReal, set_tensaoReal] = useState(-1)                    // Tensao total da bateria
-  const [correnteRealBateria, set_correnteRealBateria] = useState(-1)  // Corrente da bateria
+  const [tensaoReal, set_tensaoReal] = useState(0)                    // Tensao total da bateria
+  const [correnteRealBateria, set_correnteRealBateria] = useState(0)  // Corrente da bateria
   const [correnteMotor, set_correnteMotor] = useState(-1)
-  const [battery, setBattery] = useState(-1);                          // Porcentagem da bateria
+  const [battery, setBattery] = useState(0);                          // Porcentagem da bateria
   const [cells, setCells] = useState(Array.from({ length:16 }, (_, i) => ({ id: i, voltage: 0, temperature: 0 })));  // Parte das celulas
   const [currentTime, setCurrentTime] = useState(new Date());         // Horário atual
-  const [rpm, setRpm] = useState(-1);                                  // Rpm motor
-  const [speed, setSpeed] = useState(-1);                              // Velocidade do motor (em Km/h)
-  const [string_1, setString_1] = useState(-1);
-  const [string_2, setString_2] = useState(-1);
-  
+  const [rpm, setRpm] = useState(0);                                  // Rpm motor
+  const [speed, setSpeed] = useState(0);                              // Velocidade do motor (em Km/h)
   // #endregion
 
   // #region Efeitos
@@ -490,7 +487,6 @@ export default function App() {
   const estHours = Math.floor(estimatedTimeRaw);
   const estMinutes = Math.floor((estimatedTimeRaw - estHours) * 60);
 
-
   const userProfileSubtitle = currentUser?.isModerador
     ? currentUser.mainRole
       ? `${currentUser.mainRole} | Mod`
@@ -509,15 +505,14 @@ export default function App() {
         const medicao = data[0];
         
         // 2. Atualiza as variáveis da tela com os dados reais
-        if (medicao.tensao      != null) set_tensaoReal(medicao.tensao);
-        if (medicao.corrente    != null) set_correnteRealBateria(medicao.corrente);
-        if (medicao.corrente_2  != null) set_correnteMotor(medicao.corrente_2);
-        if (medicao.potencia    != null) setMainData(prev => [medicao.potencia, ...prev].slice(0,40));
+        if (medicao.tensao != null) set_tensaoReal(medicao.tensao);
+        if (medicao.corrente != null) set_correnteRealBateria(medicao.corrente);
+        if (medicao.potencia != null) setMainData(prev => [medicao.potencia, ...prev].slice(0,40));
+        if (medicao.corrente_2 != null) set_correnteMotor(medicao.corrente_2);
+        // if (medicao.potencia != null) setMainData(prev => [...prev.slice(1), medicao.potencia]);
         if (medicao.porcentagem != null) setBattery(medicao.porcentagem);
-        if (medicao.rpm         != null) setRpm(medicao.rpm);
-        if (medicao.velocidade  != null) setSpeed(medicao.velocidade);
-        if (medicao.string_1    != null) setString_1(medicao.string_1); 
-        if (medicao.string_2    != null) setString_2(medicao.string_2); 
+        if (medicao.rpm != null) setRpm(medicao.rpm);
+        if (medicao.velocidade != null) setSpeed(medicao.velocidade);
       }
     } catch (error) {
       console.error("Erro na comunicação com o backend:", error);
@@ -1195,7 +1190,7 @@ export default function App() {
                           <span
                             className={`text-xs md:text-xl font-bold tabular-nums ${isLowVoltage || isHighVoltage ? "text-red-500" : darkMode ? "text-gray-200" : "text-gray-800"}`}
                           >
-                            {cell.voltage.toFixed(2)}
+                            {cell.voltage.toFixed(3)}
                           </span>
                           <span className="text-[8px] md:text-xs ml-0.5 md:ml-1 font-medium text-gray-500">
                             V
@@ -1211,12 +1206,12 @@ export default function App() {
                           ></div>
                         </div>
 
-                        <div
+                        {/* <div
                           className={`flex items-center text-[8px] md:text-xs font-bold tabular-nums ${isHighTemp ? "text-red-500" : "text-orange-400"}`}
                         >
                           <Thermometer className="w-2 h-2 md:w-3.5 md:h-3.5 mr-0.5 md:mr-1" />
                           {cell.temperature.toFixed(1)}°C
-                        </div>
+                        </div> */}
                       </div>
                     );
                   })}
@@ -1472,9 +1467,10 @@ export default function App() {
               </div>
               {/* #endregion */}
             </div>
+
           ) : activeTab === "Resumo" ? (
             <div className="flex flex-col h-full w-full gap-2 md:gap-4 min-h-0 animate-in fade-in duration-300">
-              <div className="flex gap-2 md:gap-6 flex-col md:flex-row shrink-0 w-full min-h-0">
+              <div className="flex gap-2 md:gap-6 md:max-h-[45%] flex-col md:flex-row shrink-0 w-full min-h-0">
                 <div
                   className={`hidden md:flex flex-[2] rounded-2xl p-4 md:p-6 shadow-sm border transition-colors duration-300 flex-col h-full min-h-0 ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-300 shadow-xl shadow-gray-200/50"}`}
                 >
@@ -1492,7 +1488,7 @@ export default function App() {
                   <div className="flex-1 w-full relative mt-2 min-h-0">
                     <svg
                       viewBox="0 0 1000 200"
-                      preserveAspectRatio="none"
+                      preserveAspectRatio="xMidYMid meet"
                       className="w-full h-full overflow-visible"
                     >
                       <defs>
@@ -1515,6 +1511,7 @@ export default function App() {
                           />
                         </linearGradient>
                       </defs>
+
                       {[0, 50, 100, 150, 200].map((y) => (
                         <line
                           key={`grid-${y}`}
@@ -1527,9 +1524,30 @@ export default function App() {
                           strokeDasharray="5,5"
                         />
                       ))}
+
+                      {/* LINHA DE ZERO DESTACADA (Exatamente no y = 100) */}
+                      <line
+                        x1="0"
+                        y1="100"
+                        x2="1000"
+                        y2="100"
+                        stroke={darkMode ? "#ef4444" : "#f97316"}
+                        strokeWidth="2"
+                        strokeDasharray="4,4"
+                      />
+                      <text 
+                        x="10" 
+                        y="93" 
+                        fill={darkMode ? "#9ca3af" : "#6b7280"} 
+                        fontSize="12" 
+                        fontWeight="bold"
+                        >                        
+                          0 W
+                      </text>
+
                         <polygon
                           // Calcula o "chão" dinâmico para fechar a sombra reta na base
-                          points={`${mainData.length > 0 ? 1000 - ((mainData.length - 1) * (1000 / 39)) : 1000},200 ${generatePolyline(mainData, 1000, 200, 5000)} 1000,200`}
+                          points={`${mainData.length > 0 ? 1000 - ((mainData.length - 1) * (1000 / 39)) : 1000},100 ${generatePolyline(mainData, 1000, 200, 5000)} 1000,100`}
                           fill="url(#mainGradient)"
                         />
                         <polyline
@@ -1835,34 +1853,41 @@ export default function App() {
                   </div>
 
                   <div
-                    className={`p-2 lg:p-6 flex flex-col items-center justify-center w-full h-full ${darkMode ? "bg-gray-800" : "bg-white"}`}
+                    className={`p-2 lg:p-6 flex flex-col items-center justify-center w-full min-h-[55px] lg:min-h-0 ${darkMode ? "bg-gray-800" : "bg-white"}`}
                   >
                     <span className="text-[10px] lg:text-[13px] font-black uppercase tracking-wider text-gray-500 mb-1 text-center w-full">
                       S1 Status
                     </span>
+
                     <div className="flex items-baseline justify-center">
                       <span
-                        className={`text-base lg:text-4xl font-bold ${darkMode ? "text-green-400" : "text-green-600"}`}
+                        className={`text-base lg:text-4xl font-bold ${
+                          darkMode ? "text-green-400" : "text-green-600"
+                        }`}
                       >
-                        {string_1} AAA
+                        OK
                       </span>
                     </div>
                   </div>
 
                   <div
-                    className={`p-2 lg:p-6 flex flex-col items-center justify-center w-full h-full ${darkMode ? "bg-gray-800" : "bg-white"}`}
+                    className={`p-2 lg:p-6 flex flex-col items-center justify-center w-full min-h-[55px] lg:min-h-0 ${darkMode ? "bg-gray-800" : "bg-white"}`}
                   >
                     <span className="text-[10px] lg:text-[13px] font-black uppercase tracking-wider text-gray-500 mb-1 text-center w-full">
                       S2 Status
                     </span>
+
                     <div className="flex items-baseline justify-center">
                       <span
-                        className={`text-base lg:text-4xl font-bold ${darkMode ? "text-rose-400" : "text-rose-600"}`}
+                        className={`text-base lg:text-4xl font-bold ${
+                          darkMode ? "text-rose-400" : "text-rose-600"
+                        }`}
                       >
-                        {string_2} AAAA
+                        WARN
                       </span>
                     </div>
                   </div>
+
                 </div>
               </div>
             </div>
