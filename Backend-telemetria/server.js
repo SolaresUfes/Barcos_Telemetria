@@ -14,9 +14,8 @@ const { createClient } = require("@supabase/supabase-js");
 // Faz o backend usar json como formato de arquivo
 app.use(express.json());
 
-const supabase_url = "https://lnlvfdpkkmneypmdwqta.supabase.co";
-const supabase_key =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxubHZmZHBra21uZXlwbWR3cXRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxNDMxMzIsImV4cCI6MjA4ODcxOTEzMn0.jaqG2b6eBeSAwlwiDsCZnikoBtX3BOWNTVyppigVqBU";
+const supabase_url = process.env.SUPABASE_URL;
+const supabase_key = process.env.SUPABASE_ANON_KEY;
 
 // Cria o cliente (objeto que referencia ao cliente 'Supabase').
 const supabase = createClient(supabase_url, supabase_key);
