@@ -5,7 +5,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "./lib/supabase";
 import { Menu, Moon, Sun, User, Activity, BarChart2, Zap, Settings, Database,
   ArrowLeft, LogOut, Unlock, Trash2, Plus, Info, Shield, AlertTriangle, ChevronDown,
-  Map, MapPin, Clock, Battery, BatteryCharging, Thermometer, DownloadCloud,
+  Map, MapPin, Clock, Battery, BatteryCharging, DownloadCloud,
   Play, Square,} from "lucide-react";
 // #endregion
 
