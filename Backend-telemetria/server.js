@@ -6,7 +6,7 @@ const app = express();
 
 app.use(cors());
 
-// Link: https://painel-f8r7.vercel.app/ 
+// Link: https://barcos-backendtelemetria.vercel.app/ 
 
 // Cria a conexão com o supabase
 const { createClient } = require("@supabase/supabase-js");
