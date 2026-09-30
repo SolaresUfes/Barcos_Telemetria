@@ -2,7 +2,6 @@
 // Cria o backend usando o express e o nomeia 'app'
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
 const app = express();
 
 app.use(cors());
