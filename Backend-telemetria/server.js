@@ -99,7 +99,12 @@ app.post("/api/alertas", async (req, res) => {
   }
 
   // salvar no banco. O json precisa estar configurado com os nomes certos das colunas e com os valores corretos.
-  await supabase.from("alertas").insert(dados);
+  const { error } = await supabase.from("alertas").insert(dados);
+
+  if (error) {
+    console.error(error);
+    return res.status(500).json({ erro: error.message });
+  }
 
   // responder
   res.status(200).json({ status: "ok" });
@@ -107,33 +112,33 @@ app.post("/api/alertas", async (req, res) => {
 
 // Rota para envio de dados individuais das celulas do barco (32)
 app.post("/api/celulas", async (req, res) => {
-    // req.body receberá { "tensoes": [3.21, 5.49, 1.92, ...] }
-    const dados = req.body; 
+  // req.body receberá { "tensoes": [3.21, 5.49, 1.92, ...] }
+  const dados = req.body; 
 
-    // Verifica se a chave "cells" existe e se tem 16 valores
-    if (!dados.cells || dados.cells.length !== 16) {
-        return res.status(400).json({ erro: "Pacote incompleto ou inválido!" });
+  // Verifica se a chave "cells" existe e se tem 16 valores
+  if (!dados.cells || dados.cells.length !== 16) {
+    return res.status(400).json({ erro: "Pacote incompleto ou inválido!" });
+  }
+
+  // Valida se algum valor dentro do array é nulo ou indefinido
+  for (let i = 0; i < dados.cells.length; i++) {
+    if (dados.cells[i] === undefined || dados.cells[i] === null) {
+      console.log(`Erro célula: ${i + 1}`);
+      return res.status(400).json({ erro: `élula ${i + 1} incompleta!` });
     }
+  }
 
-    // Valida se algum valor dentro do array é nulo ou indefinido
-    for (let i = 0; i < dados.cells.length; i++) {
-        if (dados.cells[i] === undefined || dados.cells[i] === null) {
-            console.log(`Erro célula: ${i + 1}`);
-            return res.status(400).json({ erro: `élula ${i + 1} incompleta!` });
-        }
-    }
+  // Insere o array inteiro de uma só vez em uma única linha no Supabase
+  const { error } = await supabase.from("celulas").insert({
+    celula: dados.cells // Associa o array do JS à coluna do banco
+  });
 
-    // Insere o array inteiro de uma só vez em uma única linha no Supabase
-    const { error } = await supabase.from("celulas").insert({
-        celula: dados.cells // Associa o array do JS à coluna do banco
-    });
+  if (error) {
+    console.error(error);
+    return res.status(500).json({ erro: error.message });
+  }
 
-    if (error) {
-        console.error(error);
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ sucesso: true });
+  return res.status(200).json({ sucesso: true });
 });
 
 
@@ -183,7 +188,7 @@ app.get("/api/alertas", async (req, res) => {
 
 // Rota para a coleta do dado do ultimo alerta
 app.get("/api/alertas/ultimo", async (req, res) => {
-  
+  z
   const { data, error } = await supabase
     .from("alertas")
     .select("*")
