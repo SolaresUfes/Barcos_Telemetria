@@ -60,6 +60,8 @@ Normalmente, o res.status é feito em conjunto do res.json:
 res.status(404).json({erro: 'nao encontrado'});
 */
 
+app.use("/dashboard", express.static(path.join(__dirname, "dashboard")));
+
 app.get("/", async (req, res) => {
   res.sendFile(path.join(__dirname, "dashboard", "index.html"));
 })
