@@ -525,7 +525,7 @@ export default function App() {
 
   const buscarCelulas = async () => {
     try {
-      const res = await fetch("https://painel-f8r7.vercel.app/api/celulas/ultimo");
+      const res = await fetch("https://barcos-telemetria.vercel.app/api/celulas/ultimo");
       const data = await res.json();
 
       console.log("Resposta completa:", data);
