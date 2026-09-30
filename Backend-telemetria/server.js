@@ -469,12 +469,12 @@ app.get("/", async (req, res) => {
           <div class="route-list">
             <div class="route"><span class="route-dot"></span>POST /api/sensores</div>
             <div class="route"><span class="route-dot"></span>GET /api/sensores</div>
-            <div class="route"><span class="route-dot"></span>GET /api/sensores/ultimo</div>
             <div class="route"><span class="route-dot"></span>POST /api/alertas</div>
             <div class="route"><span class="route-dot"></span>GET /api/alertas</div>
-            <div class="route"><span class="route-dot"></span>GET /api/alertas/ultimo</div>
             <div class="route"><span class="route-dot"></span>POST /api/celulas</div>
             <div class="route"><span class="route-dot"></span>GET /api/celulas</div>
+            <div class="route"><span class="route-dot"></span>GET /api/sensores/ultimo</div>
+            <div class="route"><span class="route-dot"></span>GET /api/alertas/ultimo</div>
             <div class="route"><span class="route-dot"></span>GET /api/celulas/ultimo</div>
           </div>
         </div>
