@@ -1,54 +1,88 @@
 #include "ADS.h"
-
 #include <Arduino.h>
-#include <Wire.h>             // I2C
-#include <Adafruit_ADS1X15.h> // ADS
+#include <Wire.h>
+#include <Adafruit_ADS1X15.h>
 
 
-// ===================Definições==================
+// =================== DEFINIÇÕES ===================
 
-// Vamos usar o ADS para 4 coisas, a priori: Os sensores de efeito hall (3) nos tres primeiros canais [A0, A1, A2] e um canal para referencia [A3] (não vamos mexer pra nao interferir)
+// A0 -> Sensor ±50 A
+// A1 -> Sensor ±50 A
+// A2 -> Sensor ±150 A
+// A3 -> Referência de 2,5 V
 
-// Cria o objeto do ADS1115.
 Adafruit_ADS1115 ads;
+
 static bool ads_disponivel = false;
 static unsigned long ultima_tentativa_ads = 0;
 
-// Fator de conversão exato para o Ganho de 2x (±2.048V) -> NAO ESTA SENDO USADO, MAS PODE SER UTIL!!!
-// 2.048 Volts / 32768 Passos = 0.0000625 Volts por bit
-const double VOLTS_PER_BIT = 0.000125; // 0,0000625
+
+// =================== CONFIGURAÇÃO ===================
+
+const int NUM_LEITURAS = 20;
+
+const double FATOR_50A  = 80.0;
+const double FATOR_150A = 240.0;
 
 
-// ===============Funções auxiliares===============
+// =================== OFFSET DE ZERO ===================
+
+// ADS0 e ADS1: Sem corrente estavam lendo aproximadamente -5 A
+// ADS2: Sem corrente estava lendo aproximadamente +9 A
+
+const double OFFSET_ADS0 = 5.0;
+const double OFFSET_ADS1 = 5.0;
+const double OFFSET_ADS2 = -9.0;
+
+
+// =================== CORREÇÃO DE GANHO ===================
+
+const double GANHO_ADS0 = 0.9091;
+const double GANHO_ADS1 = 0.9184;
+const double GANHO_ADS2 = 0.9890;
+
+
+// =================== INICIALIZAÇÃO ===================
 
 void ADS_iniciar() {
-
-    // Inicia a comunicação I2C nos pinos 21 e 22
     Wire.begin(SDA_ADS, SCL_ADS);
-
     Serial.println("Inicializando o ADS");
-
-    // A ausência do ADS não pode impedir Wi-Fi, ESP-NOW e BMS de iniciarem.
     ads_disponivel = ads.begin();
     ultima_tentativa_ads = millis();
 
     if (ads_disponivel) {
         ads.setGain(GAIN_ONE);
         Serial.println("ADS iniciado com sucesso!");
+
     } else {
-        Serial.println("ADS indisponível; a telemetria seguirá ativa e tentará novamente.");
+        Serial.println(
+            "ADS indisponível; a telemetria seguirá ativa e tentará novamente."
+        );
     }
 }
 
-resposta_ADS ADS_coleta(bool ads0, bool ads1, bool ads2){
-    
-    double soma0 = 0, soma1 = 0, soma2 = 0;                 // Variável da soma total pra média em cada canal do ADS
-    double resultado0 = 0, resultado1 = 0, resultado2 = 0;  // Variável do valor final a ser inserido na estrutura em cada canal do ADSss
+
+// =================== COLETA ===================
+
+resposta_ADS ADS_coleta(bool ads0, bool ads1, bool ads2) {
+
+    double soma0 = 0.0;
+    double soma1 = 0.0;
+    double soma2 = 0.0;
+
+    double resultado0 = 0.0;
+    double resultado1 = 0.0;
+    double resultado2 = 0.0;
+
+
+    // =================== VERIFICA ADS ===================
 
     if (!ads_disponivel) {
+
         if (millis() - ultima_tentativa_ads >= 5000) {
             ultima_tentativa_ads = millis();
             ads_disponivel = ads.begin();
+
             if (ads_disponivel) {
                 ads.setGain(GAIN_ONE);
                 Serial.println("ADS reconectado com sucesso!");
@@ -60,39 +94,82 @@ resposta_ADS ADS_coleta(bool ads0, bool ads1, bool ads2){
         }
     }
 
-    if (ads0){
+    // ADS0: SENSOR ±50 A
+    if (ads0) {
 
-        // Lê 20 vezes o canal e, no fim, tira a média das 20 leituras. Isso diminui um pouco a flutuação natural e filtra um pouco dos ruidos
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < NUM_LEITURAS; i++) {
             int16_t raw = ads.readADC_Differential_0_3();
-            resultado0 += ads.computeVolts(raw);
+            double tensao = ads.computeVolts(raw);
+            soma0 += tensao;
         }
+
+        // Média da tensão
+        double tensao_media = soma0 / NUM_LEITURAS;
+
+        // Tensão -> corrente
+        resultado0 = tensao_media * FATOR_50A;
+
+        // Corrige zero
+        resultado0 += OFFSET_ADS0;
+
+        // Corrige ganho
+        resultado0 *= GANHO_ADS0;
     }
 
-    if (ads1){
-        
-        for (int i = 0; i < 20; i++) {
+    // ADS1: SENSOR ±50 A
+
+    if (ads1) {
+
+        for (int i = 0; i < NUM_LEITURAS; i++) {
             int16_t raw = ads.readADC_Differential_1_3();
-            resultado1 += ads.computeVolts(raw);
+            double tensao = ads.computeVolts(raw);
+            soma1 += tensao;
         }
+
+        // Média da tensão
+        double tensao_media = soma1 / NUM_LEITURAS;
+
+        // Tensão -> corrente
+        resultado1 = tensao_media * FATOR_50A;
+
+        // Corrige zero
+        resultado1 += OFFSET_ADS1;
+
+        // Corrige ganho
+        resultado1 *= GANHO_ADS1;
     }
 
-    if (ads2){
-        
-        for (int i = 0; i < 20; i++) {
+
+    // ADS2: SENSOR ±150 A
+
+    if (ads2) {
+
+        for (int i = 0; i < NUM_LEITURAS; i++) {
             int16_t raw = ads.readADC_Differential_2_3();
-            resultado2 += ads.computeVolts(raw);
+            double tensao = ads.computeVolts(raw);
+            soma2 += tensao;
         }
-        resultado2 *= 3;
+
+        // Média da tensão
+        double tensao_media = soma2 / NUM_LEITURAS;
+
+        // Tensão -> corrente
+        resultado2 = tensao_media * FATOR_150A;
+
+        // Corrige zero
+        resultado2 += OFFSET_ADS2;
+
+        // Corrige ganho
+        resultado2 *= GANHO_ADS2;
     }
-    
-    // Esse "return" retorna um valor do tipo "(resposta_ADS)", que é uma estrutura, com os valores "{resultado0, resultado1, resultado2}". É como retornar um vetor...
+
     return (resposta_ADS){resultado0, resultado1, resultado2};
 }
 
-void ADS_visualizar(resposta_ADS valores_ADS, bool ads0, bool ads1, bool ads2){
+// =================== VISUALIZAÇÃO ===================
 
-    if (ads0) Serial.printf("ADS0: %fV \n", valores_ADS.ADS0);
-    if (ads1) Serial.printf("ADS1: %fV \n", valores_ADS.ADS1);
-    if (ads2) Serial.printf("ADS2: %fV \n", valores_ADS.ADS2);
+void ADS_visualizar(resposta_ADS valores_ADS, bool ads0, bool ads1, bool ads2) {
+    if (ads0) Serial.printf("ADS0: %.5f A\n", valores_ADS.ADS0);
+    if (ads1) Serial.printf("ADS1: %.5f A\n", valores_ADS.ADS1);
+    if (ads2) Serial.printf("ADS2: %.5f A\n", valores_ADS.ADS2);
 }
