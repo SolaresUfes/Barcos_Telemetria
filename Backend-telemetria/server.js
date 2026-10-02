@@ -4,21 +4,11 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 
+const supabase = require("./supabase");
+
 app.use(cors());
 
 // Link: https://barcos-backendtelemetria.vercel.app/ 
-
-// Cria a conexão com o supabase
-const { createClient } = require("@supabase/supabase-js");
-
-// Faz o backend usar json como formato de arquivo
-app.use(express.json());
-
-const supabase_url = process.env.SUPABASE_URL;
-const supabase_key = process.env.SUPABASE_ANON_KEY;
-
-// Cria o cliente (objeto que referencia ao cliente 'Supabase').
-const supabase = createClient(supabase_url, supabase_key);
 
 /*
 As funções GET e POST são as principais usadas neste código.
@@ -559,167 +549,177 @@ app.get("/", async (req, res) => {
 });
 
 
+const rotas_alertas  = require("./routes/alertas");
+const rotas_celulas  = require("./routes/celulas");
+const rotas_sensores = require("./routes/sensores");
+
+app.use("/api/alertas", rotas_alertas);
+app.use("/api/celulas", rotas_celulas);
+app.use("/api/sensores", rotas_sensores);
+
+
+
 
 // Rota pra envio dos dados dos sensores pro supabase.
 // Os dados da tabela de medições do supabase são: tensao | corrente
-app.post("/api/sensores", async (req, res) => {
-  // Define a variavel 'dados' como a receptora dos dados vindos do cliente (ESP) (req.body sao os dados que estao no json que o esp esta enviando).
-  const dados = req.body;
+// app.post("/api/sensores", async (req, res) => {
+//   // Define a variavel 'dados' como a receptora dos dados vindos do cliente (ESP) (req.body sao os dados que estao no json que o esp esta enviando).
+//   const dados = req.body;
 
-  // 1. validar se há dados no documento que foi enviado. Provavelmente nao sera usado, mas é bom pra evitar dar ruim no banco depois.
-  if (dados.tensao == null || dados.corrente == null) {
-    // Se não houver dados de temperatura, retorna erro do cliente de envio de nada.
-    return res
-      .status(400)
-      .json({ erro: "faltando algum dado: tensao ou corrente" });
-  }
+//   // 1. validar se há dados no documento que foi enviado. Provavelmente nao sera usado, mas é bom pra evitar dar ruim no banco depois.
+//   if (dados.tensao == null || dados.corrente == null) {
+//     // Se não houver dados de temperatura, retorna erro do cliente de envio de nada.
+//     return res
+//       .status(400)
+//       .json({ erro: "faltando algum dado: tensao ou corrente" });
+//   }
 
-  // 2. salvar no banco. O json precisa estar configurado com os nomes certos das colunas e com os valores corretos.
-  await supabase.from("medicoes").insert(dados);
+//   // 2. salvar no banco. O json precisa estar configurado com os nomes certos das colunas e com os valores corretos.
+//   await supabase.from("medicoes").insert(dados);
 
-  // 3. responder
-  res.status(200).json({ status: "ok" });
-});
+//   // 3. responder
+//   res.status(200).json({ status: "ok" });
+// });
 
 // Rota pra envio dos dados dos alertas pro Supabase.
 // Os dados da tabela de alertas seguem o padrão codigo | mensagem | risco
-app.post("/api/alertas", async (req, res) => {
-  // Define a variavel 'dados' como a receptora dos dados vindos do cliente (ESP) (req.body sao os dados que estao no json que o esp esta enviando).
-  const dados = req.body;
+// app.post("/api/alertas", async (req, res) => {
+//   // Define a variavel 'dados' como a receptora dos dados vindos do cliente (ESP) (req.body sao os dados que estao no json que o esp esta enviando).
+//   const dados = req.body;
 
-  // validar se há dados no documento que foi enviado. Provavelmente nao sera usado, mas é bom pra evitar dar ruim no banco depois.
-  if (!dados.alerta_ativo) {
-    // Se não houver dados de alerta, retorna erro do cliente de envio de nada.
-    return res.status(400).json({ erro: "Não há alertas" });
-  }
+//   // validar se há dados no documento que foi enviado. Provavelmente nao sera usado, mas é bom pra evitar dar ruim no banco depois.
+//   if (!dados.alerta_ativo) {
+//     // Se não houver dados de alerta, retorna erro do cliente de envio de nada.
+//     return res.status(400).json({ erro: "Não há alertas" });
+//   }
 
-  // salvar no banco. O json precisa estar configurado com os nomes certos das colunas e com os valores corretos.
-  const { error } = await supabase.from("alertas").insert(dados);
+//   // salvar no banco. O json precisa estar configurado com os nomes certos das colunas e com os valores corretos.
+//   const { error } = await supabase.from("alertas").insert(dados);
 
-  if (error) {
-    console.error(error);
-    return res.status(500).json({ erro: error.message });
-  }
+//   if (error) {
+//     console.error(error);
+//     return res.status(500).json({ erro: error.message });
+//   }
 
-  // responder
-  res.status(200).json({ status: "ok" });
-});
+//   // responder
+//   res.status(200).json({ status: "ok" });
+// });
 
 // Rota para envio de dados individuais das celulas do barco (32)
-app.post("/api/celulas", async (req, res) => {
-  // req.body receberá { "tensoes": [3.21, 5.49, 1.92, ...] }
-  const dados = req.body; 
+// app.post("/api/celulas", async (req, res) => {
+//   // req.body receberá { "tensoes": [3.21, 5.49, 1.92, ...] }
+//   const dados = req.body; 
 
-  // Verifica se a chave "cells" existe e se tem 16 valores
-  if (!dados.cells || dados.cells.length !== 16) {
-    return res.status(400).json({ erro: "Pacote incompleto ou inválido!" });
-  }
+//   // Verifica se a chave "cells" existe e se tem 16 valores
+//   if (!dados.cells || dados.cells.length !== 16) {
+//     return res.status(400).json({ erro: "Pacote incompleto ou inválido!" });
+//   }
 
-  // Valida se algum valor dentro do array é nulo ou indefinido
-  for (let i = 0; i < dados.cells.length; i++) {
-    if (dados.cells[i] === undefined || dados.cells[i] === null) {
-      console.log(`Erro célula: ${i + 1}`);
-      return res.status(400).json({ erro: `élula ${i + 1} incompleta!` });
-    }
-  }
+//   // Valida se algum valor dentro do array é nulo ou indefinido
+//   for (let i = 0; i < dados.cells.length; i++) {
+//     if (dados.cells[i] === undefined || dados.cells[i] === null) {
+//       console.log(`Erro célula: ${i + 1}`);
+//       return res.status(400).json({ erro: `élula ${i + 1} incompleta!` });
+//     }
+//   }
 
-  // Insere o array inteiro de uma só vez em uma única linha no Supabase
-  const { error } = await supabase.from("celulas").insert({
-    celula: dados.cells // Associa o array do JS à coluna do banco
-  });
+//   // Insere o array inteiro de uma só vez em uma única linha no Supabase
+//   const { error } = await supabase.from("celulas").insert({
+//     celula: dados.cells // Associa o array do JS à coluna do banco
+//   });
 
-  if (error) {
-    console.error(error);
-    return res.status(500).json({ erro: error.message });
-  }
+//   if (error) {
+//     console.error(error);
+//     return res.status(500).json({ erro: error.message });
+//   }
 
-  return res.status(200).json({ sucesso: true });
-});
+//   return res.status(200).json({ sucesso: true });
+// });
 
 
 // Rota para a coleta dos dados das medicoes
-app.get("/api/sensores", async (req, res) => {
+// app.get("/api/sensores", async (req, res) => {
 
-  const { data, error } = await supabase
-    .from("medicoes")
-    .select("*");
+//   const { data, error } = await supabase
+//     .from("medicoes")
+//     .select("*");
     
-  if (error) {
-    return res.status(500).json({erro: error.message})
-  }
+//   if (error) {
+//     return res.status(500).json({erro: error.message})
+//   }
 
-  res.json(data)
-});
+//   res.json(data)
+// });
 
 // Rota para coleta dos dados da ultima medição
-app.get("/api/sensores/ultimo", async (req, res) => {
+// app.get("/api/sensores/ultimo", async (req, res) => {
   
-  const { data, error } = await supabase
-    .from("medicoes")
-    .select("*")
-    .order("id", {ascending:false})
-    .limit(1);
+//   const { data, error } = await supabase
+//     .from("medicoes")
+//     .select("*")
+//     .order("id", {ascending:false})
+//     .limit(1);
 
-  if (error) {
-    return res.status(500).json({erro: error.message});
-  }
+//   if (error) {
+//     return res.status(500).json({erro: error.message});
+//   }
 
-  res.json(data);
-});
+//   res.json(data);
+// });
 
 // Rota para a coleta dos dados de alertas
-app.get("/api/alertas", async (req, res) => {
+// app.get("/api/alertas", async (req, res) => {
   
-  const { data, error } = await supabase  
-    .from("alertas")
-    .select("*");
+//   const { data, error } = await supabase  
+//     .from("alertas")
+//     .select("*");
 
-  if (error) {
-    return res.status(500).json({erro: error.message})
-  }
+//   if (error) {
+//     return res.status(500).json({erro: error.message})
+//   }
 
-  res.json(data);
-});
+//   res.json(data);
+// });
 
 // Rota para a coleta do dado do ultimo alerta
-app.get("/api/alertas/ultimo", async (req, res) => {
-  z
-  const { data, error } = await supabase
-    .from("alertas")
-    .select("*")
-    .order("id", {ascending: false})
-    .limit(1);
+// app.get("/api/alertas/ultimo", async (req, res) => {
+//   z
+//   const { data, error } = await supabase
+//     .from("alertas")
+//     .select("*")
+//     .order("id", {ascending: false})
+//     .limit(1);
 
-  if (error) return res.status(500).json({erro: error.message});
+//   if (error) return res.status(500).json({erro: error.message});
   
-  res.json(data);
-});
+//   res.json(data);
+// });
 
 // Rota para a coleta dos dados de tensao nas celulas individuais
-app.get("/api/celulas", async(req, res) => {
+// app.get("/api/celulas", async(req, res) => {
   
-  const { data, error } = await supabase
-    .from("celulas")
-    .select("*")
+//   const { data, error } = await supabase
+//     .from("celulas")
+//     .select("*")
 
-  if (error) return res.status(500).json({erro: error.message});
+//   if (error) return res.status(500).json({erro: error.message});
 
-  res.json(data);
-});
+//   res.json(data);
+// });
 
 // // Rota para a coleta do ultimo dado das medicoes individuais das celulas
-app.get("/api/celulas/ultimo", async(req, res) => {
+// app.get("/api/celulas/ultimo", async(req, res) => {
   
-  const { data, error } = await supabase
-    .from("celulas")
-    .select("*")
-    .order("id", {ascending: false})
-    .limit(1);
+//   const { data, error } = await supabase
+//     .from("celulas")
+//     .select("*")
+//     .order("id", {ascending: false})
+//     .limit(1);
 
-  if (error) return res.status(500).json({erro: error.message});
+//   if (error) return res.status(500).json({erro: error.message});
 
-  res.json(data);
-});
+//   res.json(data);
+// });
 
 // Para fazer o vercel funcionar
 module.exports = app
