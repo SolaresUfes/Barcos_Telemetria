@@ -1,7 +1,9 @@
 // Iniciar a variável de buffer com nada
-let buffer_sensores = null;
-let buffer_celulas  = null;
-let buffer_alertas  = null;
+const SEM_DADOS = -2
+
+let buffer_sensores = SEM_DADOS;
+let buffer_celulas  = SEM_DADOS;
+let buffer_alertas  = SEM_DADOS;
 
 // Função responsavel
 function atualizar_ult_Sensores(dados_sensores) {
