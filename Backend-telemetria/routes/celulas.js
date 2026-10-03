@@ -3,6 +3,8 @@ const router = express.Router();
 
 const supabase = require("../supabase")
 
+const buffer = require("../buffer/telemetria")
+
 
 // Rota para envio de dados individuais das celulas do barco (32)
 // POST > "/api/celulas"
@@ -22,6 +24,9 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ erro: `élula ${i + 1} incompleta!` });
     }
   }
+
+  // Se tudo estiver certo, insere os dados no buffer correspondente
+  buffer.atualizar_ult_Celulas(dados);
 
   // Insere o array inteiro de uma só vez em uma única linha no Supabase
   const { error } = await supabase.from("celulas").insert({
@@ -54,15 +59,15 @@ router.get("/", async(req, res) => {
 // GET > "/api/celulas/ultimo"
 router.get("/ultimo", async(req, res) => {
   
-  const { data, error } = await supabase
-    .from("celulas")
-    .select("*")
-    .order("id", {ascending: false})
-    .limit(1);
+  // const { data, error } = await supabase
+  //   .from("celulas")
+  //   .select("*")
+  //   .order("id", {ascending: false})
+  //   .limit(1);
 
-  if (error) return res.status(500).json({erro: error.message});
+  // if (error) return res.status(500).json({erro: error.message});
 
-  res.json(data);
+  res.json(buffer.coletar_ult_Celulas());
 });
 
 
