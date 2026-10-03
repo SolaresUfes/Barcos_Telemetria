@@ -3,6 +3,7 @@ const router = express.Router();
 
 const supabase = require("../supabase")
 
+const buffer = require("../buffer/telemetria")
 
 // Rota pra envio dos dados dos sensores pro supabase.
 // Os dados da tabela de medições do supabase são: tensao | corrente
@@ -20,6 +21,8 @@ router.post("/", async (req, res) => {
         .json({ erro: "faltando algum dado: tensao ou corrente" });
   }
 
+  buffer.atualizar_ult_Sensores(dados);
+
   // salvar no banco. O json precisa estar configurado com os nomes certos das colunas e com os valores corretos.
   await supabase.from("medicoes").insert(dados);
 
@@ -35,7 +38,6 @@ router.get("/", async (req, res) => {
   const { data, error } = await supabase
     .from("medicoes")
     .select("*");
-    
   if (error) {
     return res.status(500).json({erro: error.message})
   }
@@ -47,18 +49,7 @@ router.get("/", async (req, res) => {
 // Rota para coleta dos dados da ultima medição
 // GET > "/api/sensores/ultimo/"
 router.get("/ultimo", async (req, res) => {
-  
-  const { data, error } = await supabase
-    .from("medicoes")
-    .select("*")
-    .order("id", {ascending:false})
-    .limit(1);
-
-  if (error) {
-    return res.status(500).json({erro: error.message});
-  }
-
-  res.json(data);
+  res.json(buffer.coletar_ult_Sensores());
 });
 
 
