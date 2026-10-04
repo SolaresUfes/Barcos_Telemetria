@@ -27,7 +27,7 @@ interface Member {
 // #region --- Funções Auxiliares ---
 
 const generatePolyline = (data: number[], width: number, height: number, maxVal: number) => {
-  if (data.length === 0) return "1000,${height / 2}";
+  if (data.length === 0) return `1000,${height / 2}`; // Corrigido para usar crases
   
   const stepX = width / 39; // Trava a distância para 40 pontos máximos
   
@@ -746,12 +746,22 @@ function prova_iniciar() {
     dispararToast(`Gravação #${data.id} salva com sucesso!`);
   }
 
-  // Opção 2: Salvar como Rascunho (Guarda localmente no navegador)
-  function deixarComoRascunho() {
+// Opção 2: Salvar como Rascunho prevendo o próximo ID sequencial do Supabase
+  async function deixarComoRascunho() {
+    // 1. Consulta o Supabase para descobrir o maior ID atual
+    const { data: ultimoRegistro } = await supabase
+      .from("estado_prova")
+      .select("id")
+      .order("id", { ascending: false })
+      .limit(1);
+
+    // 2. Define o próximo ID (se a tabela estiver vazia, começa em 1)
+    const proximoId = ultimoRegistro && ultimoRegistro.length > 0 ? ultimoRegistro[0].id + 1 : 1;
+
     const nomeRascunho = nomeDefinitivoProva.trim() || `Rascunho - ${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR")}`;
 
     const rascunhoObj = {
-      id: Date.now(),
+      id: proximoId, // Usa o ID sequencial previsto
       nome: nomeRascunho,
       inicio: inicioTimestamp,
       fim: fimTimestamp || new Date().toISOString()
@@ -762,7 +772,7 @@ function prova_iniciar() {
     setProvaAtiva(false);
     setShowModalFinalizacao(false);
     setPedirConfirmacaoDescarte(false);
-    dispararToast("Rascunho guardado localmente com segurança!", "aviso");
+    dispararToast(`Rascunho guardado com a previsão de ID #${proximoId}!`, "aviso");
   }
 
   // Opção 3: Descartar (Limpa a tela e remove qualquer rascunho local)
