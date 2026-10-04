@@ -121,6 +121,28 @@ export default function App() {
   //#region Controle login
   const [isLogged, setisLogged] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isLoadingSession, setIsLoadingSession] = useState(true);
+
+  // 2. Verifica a sessão automaticamente assim que o app carrega
+  useEffect(() => {
+    async function checkInitialSession() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          // Se já tem sessão, roda a lógica de verificação e libera o acesso
+          await verificarLogin();
+        }
+      } catch (err) {
+        console.error("Erro ao verificar sessão:", err);
+      } finally {
+        // Terminou de checar (com ou sem sessão), então tira a tela de "carregando"
+        setIsLoadingSession(false);
+      }
+    }
+
+    checkInitialSession();
+  }, []);
 
   async function loginGoogle() {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -177,14 +199,20 @@ export default function App() {
       setCurrentUser(loggedMember);
       setShowUnlockAnim(true);
       setIsLoggingIn(false);
-      setisLogged(false);
-
-      buscarEquipe();
-
-      setTimeout(() => {
-        setisLogged(true);
-      }, 2000)
+      setisLogged(true);
     }
+
+    if (isLoadingSession) {
+        return (
+          <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-sm font-medium">Carregando painel...</p>
+            </div>
+          </div>
+        );
+      }
+
   }
 
   async function logoutGoogle() {
