@@ -833,7 +833,7 @@ if (isLoadingSession) {
         {showPilotMap ? (
           <div className="flex-1 w-full h-full flex flex-col min-h-0 relative overflow-hidden">
             <div className="flex-1 w-full h-full relative overflow-hidden flex flex-col">
-              {/* Botão de Tela Cheia no Modo Piloto (Aciona F11 nativo) */}
+              {/* Botão flutuante no meio da tela, colado na direita */}
               <button
                 onClick={() => {
                   const nextState = !isPilotMapFullscreen;
@@ -844,7 +844,7 @@ if (isLoadingSession) {
                     document.exitFullscreen().catch(() => {});
                   }
                 }}
-                className={`absolute top-4 right-4 z-[60] p-3 rounded-xl shadow-2xl border backdrop-blur-md transition-all hover:scale-105 active:scale-95 flex items-center justify-center ${
+                className={`absolute top-1/2 -translate-y-1/2 right-4 md:right-6 z-[60] p-3 rounded-xl shadow-2xl border backdrop-blur-md transition-all hover:scale-105 active:scale-95 flex items-center justify-center ${
                   darkMode || isPilotMapFullscreen
                     ? "bg-gray-900/80 border-gray-700 text-gray-200 hover:text-white" 
                     : "bg-white/90 border-gray-300 text-gray-700 hover:text-black"
@@ -2175,7 +2175,7 @@ if (isLoadingSession) {
 
               
               <div className="flex-1 w-full h-full relative overflow-hidden flex flex-col">
-                {/* Botão flutuante de Tela Cheia (Ativa F11 nativo) */}
+                {/* Botão flutuante no meio da tela, colado na direita */}
                 <button
                   onClick={() => {
                     const nextState = !isMapFullscreen;
@@ -2186,7 +2186,7 @@ if (isLoadingSession) {
                       document.exitFullscreen().catch(() => {});
                     }
                   }}
-                  className={`absolute top-4 right-4 z-[60] p-3 rounded-xl shadow-2xl border backdrop-blur-md transition-all hover:scale-105 active:scale-95 flex items-center justify-center ${
+                  className={`absolute top-1/2 -translate-y-1/2 right-4 md:right-6 z-[60] p-3 rounded-xl shadow-2xl border backdrop-blur-md transition-all hover:scale-105 active:scale-95 flex items-center justify-center ${
                     darkMode || isMapFullscreen
                       ? "bg-gray-900/80 border-gray-700 text-gray-200 hover:text-white" 
                       : "bg-white/90 border-gray-300 text-gray-700 hover:text-black"
