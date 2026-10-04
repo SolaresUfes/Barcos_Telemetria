@@ -787,6 +787,7 @@ if (isLoadingSession) {
                     : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50 hover:text-gray-900"
               }`}
             >
+
               {showPilotMap ? <Activity size={20} /> : <Map size={20} />}
               <span className="hidden sm:block text-sm uppercase tracking-wider">
                 {showPilotMap ? "Instrumentos" : "Navegação"}
@@ -808,22 +809,21 @@ if (isLoadingSession) {
 
           {/* Status da Telemetria */}
           <div
-            className={`flex items-center space-x-2 md:space-x-3 px-3 py-1.5 md:px-4 md:py-2 rounded-full border transition-colors ${
+            className={`flex items-center space-x-2 md:space-x-3 px-3 py-1.5 md:px-4 md:py-2 rounded-full border transition-colors shrink-0 ${
               isTelemetryActive
                 ? darkMode ? "bg-red-950/50 border-red-900" : "bg-red-100 border-red-300"
                 : darkMode ? "bg-gray-800 border-gray-600" : "bg-gray-200 border-gray-400"
             }`}
-          ></div>
-
+          >
             <div
               className={`w-2 h-2 md:w-3 md:h-3 rounded-full ${
                 isTelemetryActive
                   ? `bg-red-500 animate-pulse ${darkMode ? "shadow-[0_0_10px_rgba(239,68,68,0.8)]" : ""}`
                   : "bg-gray-500"
               }`}
-            >
+            ></div>
 
-            <span className={`font-bold tracking-widest text-[10px] md:text-sm ${isTelemetryActive ? "text-red-500" : "text-gray-500"}`}>
+            <span className={`font-bold tracking-widest text-[10px] md:text-sm whitespace-nowrap ${isTelemetryActive ? "text-red-500" : "text-gray-500"}`}>
               {isTelemetryActive ? "TELEMETRIA ATIVA" : "SISTEMA OFFLINE"}
             </span>
           </div>
@@ -1578,7 +1578,7 @@ if (isLoadingSession) {
               {/* #endregion */}
             </div>
 
-          ) : activeTab === "Resumo" ? (
+) : activeTab === "Resumo" ? (
             <div className="flex flex-col h-full w-full gap-2 md:gap-4 min-h-0 animate-in fade-in duration-300">
               <div className="flex gap-2 md:gap-6 md:max-h-[45%] flex-col md:flex-row shrink-0 w-full min-h-0">
                 <div
@@ -1635,7 +1635,7 @@ if (isLoadingSession) {
                         />
                       ))}
 
-                      {/* LINHA DE ZERO DESTACADA (Exatamente no y = 100) */}
+                      {/* LINHA DE ZERO DESTACADA */}
                       <line
                         x1="0"
                         y1="100"
@@ -1651,37 +1651,23 @@ if (isLoadingSession) {
                         fill={darkMode ? "#9ca3af" : "#6b7280"} 
                         fontSize="12" 
                         fontWeight="bold"
-                        >                        
-                          0 W
+                      >                        
+                        0 W
                       </text>
 
-                        <polygon
-                          // Calcula o "chão" dinâmico para fechar a sombra reta na base
-                          points={`${mainData.length > 0 ? 1000 - ((mainData.length - 1) * (1000 / 39)) : 1000},100 ${generatePolyline(mainData, 1000, 200, 5000)} 1000,100`}
-                          fill="url(#mainGradient)"
-                        />
-                        <polyline
-                          points={generatePolyline(mainData, 1000, 200, 5000)}
-                          fill="none"
-                          stroke="#ea580c"
-                          strokeWidth="4"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="drop-shadow-md"
-                        />
-                      {/* <polygon
-                        points={`0,200 ${generatePolyline(mainData, 1000, 200, 750)} 1000,200`}
+                      <polygon
+                        points={`${mainData.length > 0 ? 1000 - ((mainData.length - 1) * (1000 / 39)) : 1000},100 ${generatePolyline(mainData, 1000, 200, 5000)} 1000,100`}
                         fill="url(#mainGradient)"
                       />
                       <polyline
-                        points={generatePolyline(mainData, 1000, 200, 750)}
+                        points={generatePolyline(mainData, 1000, 200, 5000)}
                         fill="none"
                         stroke="#ea580c"
                         strokeWidth="4"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         className="drop-shadow-md"
-                      /> */}
+                      />
                       <line
                         x1="0"
                         y1="200"
@@ -1768,19 +1754,36 @@ if (isLoadingSession) {
                           Tempo Remanescente
                         </span>
                       </div>
-                      <div className="flex items-baseline space-x-1">
-                        <span className="text-xl md:text-2xl font-black text-emerald-500 tabular-nums">
-                          {estHours}
+
+                      {/* Wrapper do status no telemóvel e relógio */}
+                      <div className="flex items-center justify-center space-x-3 w-full md:w-auto">
+                        <span className={`md:hidden flex px-2 py-0.5 text-[9px] font-bold ring-1 ring-inset rounded-full items-center whitespace-nowrap shadow-sm transition-colors ${
+                          isTelemetryActive 
+                            ? "bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-500/10 dark:text-red-400 dark:ring-red-500/20" 
+                            : "bg-gray-50 text-gray-600 ring-gray-600/20 dark:bg-gray-500/10 dark:text-gray-400 dark:ring-gray-500/20"
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+                            isTelemetryActive 
+                              ? "bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" 
+                              : "bg-gray-500"
+                          }`}></span>
+                          {isTelemetryActive ? "ESP Online" : "Offline"}
                         </span>
-                        <span className="text-[10px] md:text-sm font-bold text-emerald-500 opacity-80">
-                          h
-                        </span>
-                        <span className="text-xl md:text-2xl font-black text-emerald-500 ml-1 tabular-nums">
-                          {estMinutes.toString().padStart(2, "0")}
-                        </span>
-                        <span className="text-[10px] md:text-sm font-bold text-emerald-500 opacity-80">
-                          m
-                        </span>
+                      
+                        <div className="flex items-baseline space-x-1">
+                          <span className="text-xl md:text-2xl font-black text-emerald-500 tabular-nums">
+                            {estHours}
+                          </span>
+                          <span className="text-[10px] md:text-sm font-bold text-emerald-500 opacity-80">
+                            h
+                          </span>
+                          <span className="text-xl md:text-2xl font-black text-emerald-500 ml-1 tabular-nums">
+                            {estMinutes.toString().padStart(2, "0")}
+                          </span>
+                          <span className="text-[10px] md:text-sm font-bold text-emerald-500 opacity-80">
+                            m
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1914,7 +1917,7 @@ if (isLoadingSession) {
                     </div>
                   </div>
 
-                  {/* Correntes Mesclado*/}
+                  {/* Correntes Mesclado */}
                   <div
                     className={`p-2 lg:p-6 flex flex-col items-center justify-center w-full h-full col-span-2 lg:col-span-2 ${darkMode ? "bg-gray-800" : "bg-white"}`}
                   >
