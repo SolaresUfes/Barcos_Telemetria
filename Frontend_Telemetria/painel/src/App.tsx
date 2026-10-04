@@ -5,7 +5,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "./lib/supabase";
 import { Menu, Moon, Sun, User, Activity, BarChart2, Zap, Settings, Database,
   ArrowLeft, LogOut, Unlock, Trash2, Plus, Info, Shield, AlertTriangle, ChevronDown,
-  Map, MapPin, Clock, Battery, BatteryCharging, DownloadCloud,
+  Map, Clock, Battery, BatteryCharging, DownloadCloud,
   Play, Square, Maximize, Minimize} from "lucide-react";
 // #endregion
 
@@ -234,7 +234,7 @@ export default function App() {
     alert("Log Out concluido!");
   }
 
-  async function buscarEquipe() {
+async function buscarEquipe() {
     const { data, error } = await supabase
       .from("usuarios_autorizados")
       .select("id, email, tipo_acesso, eh_moderador");
@@ -247,21 +247,27 @@ export default function App() {
     if (data) {
       const equipeDoBanco: Member[] = data.map((m) => {
         const nome = generateNameFromEmail(m.email);
+        
+        // Se for o usuário logado atual, mantém a foto real do Google dele
+        const fotoFinal = (currentUser && m.email === currentUser.email && currentUser.photo)
+          ? currentUser.photo
+          : `https://ui-avatars.com/api/?name=${encodeURIComponent(nome)}&background=random&color=fff`;
+
         return {
           id: m.id,
           email: m.email,
           name: nome,
           mainRole: m.tipo_acesso || "",
           isModerador: m.eh_moderador || false,
-          photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(nome)}&background=random&color=fff`,
+          photo: fotoFinal,
           isOnline: false,
           lastSeen: "offline",
         };
-    });
+      });
 
-    setMembers(equipeDoBanco);
+      setMembers(equipeDoBanco);
+    }
   }
-}
 
   // #region Estados - Controle de Usuário e Login
   const [members, setMembers] = useState<Member[]>([]);
@@ -1415,6 +1421,10 @@ if (isLoadingSession) {
                           <img
                             src={member.photo}
                             alt={member.name}
+                            onError={(e) => {
+                              // Fallback automático caso o serviço principal falhe
+                              (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(member.name)}`;
+                            }}
                             className={`w-10 h-10 md:w-12 md:h-12 flex-shrink-0 rounded-full object-cover ${member.isModerador ? "border-[3px] border-orange-500" : darkMode ? "border-2 border-gray-600" : "border-2 border-gray-300"}`}
                           />
                           <div className="flex flex-col">
