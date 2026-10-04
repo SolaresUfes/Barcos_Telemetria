@@ -297,6 +297,17 @@ async function buscarEquipe() {
   const [inicioTimestamp, setInicioTimestamp] = useState<string | null>(null);
   const [fimTimestamp, setFimTimestamp] = useState<string | null>(null);
   const [rascunhoAtivo, setRascunhoAtivo] = useState<{ id: number; nome: string; inicio: string } | null>(null);
+  // Novos estados para Notificações (Toast) e Confirmação de Descarte
+  const [toast, setToast] = useState<{ mensagem: string; tipo: 'sucesso' | 'aviso' | 'erro' } | null>(null);
+  const [pedirConfirmacaoDescarte, setPedirConfirmacaoDescarte] = useState(false);
+
+  // Função auxiliar para disparar notificações estilo Windows
+  function dispararToast(mensagem: string, tipo: 'sucesso' | 'aviso' | 'erro' = 'sucesso') {
+    setToast({ mensagem, tipo });
+    setTimeout(() => {
+      setToast(null);
+    }, 4000);
+  }
 
   // #endregion
 
@@ -653,13 +664,14 @@ async function prova_iniciar() {
     localStorage.setItem("telemetria_rascunho", JSON.stringify(rascunhoData));
     setRascunhoAtivo(rascunhoData);
 
+    dispararToast("Gravação iniciada com sucesso!");
     console.log("Prova iniciada com ID: ", data.id);
   }
 
   // Ao clicar em Fim, captura o horário de término e abre a telinha bonita
   function lidarComCliqueFim() {
     if (idProvaAtual === -1) {
-      alert("Nenhuma gravação ativa no momento!");   
+      dispararToast("Nenhuma gravação ativa no momento!", "aviso");   
       return;  
     }
     setFimTimestamp(new Date().toISOString());
@@ -669,7 +681,7 @@ async function prova_iniciar() {
   // Opção 1: Salvar definitivo no Supabase
   async function salvarProvaComNome() {
     if (!nomeDefinitivoProva.trim()) {
-      alert("Por favor, digite um nome para a gravação.");
+      dispararToast("Por favor, digite um nome para a gravação.", "aviso");
       return;
     }
 
@@ -683,7 +695,7 @@ async function prova_iniciar() {
     
     if (error) {
       console.log("Erro ao salvar a prova: ", error);
-      alert("Erro ao atualizar o registro no banco.");
+      dispararToast("Erro ao atualizar o registro no banco.", "erro");
       return;
     }
     
@@ -692,18 +704,18 @@ async function prova_iniciar() {
     setShowModalFinalizacao(false);
     localStorage.removeItem("telemetria_rascunho");
     setRascunhoAtivo(null);
-    alert("Gravação salva com sucesso!");
+    dispararToast("Gravação salva com sucesso!");
   }
 
   // Opção 2: Deixar como rascunho (fecha o modal, mas mantém salvo no navegador)
   function deixarComoRascunho() {
     setProvaAtiva(false);
     setShowModalFinalizacao(false);
-    alert("Gravação guardada como rascunho com segurança!");
+    dispararToast("Gravação guardada como rascunho com segurança!", "aviso");
   }
 
   // Opção 3: Descartar (apaga do Supabase e limpa o cache)
-  async function descartarProva() {
+  async function executarDescarte() {
     const { error } = await supabase
       .from("estado_prova")
       .delete()
@@ -718,7 +730,7 @@ async function prova_iniciar() {
     setShowModalFinalizacao(false);
     localStorage.removeItem("telemetria_rascunho");
     setRascunhoAtivo(null);
-    alert("Gravação descartada.");
+    dispararToast("Gravação descartada.", "erro");
   }
 
   // Função auxiliar para formatar datas no padrão brasileiro
@@ -738,7 +750,7 @@ async function prova_iniciar() {
       setFimTimestamp(new Date().toISOString());
       setShowModalFinalizacao(true); // Abre o modal diretamente com os dados do rascunho
     } else {
-      alert("Nenhum rascunho pendente encontrado.");
+      dispararToast("Nenhum rascunho pendente encontrado.", "aviso");
     }
   }
 
@@ -2223,69 +2235,7 @@ if (isLoadingSession) {
                   </button>
                 </div>
               </div>
-
-              {/* MODAL BONITO DE FINALIZAÇÃO COM OS DADOS DE INÍCIO E FIM */}
-              {showModalFinalizacao && (
-                <div className="absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-                  <div className={`max-w-md w-full p-6 md:p-8 rounded-3xl shadow-2xl border ${darkMode ? "bg-gray-800 border-gray-700 text-white" : "bg-white border-gray-200 text-gray-900"}`}>
-                    <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center mb-4 text-orange-500">
-                      <Activity size={24} />
-                    </div>
-
-                    <h3 className="text-xl font-bold mb-1">Finalizar Gravação</h3>
-                    <p className="text-sm text-gray-400 mb-4">
-                      Reveja os dados abaixo e escolha como deseja proceder com a prova.
-                    </p>
-
-                    {/* Caixa de Resumo de Início e Fim */}
-                    <div className={`p-4 rounded-2xl border mb-5 text-xs flex flex-col gap-2 ${darkMode ? "bg-gray-900/60 border-gray-700 text-gray-300" : "bg-gray-50 border-gray-200 text-gray-700"}`}>
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-gray-500">ID da Gravação:</span>
-                        <span className="font-mono font-bold">#{idProvaAtual}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-gray-500">Início:</span>
-                        <span className="font-medium">{formatarDataHora(inicioTimestamp)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-gray-500">Fim:</span>
-                        <span className="font-medium">{formatarDataHora(fimTimestamp)}</span>
-                      </div>
-                    </div>
-
-                    <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Nome Definitivo da Prova</label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Prova Regata Solares 2026"
-                      value={nomeDefinitivoProva}
-                      onChange={(e) => setNomeDefinitivoProva(e.target.value)}
-                      className={`w-full px-4 py-3 rounded-xl border mb-6 outline-none focus:ring-2 focus:ring-orange-500 text-sm ${darkMode ? "bg-gray-900 border-gray-700 text-white" : "bg-gray-50 border-gray-300"}`}
-                      autoFocus
-                    />
-
-                    <div className="flex flex-col gap-2.5">
-                      <button
-                        onClick={salvarProvaComNome}
-                        className="w-full py-3.5 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-green-500/20 flex items-center justify-center"
-                      >
-                        Salvar Definitivo
-                      </button>
-                      <button
-                        onClick={deixarComoRascunho}
-                        className="w-full py-3.5 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-yellow-500/20 flex items-center justify-center"
-                      >
-                        Salvar como Rascunho
-                      </button>
-                      <button
-                        onClick={descartarProva}
-                        className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-bold rounded-xl transition-all border border-red-500/20 flex items-center justify-center"
-                      >
-                        Descartar
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
+              
             </div>
             
           ) : activeTab === "Análise" ? (
@@ -2441,6 +2391,124 @@ if (isLoadingSession) {
 
         </div>
       </main>
+
+      {/* ========================================================= */}
+      {/* MODAL GLOBAL DE FINALIZAÇÃO (Cobre a tela inteira com fixed) */}
+      {/* ========================================================= */}
+      {showModalFinalizacao && (
+        <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className={`max-w-md w-full p-6 md:p-8 rounded-3xl shadow-2xl border ${darkMode ? "bg-gray-800 border-gray-700 text-white" : "bg-white border-gray-200 text-gray-900"}`}>
+            
+            {!pedirConfirmacaoDescarte ? (
+              <>
+                <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center mb-4 text-orange-500">
+                  <Activity size={24} />
+                </div>
+
+                <h3 className="text-xl font-bold mb-1">Finalizar Gravação</h3>
+                <p className="text-sm text-gray-400 mb-4">
+                  Reveja os dados abaixo e escolha como deseja proceder com a prova.
+                </p>
+
+                <div className={`p-4 rounded-2xl border mb-5 text-xs flex flex-col gap-2 ${darkMode ? "bg-gray-900/60 border-gray-700 text-gray-300" : "bg-gray-50 border-gray-200 text-gray-700"}`}>
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-gray-500">ID da Gravação:</span>
+                    <span className="font-mono font-bold">#{idProvaAtual}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-gray-500">Início:</span>
+                    <span className="font-medium">{formatarDataHora(inicioTimestamp)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-gray-500">Fim:</span>
+                    <span className="font-medium">{formatarDataHora(fimTimestamp)}</span>
+                  </div>
+                </div>
+
+                <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Nome Definitivo da Prova</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Prova Regata Solares 2026"
+                  value={nomeDefinitivoProva}
+                  onChange={(e) => setNomeDefinitivoProva(e.target.value)}
+                  className={`w-full px-4 py-3 rounded-xl border mb-6 outline-none focus:ring-2 focus:ring-orange-500 text-sm ${darkMode ? "bg-gray-900 border-gray-700 text-white" : "bg-gray-50 border-gray-300"}`}
+                  autoFocus
+                />
+
+                <div className="flex flex-col gap-2.5">
+                  <button
+                    onClick={salvarProvaComNome}
+                    className="w-full py-3.5 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-green-500/20 flex items-center justify-center"
+                  >
+                    Salvar Definitivo
+                  </button>
+                  <button
+                    onClick={deixarComoRascunho}
+                    className="w-full py-3.5 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-yellow-500/20 flex items-center justify-center"
+                  >
+                    Salvar como Rascunho
+                  </button>
+                  <button
+                    onClick={() => setPedirConfirmacaoDescarte(true)}
+                    className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-bold rounded-xl transition-all border border-red-500/20 flex items-center justify-center"
+                  >
+                    Descartar Gravação
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* TELA DE DUPLA CONFIRMAÇÃO PARA DESCARTAR */
+              <div className="text-center py-4">
+                <div className="w-16 h-16 mx-auto rounded-full bg-red-500/10 flex items-center justify-center mb-4 text-red-500 border border-red-500/30 animate-pulse">
+                  <AlertTriangle size={32} />
+                </div>
+                <h3 className="text-xl font-bold mb-2">Tem certeza absoluta?</h3>
+                <p className="text-sm text-gray-400 mb-6">
+                  Esta ação irá apagar permanentemente os dados da gravação #{idProvaAtual} do banco de dados.
+                </p>
+
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={executarDescarte}
+                    className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-red-600/20"
+                  >
+                    Sim, Descartar Permanentemente
+                  </button>
+                  <button
+                    onClick={() => setPedirConfirmacaoDescarte(false)}
+                    className={`w-full py-3 rounded-xl font-bold transition-all border ${darkMode ? "bg-gray-700 border-gray-600 text-white hover:bg-gray-600" : "bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200"}`}
+                  >
+                    Cancelar / Voltar
+                  </button>
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* NOTIFICAÇÃO TOAST FLUTUANTE (Estilo Windows no canto da tela) */}
+      {/* ========================================================= */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[10000] animate-in slide-in-from-bottom-5 fade-in duration-300">
+          <div className={`px-5 py-4 rounded-2xl shadow-2xl border flex items-center space-x-3 text-sm font-semibold backdrop-blur-xl ${
+            toast.tipo === 'sucesso' 
+              ? "bg-green-950/90 border-green-500/50 text-green-200 shadow-green-950/50" 
+              : toast.tipo === 'aviso'
+              ? "bg-yellow-950/90 border-yellow-500/50 text-yellow-200 shadow-yellow-950/50"
+              : "bg-red-950/90 border-red-500/50 text-red-200 shadow-red-950/50"
+          }`}>
+            <span className={`w-2.5 h-2.5 rounded-full ${
+              toast.tipo === 'sucesso' ? "bg-green-400 animate-ping" : toast.tipo === 'aviso' ? "bg-yellow-400" : "bg-red-400"
+            }`}></span>
+            <span>{toast.mensagem}</span>
+          </div>
+        </div>
+      )}
+
+
     </div>
   );
 }
