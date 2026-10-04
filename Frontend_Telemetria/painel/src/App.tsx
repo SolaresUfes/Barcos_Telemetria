@@ -734,22 +734,27 @@ function prova_iniciar() {
     setShowModalFinalizacao(true);
   }
 
-// Opção 1: Salvar definitivo
+// Opção 1: Salvar definitivo (Preservando o ID do rascunho se houver)
   async function salvarProvaComNome() {
     if (!nomeDefinitivoProva.trim()) {
       dispararToast("Por favor, digite um nome para a gravação.", "aviso");
       return;
     }
 
+    const dadosInsercao: any = {
+      nome: nomeDefinitivoProva,
+      inicio: inicioTimestamp,
+      fim: fimTimestamp || new Date().toISOString()
+    };
+
+    // Se a gravação veio de um rascunho, força o envio do ID previsto (ex: #8)
+    if (rascunhoAtivo && rascunhoAtivo.id) {
+      dadosInsercao.id = rascunhoAtivo.id;
+    }
+
     const { data, error } = await supabase
       .from("estado_prova")
-      .insert([
-        {      
-          nome: nomeDefinitivoProva,
-          inicio: inicioTimestamp,
-          fim: fimTimestamp || new Date().toISOString()
-        },
-      ])
+      .insert([dadosInsercao])
       .select()
       .single();
 
