@@ -685,7 +685,7 @@ function prova_iniciar() {
 
   // Ao clicar em Fim, captura o horário de término e abre a telinha bonita
   function lidarComCliqueFim() {
-    if (idProvaAtual === -1) {
+    if (!provaAtiva) {
       dispararToast("Nenhuma gravação ativa no momento!", "aviso");   
       return;  
     }
