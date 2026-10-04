@@ -759,6 +759,7 @@ if (isLoadingSession) {
       <div
         className={`h-[100dvh] w-full flex flex-col p-4 md:p-6 font-sans select-none overflow-hidden relative transition-colors duration-300 ${darkMode ? "bg-black text-white" : "bg-gray-100 text-gray-900"}`}
       >
+        
         <div className="flex justify-between items-center mb-4 md:mb-6 shrink-0">
           <div className="flex items-center space-x-2 md:space-x-4">
             <button
@@ -812,15 +813,15 @@ if (isLoadingSession) {
                 ? darkMode ? "bg-red-950/50 border-red-900" : "bg-red-100 border-red-300"
                 : darkMode ? "bg-gray-800 border-gray-600" : "bg-gray-200 border-gray-400"
             }`}
-          >
+          ></div>
 
-            <div>
+            <div
               className={`w-2 h-2 md:w-3 md:h-3 rounded-full ${
                 isTelemetryActive
                   ? `bg-red-500 animate-pulse ${darkMode ? "shadow-[0_0_10px_rgba(239,68,68,0.8)]" : ""}`
                   : "bg-gray-500"
               }`}
-            </div>
+            >
 
             <span className={`font-bold tracking-widest text-[10px] md:text-sm ${isTelemetryActive ? "text-red-500" : "text-gray-500"}`}>
               {isTelemetryActive ? "TELEMETRIA ATIVA" : "SISTEMA OFFLINE"}
@@ -1088,10 +1089,31 @@ if (isLoadingSession) {
               </div>
             )}
 
-            <span className="hidden md:flex ml-4 px-3 py-1 text-xs font-bold bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20 rounded-full items-center whitespace-nowrap shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400 mr-2 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]"></span>
-              {onlineCount} Online
-            </span>
+            {/* Bloco de Status (Telemetria + Online) */}
+            <div className="flex items-center ml-2 md:ml-4 space-x-2">
+              
+              {/* Badge de Telemetria (Escondido no telemóvel com 'hidden md:flex') */}
+              <span className={`hidden md:flex px-2 md:px-3 py-1 text-[10px] md:text-xs font-bold ring-1 ring-inset rounded-full items-center whitespace-nowrap shadow-sm transition-colors ${
+                isTelemetryActive 
+                  ? "bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-500/10 dark:text-red-400 dark:ring-red-500/20" 
+                  : "bg-gray-50 text-gray-600 ring-gray-600/20 dark:bg-gray-500/10 dark:text-gray-400 dark:ring-gray-500/20"
+              }`}>
+                <span className={`w-2 h-2 rounded-full mr-1.5 md:mr-2 ${
+                  isTelemetryActive 
+                    ? "bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" 
+                    : "bg-gray-500"
+                }`}></span>
+                {isTelemetryActive ? "ESP Online" : "ESP Offline"}
+              </span>
+
+              {/* Badge de Utilizadores Online */}
+              <span className="hidden md:flex px-3 py-1 text-xs font-bold bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20 rounded-full items-center whitespace-nowrap shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400 mr-2 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]"></span>
+                {onlineCount} Online
+              </span>
+            </div>
+
+
           </div>
 
           <div className="flex items-center gap-3 md:gap-6 flex-shrink-0">
