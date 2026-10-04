@@ -299,15 +299,54 @@ async function buscarEquipe() {
   const [rascunhoAtivo, setRascunhoAtivo] = useState<{ id: number; nome: string; inicio: string } | null>(null);
   // Novos estados para Notificações (Toast) e Confirmação de Descarte
   const [toast, setToast] = useState<{ mensagem: string; tipo: 'sucesso' | 'aviso' | 'erro' } | null>(null);
+  const [isExiting, setIsExiting] = useState(false);
   const [pedirConfirmacaoDescarte, setPedirConfirmacaoDescarte] = useState(false);
 
-  // Função auxiliar para disparar notificações estilo Windows
+// Função auxiliar para disparar notificações com animação de esmaecimento
   function dispararToast(mensagem: string, tipo: 'sucesso' | 'aviso' | 'erro' = 'sucesso') {
+    setIsExiting(false);
     setToast({ mensagem, tipo });
+
+    // Toca o sonzinho 
+    tocarSomSuave();
+
+    // Inicia o esmaecimento (fade-out) após 3.5 segundos
+    setTimeout(() => {
+      setIsExiting(true);
+    }, 3500);
+
+    // Remove completamente do DOM após a transição terminar (4 segundos no total)
     setTimeout(() => {
       setToast(null);
+      setIsExiting(false);
     }, 4000);
   }
+
+// Função para tocar um sonzinho quando chegar notificação
+function tocarSomSuave() {
+  try {
+    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = 'sine';
+    // Frequência inicial e transição rápida para dar um tom agradável e limpo
+    osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // Nota D5
+    osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.08); // Sobe levemente para A5
+
+    // Volume baixo (0.08) para não ser irritante nem alto demais
+    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.18);
+  } catch (e) {
+    // Ignora caso o navegador bloqueie áudio antes de alguma interação do usuário
+  }
+}
 
   // #endregion
 
@@ -632,40 +671,16 @@ async function buscarEquipe() {
 
 
 
-async function prova_iniciar() {
+function prova_iniciar() {
     const agora = new Date().toISOString();
-    const nomePadrao = `Gravação - ${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR")}`;
     
-    // Insere no banco com o timestamp de início imediato
-    const { data, error } = await supabase
-      .from("estado_prova")
-      .insert([
-        {      
-          nome: nomePadrao,
-          inicio: agora
-        },
-      ])
-      .select()
-      .single();
-    
-    if (error) {
-      console.log("Erro ao inserir prova", error);
-      alert("Erro ao iniciar a gravação.");
-      return;
-    }
-    
+    // Ativa o estado localmente sem consumir IDs do banco antecipadamente
     setProvaAtiva(true);
-    set_idProvaAtual(data.id);
     setInicioTimestamp(agora);
     setNomeDefinitivoProva("");
-
-    // Salva o rascunho localmente no navegador por segurança
-    const rascunhoData = { id: data.id, nome: nomePadrao, inicio: agora };
-    localStorage.setItem("telemetria_rascunho", JSON.stringify(rascunhoData));
-    setRascunhoAtivo(rascunhoData);
+    setPedirConfirmacaoDescarte(false);
 
     dispararToast("Gravação iniciada com sucesso!");
-    console.log("Prova iniciada com ID: ", data.id);
   }
 
   // Ao clicar em Fim, captura o horário de término e abre a telinha bonita
@@ -675,6 +690,7 @@ async function prova_iniciar() {
       return;  
     }
     setFimTimestamp(new Date().toISOString());
+    setPedirConfirmacaoDescarte(false);
     setShowModalFinalizacao(true);
   }
 
@@ -685,13 +701,19 @@ async function prova_iniciar() {
       return;
     }
 
-    const { error } = await supabase
+    // O Supabase insere o registro agora e gera o ID sequencial correto (ex: 8)
+    const { data, error } = await supabase
       .from("estado_prova")
-      .update({
-        nome: nomeDefinitivoProva,
-        fim: fimTimestamp || new Date().toISOString()
-      })
-      .eq("id", idProvaAtual);
+      .insert([
+        {      
+          nome: nomeDefinitivoProva,
+          inicio: inicioTimestamp,
+          fim: fimTimestamp || new Date().toISOString()
+        },
+      ])
+      .select()
+      .single();
+
     
     if (error) {
       console.log("Erro ao salvar a prova: ", error);
@@ -700,37 +722,44 @@ async function prova_iniciar() {
     }
     
     setProvaAtiva(false);
-    set_idProvaAtual(-1);
     setShowModalFinalizacao(false);
-    localStorage.removeItem("telemetria_rascunho");
-    setRascunhoAtivo(null);
-    dispararToast("Gravação salva com sucesso!");
+    setPedirConfirmacaoDescarte(false);
+    dispararToast(`Gravação #${data.id} salva com sucesso!`);
   }
 
-  // Opção 2: Deixar como rascunho (fecha o modal, mas mantém salvo no navegador)
-  function deixarComoRascunho() {
-    setProvaAtiva(false);
-    setShowModalFinalizacao(false);
-    dispararToast("Gravação guardada como rascunho com segurança!", "aviso");
-  }
+// Opção 2: Salvar como Rascunho no banco (Gera o ID sequencial oficial)
+  async function deixarComoRascunho() {
+    const nomeRascunho = nomeDefinitivoProva.trim() || `Rascunho - ${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR")}`;
 
-  // Opção 3: Descartar (apaga do Supabase e limpa o cache)
-  async function executarDescarte() {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("estado_prova")
-      .delete()
-      .eq("id", idProvaAtual);
+      .insert([
+        {      
+          nome: nomeRascunho,
+          inicio: inicioTimestamp,
+          fim: fimTimestamp || new Date().toISOString()
+        },
+      ])
+      .select()
+      .single();
 
     if (error) {
-      console.log("Erro ao descartar prova:", error);
+      dispararToast("Erro ao guardar rascunho.", "erro");
+      return;
     }
 
     setProvaAtiva(false);
-    set_idProvaAtual(-1);
     setShowModalFinalizacao(false);
-    localStorage.removeItem("telemetria_rascunho");
-    setRascunhoAtivo(null);
-    dispararToast("Gravação descartada.", "erro");
+    setPedirConfirmacaoDescarte(false);
+    dispararToast(`Rascunho #${data.id} guardado com segurança!`, "aviso");
+  }
+
+// Opção 3: Descartar (Como nada foi pro banco, basta resetar a tela)
+  function executarDescarte() {
+    setProvaAtiva(false);
+    setShowModalFinalizacao(false);
+    setPedirConfirmacaoDescarte(false);
+    dispararToast("Gravação descartada. Nenhum ID foi consumido.", "erro");
   }
 
   // Função auxiliar para formatar datas no padrão brasileiro
@@ -2410,10 +2439,10 @@ if (isLoadingSession) {
                   Reveja os dados abaixo e escolha como deseja proceder com a prova.
                 </p>
 
-                <div className={`p-4 rounded-2xl border mb-5 text-xs flex flex-col gap-2 ${darkMode ? "bg-gray-900/60 border-gray-700 text-gray-300" : "bg-gray-50 border-gray-200 text-gray-700"}`}>
+                  <div className={`p-4 rounded-2xl border mb-5 text-xs flex flex-col gap-2 ${darkMode ? "bg-gray-900/60 border-gray-700 text-gray-300" : "bg-gray-50 border-gray-200 text-gray-700"}`}>
                   <div className="flex justify-between items-center">
-                    <span className="font-bold text-gray-500">ID da Gravação:</span>
-                    <span className="font-mono font-bold">#{idProvaAtual}</span>
+                    <span className="font-bold text-gray-500">Status:</span>
+                    <span className="font-mono font-bold text-orange-500">Pronto para Gravar ID Sequencial</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="font-bold text-gray-500">Início:</span>
@@ -2492,7 +2521,9 @@ if (isLoadingSession) {
       {/* NOTIFICAÇÃO TOAST FLUTUANTE (Estilo Windows no canto da tela) */}
       {/* ========================================================= */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-[10000] animate-in slide-in-from-bottom-5 fade-in duration-300">
+        <div className={`fixed bottom-6 right-6 z-[10000] transition-all duration-500 transform ${
+          isExiting ? 'opacity-0 translate-y-2 scale-95' : 'opacity-100 translate-y-0 scale-100 animate-in slide-in-from-bottom-5'
+        }`}>
           <div className={`px-5 py-4 rounded-2xl shadow-2xl border flex items-center space-x-3 text-sm font-semibold backdrop-blur-xl ${
             toast.tipo === 'sucesso' 
               ? "bg-green-950/90 border-green-500/50 text-green-200 shadow-green-950/50" 
