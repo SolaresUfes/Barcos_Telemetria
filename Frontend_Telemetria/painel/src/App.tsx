@@ -133,6 +133,11 @@ export default function App() {
           // Se já tem sessão, roda a lógica de verificação e libera o acesso
           await verificarLogin();
         }
+        else {
+          // Se NÃO tem sessão, encerra o carregamento imediatamente para mostrar a tela de login
+          setIsLoadingSession(false);
+        }
+
       } catch (err) {
         console.error("Erro ao verificar sessão:", err);
       } finally {
@@ -157,57 +162,65 @@ export default function App() {
   }
 
   async function verificarLogin() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    if (!user) {
+      if (!user) {
+        setIsLoadingSession(false);
+        return;
+      }
+
+      // 1. Busca o acesso e as permissões no banco de dados
+      // Importante: 'tipo_acesso' - admin ou nao; 'eh_moderador' - moderador ou nao
+      const { data, error } = await supabase
+        .from("usuarios_autorizados")
+        .select("id, email, eh_moderador, tipo_acesso")
+        .eq("email", user.email)
+        .single();
+
+      if (error || !data) {
+        alert("Você não possui acesso a essa aplicação!");
+        await supabase.auth.signOut();
+        setIsLoadingSession(false);
+        return;
+      }
+
+      setIsLoggingIn(true);
+
+      // 2. Coleta os dados do perfil diretamente do Google
+      const googleName =
+        user.user_metadata.full_name || generateNameFromEmail(user.email || "");
+      const googlePhoto = user.user_metadata.avatar_url || "";
+
+      // 3. Monta o objeto usando a interface Member
+      const loggedMember: Member = {
+        id: data.id,
+        email: user.email!,
+        name: googleName,
+        mainRole: data.tipo_acesso || "",
+        isModerador: data.eh_moderador || false,
+        photo: googlePhoto,
+        isOnline: true,
+        lastSeen: "agora",
+      };
+
+      // 4. Aplica o usuário no sistema e libera a tela
+      setCurrentUser(loggedMember);
+      setShowUnlockAnim(true);
+      setIsLoggingIn(false);
+      setisLogged(true);
+
+      // Carrega a equipe em segundo plano ou aguarda
+
+      await buscarEquipe();
+    } catch (err) {
+      console.error("Erro ao verificar login:", err);
+    } finally {
+      // GARANTE que a tela de loading vai sumir independentemente do que aconteça
       setIsLoadingSession(false);
-      return;
     }
-
-    // 1. Busca o acesso e as permissões no banco de dados
-    // Importante: 'tipo_acesso' - admin ou nao; 'eh_moderador' - moderador ou nao
-    const { data, error } = await supabase
-      .from("usuarios_autorizados")
-      .select("id, email, eh_moderador, tipo_acesso")
-      .eq("email", user.email)
-      .single();
-
-    if (error || !data) {
-      alert("Você não possui acesso a essa aplicação!");
-      await supabase.auth.signOut();
-      setIsLoadingSession(false);
-      return;
-    }
-
-    setIsLoggingIn(true);
-
-    // 2. Coleta os dados do perfil diretamente do Google
-    const googleName =
-      user.user_metadata.full_name || generateNameFromEmail(user.email || "");
-    const googlePhoto = user.user_metadata.avatar_url || "";
-
-    // 3. Monta o objeto usando a interface Member
-    const loggedMember: Member = {
-      id: data.id,
-      email: user.email!,
-      name: googleName,
-      mainRole: data.tipo_acesso || "",
-      isModerador: data.eh_moderador || false,
-      photo: googlePhoto,
-      isOnline: true,
-      lastSeen: "agora",
-    };
-
-    // 4. Aplica o usuário no sistema e libera a tela
-    setCurrentUser(loggedMember);
-    setShowUnlockAnim(true);
-    setIsLoggingIn(false);
-    setisLogged(true);
-
-    buscarEquipe();
-    setIsLoadingSession(false);
   }
 
   async function logoutGoogle() {
