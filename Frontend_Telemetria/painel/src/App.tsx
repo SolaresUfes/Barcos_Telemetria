@@ -734,23 +734,32 @@ function prova_iniciar() {
     setShowModalFinalizacao(true);
   }
 
-// Opção 1: Salvar definitivo (Preservando o ID do rascunho se houver)
+// Opção 1: Salvar definitivo (Calcula sempre o próximo ID sequencial correto)
   async function salvarProvaComNome() {
     if (!nomeDefinitivoProva.trim()) {
       dispararToast("Por favor, digite um nome para a gravação.", "aviso");
       return;
     }
 
-    const dadosInsercao: any = {
+    // Determina o ID: usa o do rascunho se existir, senão busca o maior ID atual no Supabase + 1
+    let idParaSalvar = rascunhoAtivo?.id;
+
+    if (!idParaSalvar) {
+      const { data: ultimoRegistro } = await supabase
+        .from("estado_prova")
+        .select("id")
+        .order("id", { ascending: false })
+        .limit(1);
+
+      idParaSalvar = ultimoRegistro && ultimoRegistro.length > 0 ? ultimoRegistro[0].id + 1 : 1;
+    }
+
+    const dadosInsercao = {
+      id: idParaSalvar,
       nome: nomeDefinitivoProva,
       inicio: inicioTimestamp,
       fim: fimTimestamp || new Date().toISOString()
     };
-
-    // Se a gravação veio de um rascunho, força o envio do ID previsto (ex: #8)
-    if (rascunhoAtivo && rascunhoAtivo.id) {
-      dadosInsercao.id = rascunhoAtivo.id;
-    }
 
     const { data, error } = await supabase
       .from("estado_prova")
