@@ -828,67 +828,37 @@ if (isLoadingSession) {
             </span>
           </div>
         </div>
-
+        
+        {/* Modo Piloto: Mapa ou Instrumentos*/}
         {showPilotMap ? (
-          <div className={`transition-all duration-300 ${
-            isPilotMapFullscreen 
-              ? "fixed inset-0 z-[100] bg-black flex flex-col" 
-              : "flex-1 w-full max-w-5xl mx-auto pb-4 md:pb-8 min-h-0 flex flex-col animate-in fade-in duration-300"
-          }`}>
-            <div
-              className={`flex-1 overflow-hidden relative flex items-center justify-center transition-colors duration-300 ${
-                isPilotMapFullscreen 
-                  ? "w-full h-full bg-[#0a0a0a]" 
-                  : `rounded-3xl border-2 shadow-2xl ${darkMode ? "bg-[#0a0a0a] border-gray-800" : "bg-white border-gray-300"}`
-              }`}
-            >
-              {/* Botão de Tela Cheia no Modo Piloto */}
+          <div className="flex-1 w-full h-full flex flex-col min-h-0 relative overflow-hidden">
+            <div className="flex-1 w-full h-full relative overflow-hidden flex flex-col">
+              {/* Botão de Tela Cheia no Modo Piloto (Aciona F11 nativo) */}
               <button
-                onClick={() => setIsPilotMapFullscreen(!isPilotMapFullscreen)}
-                className={`absolute top-4 right-4 md:top-6 md:right-6 z-[60] p-3 md:p-4 rounded-xl shadow-xl border backdrop-blur-md transition-all hover:scale-105 active:scale-95 flex items-center justify-center ${
+                onClick={() => {
+                  const nextState = !isPilotMapFullscreen;
+                  setIsPilotMapFullscreen(nextState);
+                  if (nextState && document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen().catch(() => {});
+                  } else if (!nextState && document.exitFullscreen) {
+                    document.exitFullscreen().catch(() => {});
+                  }
+                }}
+                className={`absolute top-4 right-4 z-[60] p-3 rounded-xl shadow-2xl border backdrop-blur-md transition-all hover:scale-105 active:scale-95 flex items-center justify-center ${
                   darkMode || isPilotMapFullscreen
-                    ? "bg-gray-900/80 border-gray-700 text-gray-200 hover:text-white hover:bg-gray-800" 
-                    : "bg-white/90 border-gray-300 text-gray-700 hover:text-black hover:bg-gray-50"
+                    ? "bg-gray-900/80 border-gray-700 text-gray-200 hover:text-white" 
+                    : "bg-white/90 border-gray-300 text-gray-700 hover:text-black"
                 }`}
                 title={isPilotMapFullscreen ? "Sair da Tela Cheia" : "Modo Tela Cheia"}
               >
-                {isPilotMapFullscreen ? <Minimize size={28} /> : <Maximize size={28} />}
+                {isPilotMapFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
               </button>
 
-              {/* Textura de fundo (pointer-events-none garante que não bloqueie toques) */}
-              <div
-                className={`absolute inset-0 ${darkMode || isPilotMapFullscreen ? "opacity-10" : "opacity-[0.03]"} bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pointer-events-none`}
-              ></div>
-
-              <div className="relative z-10 flex flex-col items-center animate-bounce">
-                <MapPin
-                  size={64}
-                  className="text-emerald-500 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]"
-                />
-                <span
-                  className={`mt-4 px-6 py-2 rounded-full text-lg font-bold shadow-lg border uppercase tracking-widest ${darkMode || isPilotMapFullscreen ? "bg-gray-900 text-white border-gray-700" : "bg-white text-gray-900 border-gray-300"}`}
-                >
-                  Posição Atual
-                </span>
-              </div>
-
-              <div
-                className={`absolute bottom-6 left-6 md:bottom-8 md:left-8 p-4 md:p-6 rounded-2xl border-2 shadow-2xl backdrop-blur-md transition-colors z-10 ${darkMode || isPilotMapFullscreen ? "bg-gray-900/90 border-gray-700 text-white" : "bg-white/90 border-gray-300 text-gray-900"}`}
-              >
-                <p
-                  className={`text-xs md:text-sm uppercase font-bold mb-2 md:mb-3 tracking-widest ${darkMode || isPilotMapFullscreen ? "text-gray-400" : "text-gray-500"}`}
-                >
-                  Coordenadas
-                </p>
-                <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 font-mono text-lg md:text-2xl font-bold">
-                  <div>
-                    <span className="text-orange-500 mr-2">LAT</span> -20.2976
-                  </div>
-                  <div>
-                    <span className="text-blue-500 mr-2">LON</span> -40.2958
-                  </div>
-                </div>
-              </div>
+              <iframe 
+                src="https://dsb-rastreio.vercel.app/" 
+                title="DSB Rastreio Map Pilot"
+                className="w-full h-full border-0"
+              />
             </div>
           </div>
 
@@ -2185,11 +2155,10 @@ if (isLoadingSession) {
 
           ) : activeTab === "Mapa" ? (
 
-            <div className={`transition-all duration-300 ${isMapFullscreen ? "fixed inset-0 z-[100] p-2 md:p-6 bg-gray-900/95 backdrop-blur-sm flex flex-col" : "h-full w-full max-w-6xl mx-auto flex flex-col animate-in fade-in duration-300 min-h-0"}`}>
+            <div className={`transition-all duration-300 ${isMapFullscreen ? "fixed inset-0 z-[100] bg-black flex flex-col" : "h-full w-full flex flex-col animate-in fade-in duration-300 min-h-0"}`}>
               {/* #region Aba Mapa */}
-              {/*Esconde o título quando tiver na tela cheia pra ter mais espaço*/}
-              {!isMapFullscreen && ( // se o mapa não estiver em tela cheia, mostra o título
-                <div className="flex items-center space-x-3 mb-4 shrink-0">
+              {!isMapFullscreen && (
+                <div className="flex items-center space-x-3 mb-4 shrink-0 px-2 md:px-0">
                   <div className="p-3 bg-emerald-500/10 rounded-2xl">
                     <Map className="text-emerald-500" size={28} />
                   </div>
@@ -2205,36 +2174,37 @@ if (isLoadingSession) {
               )}
 
               
-              <div
-                className={`flex-1 overflow-hidden relative flex flex-col transition-all duration-300 min-h-0 ${
-                  isMapFullscreen 
-                    ? "rounded-2xl border-2 border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.2)] w-full h-full" 
-                    : `rounded-2xl md:rounded-3xl border shadow-sm ${darkMode ? "bg-gray-800/80 border-gray-700" : "bg-gray-200 border-gray-300"}`
-                }`}
-              >
-
-                {/* Botão flutuante de Tela Cheia */}
+              <div className="flex-1 w-full h-full relative overflow-hidden flex flex-col">
+                {/* Botão flutuante de Tela Cheia (Ativa F11 nativo) */}
                 <button
-                  onClick={() => setIsMapFullscreen(!isMapFullscreen)}
-                  className={`absolute bottom-6 right-6 z-[60] p-3 rounded-xl shadow-2xl border backdrop-blur-md transition-all hover:scale-105 active:scale-95 flex items-center justify-center ${
+                  onClick={() => {
+                    const nextState = !isMapFullscreen;
+                    setIsMapFullscreen(nextState);
+                    if (nextState && document.documentElement.requestFullscreen) {
+                      document.documentElement.requestFullscreen().catch(() => {});
+                    } else if (!nextState && document.exitFullscreen) {
+                      document.exitFullscreen().catch(() => {});
+                    }
+                  }}
+                  className={`absolute top-4 right-4 z-[60] p-3 rounded-xl shadow-2xl border backdrop-blur-md transition-all hover:scale-105 active:scale-95 flex items-center justify-center ${
                     darkMode || isMapFullscreen
-                      ? "bg-gray-900/80 border-gray-700 text-gray-200 hover:text-white hover:bg-gray-800" 
-                      : "bg-white/90 border-gray-300 text-gray-700 hover:text-black hover:bg-gray-50"
+                      ? "bg-gray-900/80 border-gray-700 text-gray-200 hover:text-white" 
+                      : "bg-white/90 border-gray-300 text-gray-700 hover:text-black"
                   }`}
                   title={isMapFullscreen ? "Sair da Tela Cheia" : "Modo Tela Cheia"}
                 >
                   {isMapFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
                 </button>
 
-                  {/* Iframe carregando o dsb-rastreio */}
-                  <iframe 
-                    src="https://dsb-rastreio.vercel.app/" 
-                    title="DSB Rastreio Map"
-                    className="w-full h-full border-0"
-                  />
-                </div>
-                {/* #endregion */}
+                {/* Iframe carregando o dsb-rastreio */}
+                <iframe 
+                  src="https://dsb-rastreio.vercel.app/" 
+                  title="DSB Rastreio Map"
+                  className="w-full h-full border-0"
+                />
               </div>
+              {/* #endregion */}
+            </div>
             
           ) : (
             <div className="flex h-full items-center justify-center text-gray-500">
