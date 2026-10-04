@@ -240,7 +240,7 @@ async function buscarEquipe() {
       .select("id, email, tipo_acesso, eh_moderador");
 
     if (error) {
-      console.error("Erro ao carregar a equipe:", error);
+      console.error("Erro ao carregar a equipa:", error);
       return;
     }
 
@@ -248,10 +248,11 @@ async function buscarEquipe() {
       const equipeDoBanco: Member[] = data.map((m) => {
         const nome = generateNameFromEmail(m.email);
         
-        // Se for o usuário logado atual, mantém a foto real do Google dele
+        // Se for o teu utilizador atual, mantém a tua foto real do Google. 
+        // Para os restantes, gera um avatar ilustrado único baseado no e-mail deles.
         const fotoFinal = (currentUser && m.email === currentUser.email && currentUser.photo)
           ? currentUser.photo
-          : `https://ui-avatars.com/api/?name=${encodeURIComponent(nome)}&background=random&color=fff`;
+          : `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(m.email)}`;
 
         return {
           id: m.id,
