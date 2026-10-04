@@ -308,10 +308,16 @@ async function buscarEquipe() {
   const [nomeDefinitivoProva, setNomeDefinitivoProva] = useState("");
   const [inicioTimestamp, setInicioTimestamp] = useState<string | null>(null);
   const [fimTimestamp, setFimTimestamp] = useState<string | null>(null);
-const [rascunhoAtivo, setRascunhoAtivo] = useState<{ id: number; nome: string; inicio: string | null } | null>(null);  // Novos estados para Notificações (Toast) e Confirmação de Descarte
+  const [rascunhoAtivo, setRascunhoAtivo] = useState<{ id: number; nome: string; inicio: string | null } | null>(null);  // Novos estados para Notificações (Toast) e Confirmação de Descarte
   const [toast, setToast] = useState<{ mensagem: string; tipo: 'sucesso' | 'aviso' | 'erro' } | null>(null);
   const [isExiting, setIsExiting] = useState(false);
   const [pedirConfirmacaoDescarte, setPedirConfirmacaoDescarte] = useState(false);
+  // Estados para a Planilha de Provas Salvas
+  const [showModalAnalise, setShowModalAnalise] = useState(false);
+  const [listaProvas, setListaProvas] = useState<any[]>([]);
+  const [carregandoProvas, setCarregandoProvas] = useState(false);
+  const [idEditando, setIdEditando] = useState<number | null>(null);
+  const [novoNomeEditado, setNovoNomeEditado] = useState("");
 
 // Função auxiliar para disparar notificações com animação de esmaecimento
   function dispararToast(mensagem: string, tipo: 'sucesso' | 'aviso' | 'erro' = 'sucesso') {
@@ -805,6 +811,63 @@ function prova_iniciar() {
     if (!isoString) return "-";
     return new Date(isoString).toLocaleString("pt-BR");
   };
+
+  // Função para buscar todas as provas salvas no Supabase
+  async function abrirAnaliseDeDados() {
+    setShowModalAnalise(true);
+    setCarregandoProvas(true);
+
+    const { data, error } = await supabase
+      .from("estado_prova")
+      .select("*")
+      .order("id", { ascending: false });
+
+    if (error) {
+      console.error("Erro ao buscar provas:", error);
+      dispararToast("Erro ao carregar as gravações.", "erro");
+    } else {
+      setListaProvas(data || []);
+    }
+    setCarregandoProvas(false);
+  }
+
+  // Função para salvar a edição do nome da prova
+  async function salvarEdicaoNome(id: number) {
+    if (!novoNomeEditado.trim()) {
+      dispararToast("O nome não pode ficar vazio.", "aviso");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("estado_prova")
+      .update({ nome: novoNomeEditado })
+      .eq("id", id);
+
+    if (error) {
+      dispararToast("Erro ao atualizar o nome.", "erro");
+    } else {
+      dispararToast("Nome atualizado com sucesso!");
+      setListaProvas(listaProvas.map(p => p.id === id ? { ...p, nome: novoNomeEditado } : p));
+      setIdEditando(null);
+    }
+  }
+
+  // Função para apagar uma gravação do Supabase
+  async function deletarProvaBanco(id: number) {
+    if (!window.confirm(`Tem certeza que deseja apagar a gravação #${id}?`)) return;
+
+    const { error } = await supabase
+      .from("estado_prova")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      dispararToast("Erro ao apagar a gravação.", "erro");
+    } else {
+      dispararToast("Gravação apagada com sucesso!");
+      setListaProvas(listaProvas.filter(p => p.id !== id));
+    }
+  }
 
 // --- TELA DE CARREGAMENTO INICIAL (Fica no escopo principal do componente) ---
 if (isLoadingSession) {
@@ -2281,10 +2344,14 @@ if (isLoadingSession) {
                     </p>
                   </div>
 
-                  <button className="w-full py-4 md:py-5 px-6 rounded-2xl font-bold text-white uppercase tracking-wider flex items-center justify-center transition-all bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 shadow-xl shadow-orange-500/20 hover:scale-[1.02] mt-auto">
+                  <button 
+                    onClick={abrirAnaliseDeDados}
+                    className="w-full py-4 md:py-5 px-6 rounded-2xl font-bold text-white uppercase tracking-wider flex items-center justify-center transition-all bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 shadow-xl shadow-orange-500/20 hover:scale-[1.02] mt-auto"
+                  >
                     <Database size={20} className="mr-2" />
                     Análise de Dados de Prova
                   </button>
+
                 </div>
               </div>
               
@@ -2558,6 +2625,122 @@ if (isLoadingSession) {
               toast.tipo === 'sucesso' ? "bg-green-400 animate-ping" : toast.tipo === 'aviso' ? "bg-yellow-400" : "bg-red-400"
             }`}></span>
             <span>{toast.mensagem}</span>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL / PLANILHA DE ANÁLISE E GESTÃO DE PROVAS SALVAS     */}
+      {/* ========================================================= */}
+      {showModalAnalise && (
+        <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className={`max-w-4xl w-full max-h-[85vh] p-6 md:p-8 rounded-3xl shadow-2xl border flex flex-col ${darkMode ? "bg-gray-800 border-gray-700 text-white" : "bg-white border-gray-200 text-gray-900"}`}>
+            
+            <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-700/50">
+              <div className="flex items-center space-x-3">
+                <div className="p-3 bg-orange-500/10 rounded-2xl text-orange-500">
+                  <Database size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">Gravações Salvas no Supabase</h3>
+                  <p className="text-xs text-gray-400">Consulte, edite o nome ou elimine registos de provas anteriores.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowModalAnalise(false)}
+                className="px-4 py-2 bg-gray-700/50 hover:bg-gray-700 text-gray-300 rounded-xl font-bold text-sm transition-all"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto min-h-[300px]">
+              {carregandoProvas ? (
+                <div className="flex flex-col items-center justify-center py-20 gap-3">
+                  <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-sm text-gray-400">A carregar registos do Supabase...</p>
+                </div>
+              ) : listaProvas.length === 0 ? (
+                <div className="text-center py-20 text-gray-500 font-medium">
+                  Nenhuma gravação encontrada na base de dados.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className={`border-b text-xs uppercase tracking-wider text-gray-400 ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
+                        <th className="py-3 px-4">ID</th>
+                        <th className="py-3 px-4">Nome da Prova</th>
+                        <th className="py-3 px-4">Início</th>
+                        <th className="py-3 px-4">Fim</th>
+                        <th className="py-3 px-4 text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700/30 text-sm">
+                      {listaProvas.map((prova) => (
+                        <tr key={prova.id} className={`transition-colors ${darkMode ? "hover:bg-gray-700/30" : "hover:bg-gray-50"}`}>
+                          <td className="py-3 px-4 font-mono font-bold text-orange-500">#{prova.id}</td>
+                          
+                          <td className="py-3 px-4">
+                            {idEditando === prova.id ? (
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="text"
+                                  value={novoNomeEditado}
+                                  onChange={(e) => setNovoNomeEditado(e.target.value)}
+                                  className={`px-3 py-1 rounded-lg border text-sm outline-none focus:ring-2 focus:ring-orange-500 ${darkMode ? "bg-gray-900 border-gray-600 text-white" : "bg-white border-gray-300"}`}
+                                  autoFocus
+                                />
+                                <button
+                                  onClick={() => salvarEdicaoNome(prova.id)}
+                                  className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-lg transition-all"
+                                >
+                                  Salvar
+                                </button>
+                                <button
+                                  onClick={() => setIdEditando(null)}
+                                  className="px-2 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs font-bold rounded-lg transition-all"
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="font-semibold">{prova.nome}</span>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-4 text-xs text-gray-400">{formatarDataHora(prova.inicio)}</td>
+                          <td className="py-3 px-4 text-xs text-gray-400">{formatarDataHora(prova.fim)}</td>
+
+                          <td className="py-3 px-4 text-right space-x-2">
+                            {idEditando !== prova.id && (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setIdEditando(prova.id);
+                                    setNovoNomeEditado(prova.nome);
+                                  }}
+                                  className="px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-bold text-xs rounded-xl transition-all border border-blue-500/20"
+                                >
+                                  Editar Nome
+                                </button>
+                                <button
+                                  onClick={() => deletarProvaBanco(prova.id)}
+                                  className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold text-xs rounded-xl transition-all border border-red-500/20"
+                                >
+                                  Apagar
+                                </button>
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
           </div>
         </div>
       )}
