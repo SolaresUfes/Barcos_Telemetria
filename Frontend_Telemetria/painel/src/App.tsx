@@ -307,6 +307,9 @@ async function buscarEquipe() {
   const [speed, setSpeed] = useState(-1);                              // Velocidade do motor (em Km/h)
   const [string_1, setString_1] = useState(-1);
   const [string_2, setString_2] = useState(-1);
+
+  const [idProvaAtual, set_idProvaAtual] = useState(-1)
+  const [nomeProva, set_nomeProva] = useState("null")
   
   // #endregion
 
@@ -602,6 +605,67 @@ async function buscarEquipe() {
       console.error("Erro ao buscar células:", error);
     }
   };
+
+
+
+
+
+
+
+
+
+
+  async function prova_iniciar(nomeProva: string) {
+
+    
+    const { data, error } = await supabase
+    .from("estado_prova")
+    .insert([
+      {      
+        nome: nomeProva   
+      },
+    ])
+    .select()
+    .single()
+    
+    if (error) {
+      console.log("Erro ao inserir prova", error);
+      return;
+    }
+    
+    setProvaAtiva(true);
+
+    set_idProvaAtual(data.id);
+
+    console.log("Prova iniciada: ", nomeProva);
+    console.log("ID da prova: ", data.id);
+  }
+
+
+  async function prova_finalizar() {
+    
+    if (idProvaAtual == -1) {
+      console.log("Nenhuma prova ativa para finalizar!");   
+      return;  
+    }
+    
+    const { error } = await supabase
+    .from("estado_prova")
+    .update({
+      fim: new Date().toISOString()
+    })
+    .eq("id", idProvaAtual);
+    
+    if (error) {
+      console.log("Erro ao finalizar a prova. ID: ", error)    
+      return;  
+    }
+    
+    setProvaAtiva(false)
+    console.log("Prova finalizada com sucesso!");
+
+    set_idProvaAtual(-1)
+  }
 
 // --- TELA DE CARREGAMENTO INICIAL (Fica no escopo principal do componente) ---
 if (isLoadingSession) {
@@ -2028,15 +2092,22 @@ if (isLoadingSession) {
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-4 w-full mt-auto">
+                    <input
+                      type="text"
+                      placeholder="Nome da prova"
+                      value={nomeProva}
+                      onChange={(e) => set_nomeProva(e.target.value)}
+                    />
+                    
                     <button
-                      onClick={() => setProvaAtiva(true)}
+                      onClick={() => prova_iniciar(nomeProva)}
                       disabled={provaAtiva}
                       className="flex-1 py-4 px-6 rounded-2xl font-bold text-white uppercase tracking-wider flex items-center justify-center transition-all bg-green-500 hover:bg-green-600 disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-green-500/20 hover:scale-[1.02]"
                     >
                       <Play size={20} className="mr-2" /> Início
                     </button>
                     <button
-                      onClick={() => setProvaAtiva(false)}
+                      onClick={() => prova_finalizar()}
                       disabled={!provaAtiva}
                       className="flex-1 py-4 px-6 rounded-2xl font-bold text-white uppercase tracking-wider flex items-center justify-center transition-all bg-red-500 hover:bg-red-600 disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-red-500/20 hover:scale-[1.02]"
                     >
