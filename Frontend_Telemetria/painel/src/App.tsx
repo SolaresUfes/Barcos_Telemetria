@@ -123,7 +123,7 @@ export default function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
 
-  // 2. Verifica a sessão automaticamente assim que o app carrega
+  // Verifica a sessão automaticamente assim que o app carrega
   useEffect(() => {
     async function checkInitialSession() {
       try {
@@ -161,67 +161,60 @@ export default function App() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (user) {
-      // 1. Busca o acesso e as permissões no banco de dados
-      // Importante: 'tipo_acesso' - admin ou nao; 'eh_moderador' - moderador ou nao
-      const { data, error } = await supabase
-        .from("usuarios_autorizados")
-        .select("id, email, eh_moderador, tipo_acesso")
-        .eq("email", user.email)
-        .single();
-
-      if (error || !data) {
-        alert("Você não possui acesso a essa aplicação!");
-        await supabase.auth.signOut();
-        return;
-      }
-
-      setIsLoggingIn(true);
-
-      // 2. Coleta os dados do perfil diretamente do Google
-      const googleName =
-        user.user_metadata.full_name || generateNameFromEmail(user.email || "");
-      const googlePhoto = user.user_metadata.avatar_url || "";
-
-      // 3. Monta o objeto usando a interface Member
-      const loggedMember: Member = {
-        id: data.id,
-        email: user.email!,
-        name: googleName,
-        mainRole: data.tipo_acesso || "",
-        isModerador: data.eh_moderador || false,
-        photo: googlePhoto,
-        isOnline: true,
-        lastSeen: "agora",
-      };
-
-      // 4. Aplica o usuário no sistema e libera a tela
-      setCurrentUser(loggedMember);
-      setShowUnlockAnim(true);
-      setIsLoggingIn(false);
-      setisLogged(true);
+    if (!user) {
+      setIsLoadingSession(false);
+      return;
     }
 
-    if (isLoadingSession) {
-        return (
-          <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-sm font-medium">Carregando painel...</p>
-            </div>
-          </div>
-        );
-      }
+    // 1. Busca o acesso e as permissões no banco de dados
+    // Importante: 'tipo_acesso' - admin ou nao; 'eh_moderador' - moderador ou nao
+    const { data, error } = await supabase
+      .from("usuarios_autorizados")
+      .select("id, email, eh_moderador, tipo_acesso")
+      .eq("email", user.email)
+      .single();
 
+    if (error || !data) {
+      alert("Você não possui acesso a essa aplicação!");
+      await supabase.auth.signOut();
+      setIsLoadingSession(false);
+      return;
+    }
+
+    setIsLoggingIn(true);
+
+    // 2. Coleta os dados do perfil diretamente do Google
+    const googleName =
+      user.user_metadata.full_name || generateNameFromEmail(user.email || "");
+    const googlePhoto = user.user_metadata.avatar_url || "";
+
+    // 3. Monta o objeto usando a interface Member
+    const loggedMember: Member = {
+      id: data.id,
+      email: user.email!,
+      name: googleName,
+      mainRole: data.tipo_acesso || "",
+      isModerador: data.eh_moderador || false,
+      photo: googlePhoto,
+      isOnline: true,
+      lastSeen: "agora",
+    };
+
+    // 4. Aplica o usuário no sistema e libera a tela
+    setCurrentUser(loggedMember);
+    setShowUnlockAnim(true);
+    setIsLoggingIn(false);
+    setisLogged(true);
+
+    buscarEquipe();
+    setIsLoadingSession(false);
   }
 
   async function logoutGoogle() {
     await supabase.auth.signOut();
     setisLogged(false);
     window.location.reload();
-    // set_paginaLogin(true)
     alert("Log Out concluido!");
-    console.log("A");
   }
 
   async function buscarEquipe() {
@@ -247,11 +240,22 @@ export default function App() {
           isOnline: false,
           lastSeen: "offline",
         };
-      });
+    });
 
-      setMembers(equipeDoBanco);
-    }
+    setMembers(equipeDoBanco);
   }
+}
+// --- TELA DE CARREGAMENTO INICIAL (Fica no escopo principal do componente) ---
+if (isLoadingSession) {
+  return (
+    <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-sm font-medium">Carregando painel...</p>
+      </div>
+    </div>
+  );
+}
 
   // #region Estados - Controle de Usuário e Login
   const [members, setMembers] = useState<Member[]>([]);
