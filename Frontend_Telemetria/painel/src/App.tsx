@@ -291,6 +291,12 @@ async function buscarEquipe() {
   const [recordingTime, setRecordingTime] = useState(0);
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   const [isPilotMapFullscreen, setIsPilotMapFullscreen] = useState(false);
+  // Estados para o fluxo de gravação e rascunhos
+  const [showModalFinalizacao, setShowModalFinalizacao] = useState(false);
+  const [nomeDefinitivoProva, setNomeDefinitivoProva] = useState("");
+  const [inicioTimestamp, setInicioTimestamp] = useState<string | null>(null);
+  const [fimTimestamp, setFimTimestamp] = useState<string | null>(null);
+  const [rascunhoAtivo, setRascunhoAtivo] = useState<{ id: number; nome: string; inicio: string } | null>(null);
 
   // #endregion
 
@@ -309,7 +315,7 @@ async function buscarEquipe() {
   const [string_2, setString_2] = useState(-1);
 
   const [idProvaAtual, set_idProvaAtual] = useState(-1)
-  const [nomeProva, set_nomeProva] = useState("null")
+
   
   // #endregion
 
@@ -615,56 +621,125 @@ async function buscarEquipe() {
 
 
 
-  async function prova_iniciar(nomeProva: string) {
-
+async function prova_iniciar() {
+    const agora = new Date().toISOString();
+    const nomePadrao = `Gravação - ${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR")}`;
     
+    // Insere no banco com o timestamp de início imediato
     const { data, error } = await supabase
-    .from("estado_prova")
-    .insert([
-      {      
-        nome: nomeProva   
-      },
-    ])
-    .select()
-    .single()
+      .from("estado_prova")
+      .insert([
+        {      
+          nome: nomePadrao,
+          inicio: agora
+        },
+      ])
+      .select()
+      .single();
     
     if (error) {
       console.log("Erro ao inserir prova", error);
+      alert("Erro ao iniciar a gravação.");
       return;
     }
     
     setProvaAtiva(true);
-
     set_idProvaAtual(data.id);
+    setInicioTimestamp(agora);
+    setNomeDefinitivoProva("");
 
-    console.log("Prova iniciada: ", nomeProva);
-    console.log("ID da prova: ", data.id);
+    // Salva o rascunho localmente no navegador por segurança
+    const rascunhoData = { id: data.id, nome: nomePadrao, inicio: agora };
+    localStorage.setItem("telemetria_rascunho", JSON.stringify(rascunhoData));
+    setRascunhoAtivo(rascunhoData);
+
+    console.log("Prova iniciada com ID: ", data.id);
   }
 
-
-  async function prova_finalizar() {
-    
-    if (idProvaAtual == -1) {
-      console.log("Nenhuma prova ativa para finalizar!");   
+  // Ao clicar em Fim, captura o horário de término e abre a telinha bonita
+  function lidarComCliqueFim() {
+    if (idProvaAtual === -1) {
+      alert("Nenhuma gravação ativa no momento!");   
       return;  
     }
-    
+    setFimTimestamp(new Date().toISOString());
+    setShowModalFinalizacao(true);
+  }
+
+  // Opção 1: Salvar definitivo no Supabase
+  async function salvarProvaComNome() {
+    if (!nomeDefinitivoProva.trim()) {
+      alert("Por favor, digite um nome para a gravação.");
+      return;
+    }
+
     const { error } = await supabase
-    .from("estado_prova")
-    .update({
-      fim: new Date().toISOString()
-    })
-    .eq("id", idProvaAtual);
+      .from("estado_prova")
+      .update({
+        nome: nomeDefinitivoProva,
+        fim: fimTimestamp || new Date().toISOString()
+      })
+      .eq("id", idProvaAtual);
     
     if (error) {
-      console.log("Erro ao finalizar a prova. ID: ", error)    
-      return;  
+      console.log("Erro ao salvar a prova: ", error);
+      alert("Erro ao atualizar o registro no banco.");
+      return;
     }
     
-    setProvaAtiva(false)
-    console.log("Prova finalizada com sucesso!");
+    setProvaAtiva(false);
+    set_idProvaAtual(-1);
+    setShowModalFinalizacao(false);
+    localStorage.removeItem("telemetria_rascunho");
+    setRascunhoAtivo(null);
+    alert("Gravação salva com sucesso!");
+  }
 
-    set_idProvaAtual(-1)
+  // Opção 2: Deixar como rascunho (fecha o modal, mas mantém salvo no navegador)
+  function deixarComoRascunho() {
+    setProvaAtiva(false);
+    setShowModalFinalizacao(false);
+    alert("Gravação guardada como rascunho com segurança!");
+  }
+
+  // Opção 3: Descartar (apaga do Supabase e limpa o cache)
+  async function descartarProva() {
+    const { error } = await supabase
+      .from("estado_prova")
+      .delete()
+      .eq("id", idProvaAtual);
+
+    if (error) {
+      console.log("Erro ao descartar prova:", error);
+    }
+
+    setProvaAtiva(false);
+    set_idProvaAtual(-1);
+    setShowModalFinalizacao(false);
+    localStorage.removeItem("telemetria_rascunho");
+    setRascunhoAtivo(null);
+    alert("Gravação descartada.");
+  }
+
+  // Função auxiliar para formatar datas no padrão brasileiro
+  const formatarDataHora = (isoString: string | null) => {
+    if (!isoString) return "-";
+    return new Date(isoString).toLocaleString("pt-BR");
+  };
+
+  // Recupera o rascunho guardado caso tenha ocorrido falha ou reinício
+  function carregarRascunhoSalvo() {
+    const salvo = localStorage.getItem("telemetria_rascunho");
+    if (salvo) {
+      const parsed = JSON.parse(salvo);
+      setRascunhoAtivo(parsed);
+      set_idProvaAtual(parsed.id);
+      setInicioTimestamp(parsed.inicio);
+      setFimTimestamp(new Date().toISOString());
+      setShowModalFinalizacao(true); // Abre o modal diretamente com os dados do rascunho
+    } else {
+      alert("Nenhum rascunho pendente encontrado.");
+    }
   }
 
 // --- TELA DE CARREGAMENTO INICIAL (Fica no escopo principal do componente) ---
@@ -2044,7 +2119,7 @@ if (isLoadingSession) {
             </div>
 
           ) : activeTab === "Logs de Dados" ? (
-            <div className="h-full w-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 min-h-0">
+            <div className="h-full w-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 min-h-0 relative">
               <div className="flex items-center space-x-3 mb-6 shrink-0">
                 <div className="p-3 bg-indigo-500/10 rounded-2xl">
                   <Database className="text-indigo-500" size={28} />
@@ -2092,26 +2167,32 @@ if (isLoadingSession) {
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-4 w-full mt-auto">
-                    <input
-                      type="text"
-                      placeholder="Nome da prova"
-                      value={nomeProva}
-                      onChange={(e) => set_nomeProva(e.target.value)}
-                    />
-                    
                     <button
-                      onClick={() => prova_iniciar(nomeProva)}
+                      onClick={() => prova_iniciar()}
                       disabled={provaAtiva}
                       className="flex-1 py-4 px-6 rounded-2xl font-bold text-white uppercase tracking-wider flex items-center justify-center transition-all bg-green-500 hover:bg-green-600 disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-green-500/20 hover:scale-[1.02]"
                     >
                       <Play size={20} className="mr-2" /> Início
                     </button>
                     <button
-                      onClick={() => prova_finalizar()}
-                      disabled={!provaAtiva}
+                      onClick={() => lidarComCliqueFim()}
+                      disabled={!provaAtiva && idProvaAtual === -1}
                       className="flex-1 py-4 px-6 rounded-2xl font-bold text-white uppercase tracking-wider flex items-center justify-center transition-all bg-red-500 hover:bg-red-600 disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-red-500/20 hover:scale-[1.02]"
                     >
                       <Square size={20} className="mr-2 fill-current" /> Fim
+                    </button>
+                  </div>
+
+                  {/* Acesso ao Rascunho */}
+                  <div className="mt-4 pt-4 border-t border-gray-700/50 flex items-center justify-between">
+                    <span className="text-xs text-gray-400">
+                      {rascunhoAtivo ? `Rascunho pendente (ID: ${rascunhoAtivo.id})` : "Nenhum rascunho ativo"}
+                    </span>
+                    <button
+                      onClick={carregarRascunhoSalvo}
+                      className="text-xs px-3 py-1.5 bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 rounded-xl font-bold transition-all border border-yellow-500/30"
+                    >
+                      Aceder Rascunho
                     </button>
                   </div>
                 </div>
@@ -2142,7 +2223,71 @@ if (isLoadingSession) {
                   </button>
                 </div>
               </div>
+
+              {/* MODAL BONITO DE FINALIZAÇÃO COM OS DADOS DE INÍCIO E FIM */}
+              {showModalFinalizacao && (
+                <div className="absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+                  <div className={`max-w-md w-full p-6 md:p-8 rounded-3xl shadow-2xl border ${darkMode ? "bg-gray-800 border-gray-700 text-white" : "bg-white border-gray-200 text-gray-900"}`}>
+                    <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center mb-4 text-orange-500">
+                      <Activity size={24} />
+                    </div>
+
+                    <h3 className="text-xl font-bold mb-1">Finalizar Gravação</h3>
+                    <p className="text-sm text-gray-400 mb-4">
+                      Reveja os dados abaixo e escolha como deseja proceder com a prova.
+                    </p>
+
+                    {/* Caixa de Resumo de Início e Fim */}
+                    <div className={`p-4 rounded-2xl border mb-5 text-xs flex flex-col gap-2 ${darkMode ? "bg-gray-900/60 border-gray-700 text-gray-300" : "bg-gray-50 border-gray-200 text-gray-700"}`}>
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-gray-500">ID da Gravação:</span>
+                        <span className="font-mono font-bold">#{idProvaAtual}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-gray-500">Início:</span>
+                        <span className="font-medium">{formatarDataHora(inicioTimestamp)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-gray-500">Fim:</span>
+                        <span className="font-medium">{formatarDataHora(fimTimestamp)}</span>
+                      </div>
+                    </div>
+
+                    <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Nome Definitivo da Prova</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Prova Regata Solares 2026"
+                      value={nomeDefinitivoProva}
+                      onChange={(e) => setNomeDefinitivoProva(e.target.value)}
+                      className={`w-full px-4 py-3 rounded-xl border mb-6 outline-none focus:ring-2 focus:ring-orange-500 text-sm ${darkMode ? "bg-gray-900 border-gray-700 text-white" : "bg-gray-50 border-gray-300"}`}
+                      autoFocus
+                    />
+
+                    <div className="flex flex-col gap-2.5">
+                      <button
+                        onClick={salvarProvaComNome}
+                        className="w-full py-3.5 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-green-500/20 flex items-center justify-center"
+                      >
+                        Salvar Definitivo
+                      </button>
+                      <button
+                        onClick={deixarComoRascunho}
+                        className="w-full py-3.5 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-yellow-500/20 flex items-center justify-center"
+                      >
+                        Salvar como Rascunho
+                      </button>
+                      <button
+                        onClick={descartarProva}
+                        className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-bold rounded-xl transition-all border border-red-500/20 flex items-center justify-center"
+                      >
+                        Descartar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
+            
           ) : activeTab === "Análise" ? (
             <div className="h-full w-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 min-h-0">
               {/* #region Aba Análise */}
