@@ -2091,40 +2091,20 @@ export default function App() {
               </div>
 
               <div
-                className={`flex-1 rounded-2xl md:rounded-3xl overflow-hidden border shadow-sm relative flex items-center justify-center transition-colors duration-300 min-h-0 ${darkMode ? "bg-gray-800/80 border-gray-700" : "bg-gray-200 border-gray-300"}`}
+                className={`flex-1 rounded-2xl md:rounded-3xl overflow-hidden border shadow-sm relative flex flex-col transition-colors duration-300 min-h-0 ${darkMode ? "bg-gray-800/80 border-gray-700" : "bg-gray-200 border-gray-300"}`}
               >
-                <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-
-                <div className="relative z-10 flex flex-col items-center animate-bounce">
-                  <MapPin
-                    size={48}
-                    className="text-orange-500 drop-shadow-lg"
-                  />
-                  <span
-                    className={`mt-2 px-4 py-1.5 rounded-full text-sm font-bold shadow-lg ${darkMode ? "bg-gray-900 text-white" : "bg-white text-gray-800"}`}
-                  >
-                    Solares Atual
-                  </span>
-                </div>
-
-                <div
-                  className={`absolute bottom-4 left-4 md:bottom-6 md:left-6 p-3 md:p-4 rounded-xl md:rounded-2xl border shadow-lg backdrop-blur-md ${darkMode ? "bg-gray-900/80 border-gray-700 text-white" : "bg-white/80 border-gray-200 text-gray-800"}`}
-                >
-                  <p className="text-[10px] uppercase font-bold text-gray-500 mb-1 md:mb-2">
-                    Coordenadas
-                  </p>
-                  <div className="flex gap-3 md:gap-4 font-mono text-xs md:text-sm">
-                    <div>
-                      <span className="text-orange-500 mr-1">LAT</span> -20.2976
-                    </div>
-                    <div>
-                      <span className="text-blue-500 mr-1">LON</span> -40.2958
-                    </div>
-                  </div>
-                </div>
+                {/* Iframe carregando o dsb-rastreio */}
+                <iframe 
+                  src="https://dsb-rastreio.vercel.app/" 
+                  title="DSB Rastreio Map"
+                  className="w-full h-full border-0"
+                />
               </div>
               {/* #endregion */}
+
+              
             </div>
+            
           ) : (
             <div className="flex h-full items-center justify-center text-gray-500">
               <p className="text-xl">Área de {activeTab} em desenvolvimento.</p>
