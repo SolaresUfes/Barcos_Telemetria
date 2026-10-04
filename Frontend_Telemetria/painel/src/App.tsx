@@ -140,10 +140,8 @@ export default function App() {
 
       } catch (err) {
         console.error("Erro ao verificar sessão:", err);
-      } finally {
-        // Terminou de checar (com ou sem sessão), então tira a tela de "carregando"
         setIsLoadingSession(false);
-      }
+      } 
     }
 
     checkInitialSession();
@@ -158,7 +156,7 @@ export default function App() {
       alert("Deu ruim!");
     }
 
-    verificarLogin();
+    // Não deve chamar verificarLogin aqui, pois a página será recarregada após o retorno do Google
   }
 
   async function verificarLogin() {
@@ -258,18 +256,6 @@ export default function App() {
     setMembers(equipeDoBanco);
   }
 }
-// --- TELA DE CARREGAMENTO INICIAL (Fica no escopo principal do componente) ---
-if (isLoadingSession) {
-  return (
-    <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-sm font-medium">Carregando painel...</p>
-      </div>
-    </div>
-  );
-}
-
   // #region Estados - Controle de Usuário e Login
   const [members, setMembers] = useState<Member[]>([]);
   const [currentUser, setCurrentUser] = useState<Member | null>(null);
@@ -306,6 +292,18 @@ if (isLoadingSession) {
   const [string_2, setString_2] = useState(-1);
   
   // #endregion
+
+// --- TELA DE CARREGAMENTO INICIAL (Movido para depois das declarações de estado) ---
+if (isLoadingSession) {
+  return (
+    <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-sm font-medium">Carregando painel...</p>
+      </div>
+    </div>
+  );
+}
 
   // #region Efeitos
 
