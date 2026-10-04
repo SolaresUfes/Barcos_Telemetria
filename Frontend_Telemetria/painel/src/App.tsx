@@ -123,6 +123,18 @@ export default function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
 
+  // Verifica se há rascunhos salvos
+  useEffect(() => {
+    const salvo = localStorage.getItem("telemetria_rascunho");
+    if (salvo) {
+      try {
+        setRascunhoAtivo(JSON.parse(salvo));
+      } catch (e) {
+        // ignora erro de parsing
+      }
+    }
+  }, []);
+
   // Verifica a sessão automaticamente assim que o app carrega
   useEffect(() => {
     async function checkInitialSession() {
@@ -296,8 +308,7 @@ async function buscarEquipe() {
   const [nomeDefinitivoProva, setNomeDefinitivoProva] = useState("");
   const [inicioTimestamp, setInicioTimestamp] = useState<string | null>(null);
   const [fimTimestamp, setFimTimestamp] = useState<string | null>(null);
-  const [rascunhoAtivo, setRascunhoAtivo] = useState<{ id: number; nome: string; inicio: string } | null>(null);
-  // Novos estados para Notificações (Toast) e Confirmação de Descarte
+const [rascunhoAtivo, setRascunhoAtivo] = useState<{ id: number; nome: string; inicio: string | null } | null>(null);  // Novos estados para Notificações (Toast) e Confirmação de Descarte
   const [toast, setToast] = useState<{ mensagem: string; tipo: 'sucesso' | 'aviso' | 'erro' } | null>(null);
   const [isExiting, setIsExiting] = useState(false);
   const [pedirConfirmacaoDescarte, setPedirConfirmacaoDescarte] = useState(false);
@@ -365,6 +376,7 @@ function tocarSomSuave() {
   const [string_2, setString_2] = useState(-1);
 
   const [idProvaAtual, set_idProvaAtual] = useState(-1)
+
 
   
   // #endregion
@@ -679,6 +691,7 @@ function prova_iniciar() {
     setInicioTimestamp(agora);
     setNomeDefinitivoProva("");
     setPedirConfirmacaoDescarte(false);
+    set_idProvaAtual(-1); // Reseta o ID ao iniciar
 
     dispararToast("Gravação iniciada com sucesso!");
   }
@@ -694,14 +707,13 @@ function prova_iniciar() {
     setShowModalFinalizacao(true);
   }
 
-  // Opção 1: Salvar definitivo no Supabase
+// Opção 1: Salvar definitivo (Envia para o Supabase e limpa o rascunho local)
   async function salvarProvaComNome() {
     if (!nomeDefinitivoProva.trim()) {
       dispararToast("Por favor, digite um nome para a gravação.", "aviso");
       return;
     }
 
-    // O Supabase insere o registro agora e gera o ID sequencial correto (ex: 8)
     const { data, error } = await supabase
       .from("estado_prova")
       .insert([
@@ -714,52 +726,68 @@ function prova_iniciar() {
       .select()
       .single();
 
-    
     if (error) {
       console.log("Erro ao salvar a prova: ", error);
       dispararToast("Erro ao atualizar o registro no banco.", "erro");
       return;
     }
+
+  // Atualiza o ID atual com o ID real gerado pelo Supabase
+    if (data) {
+      set_idProvaAtual(data.id);
+    }
     
+    // Limpa o rascunho local pois foi salvo definitivamente
+    localStorage.removeItem("telemetria_rascunho");
+    setRascunhoAtivo(null);
     setProvaAtiva(false);
     setShowModalFinalizacao(false);
     setPedirConfirmacaoDescarte(false);
     dispararToast(`Gravação #${data.id} salva com sucesso!`);
   }
 
-// Opção 2: Salvar como Rascunho no banco (Gera o ID sequencial oficial)
-  async function deixarComoRascunho() {
+  // Opção 2: Salvar como Rascunho (Guarda localmente no navegador)
+  function deixarComoRascunho() {
     const nomeRascunho = nomeDefinitivoProva.trim() || `Rascunho - ${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR")}`;
 
-    const { data, error } = await supabase
-      .from("estado_prova")
-      .insert([
-        {      
-          nome: nomeRascunho,
-          inicio: inicioTimestamp,
-          fim: fimTimestamp || new Date().toISOString()
-        },
-      ])
-      .select()
-      .single();
+    const rascunhoObj = {
+      id: Date.now(),
+      nome: nomeRascunho,
+      inicio: inicioTimestamp,
+      fim: fimTimestamp || new Date().toISOString()
+    };
 
-    if (error) {
-      dispararToast("Erro ao guardar rascunho.", "erro");
-      return;
-    }
-
+    localStorage.setItem("telemetria_rascunho", JSON.stringify(rascunhoObj));
+    setRascunhoAtivo(rascunhoObj);
     setProvaAtiva(false);
     setShowModalFinalizacao(false);
     setPedirConfirmacaoDescarte(false);
-    dispararToast(`Rascunho #${data.id} guardado com segurança!`, "aviso");
+    dispararToast("Rascunho guardado localmente com segurança!", "aviso");
   }
 
-// Opção 3: Descartar (Como nada foi pro banco, basta resetar a tela)
+  // Opção 3: Descartar (Limpa a tela e remove qualquer rascunho local)
   function executarDescarte() {
+    localStorage.removeItem("telemetria_rascunho");
+    setRascunhoAtivo(null);
     setProvaAtiva(false);
     setShowModalFinalizacao(false);
     setPedirConfirmacaoDescarte(false);
     dispararToast("Gravação descartada. Nenhum ID foi consumido.", "erro");
+  }
+
+  // Recupera o rascunho guardado para edição
+  function carregarRascunhoSalvo() {
+    const salvo = localStorage.getItem("telemetria_rascunho");
+    if (salvo) {
+      const parsed = JSON.parse(salvo);
+      setRascunhoAtivo(parsed);
+      setInicioTimestamp(parsed.inicio);
+      setFimTimestamp(parsed.fim || new Date().toISOString());
+      setNomeDefinitivoProva(parsed.nome || "");
+      setShowModalFinalizacao(true); // Abre o modal com os dados do rascunho
+    } else {
+      dispararToast("Nenhum rascunho pendente encontrado.", "aviso");
+    }
   }
 
   // Função auxiliar para formatar datas no padrão brasileiro
@@ -767,21 +795,6 @@ function prova_iniciar() {
     if (!isoString) return "-";
     return new Date(isoString).toLocaleString("pt-BR");
   };
-
-  // Recupera o rascunho guardado caso tenha ocorrido falha ou reinício
-  function carregarRascunhoSalvo() {
-    const salvo = localStorage.getItem("telemetria_rascunho");
-    if (salvo) {
-      const parsed = JSON.parse(salvo);
-      setRascunhoAtivo(parsed);
-      set_idProvaAtual(parsed.id);
-      setInicioTimestamp(parsed.inicio);
-      setFimTimestamp(new Date().toISOString());
-      setShowModalFinalizacao(true); // Abre o modal diretamente com os dados do rascunho
-    } else {
-      dispararToast("Nenhum rascunho pendente encontrado.", "aviso");
-    }
-  }
 
 // --- TELA DE CARREGAMENTO INICIAL (Fica no escopo principal do componente) ---
 if (isLoadingSession) {
