@@ -212,8 +212,12 @@ export default function App() {
       setIsLoggingIn(false);
       setisLogged(true);
 
-      // Carrega a equipe em segundo plano ou aguarda
+      // Atrasa a liberação do painel em 1.5 segundos para a animação brilhar
+      setTimeout(() => {
+        setisLogged(true);
+      }, 1500);
 
+      // Carrega a equipe em segundo plano ou aguarda
       await buscarEquipe();
     } catch (err) {
       console.error("Erro ao verificar login:", err);
@@ -297,12 +301,6 @@ export default function App() {
   // #endregion
 
   // #region Efeitos
-
-  // Efeito para verificar o login ao carregar a pagina
-  useEffect(() => {
-    verificarLogin();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Efeito para controlar o modo escuro
   useEffect(() => {
@@ -510,8 +508,8 @@ export default function App() {
   // #region Cálculos Derivados
   const avgBmsTemp =
     cells.reduce((acc, cell) => acc + cell.temperature, 0) / cells.length;
-  const maxVoltageCell = [...cells].sort((a, b) => b.voltage - a.voltage)[0];
-  const minVoltageCell = [...cells].sort((a, b) => a.voltage - b.voltage)[0];
+  const maxVoltageCell = [...cells].sort((a, b) => b.voltage - a.voltage)[0] || { voltage: 0 };
+  const minVoltageCell = [...cells].sort((a, b) => a.voltage - b.voltage)[0] || { voltage: 0 };
   const voltageImbalance = maxVoltageCell.voltage - minVoltageCell.voltage;
 
   const onlineCount = members.filter((m) => m.isOnline).length;
@@ -519,7 +517,7 @@ export default function App() {
     timeZone: "America/Sao_Paulo",
   });
 
-  const currentPower = mainData[0];
+  const currentPower = mainData[0] || 0;
   const estimatedTimeRaw = (battery / Math.max(10, currentPower)) * 2.5;
   const estHours = Math.floor(estimatedTimeRaw);
   const estMinutes = Math.floor((estimatedTimeRaw - estHours) * 60);
