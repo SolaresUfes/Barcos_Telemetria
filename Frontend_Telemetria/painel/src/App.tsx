@@ -123,7 +123,7 @@ export default function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
 
-  // Verifica se há rascunhos salvos
+// Verifica se há rascunhos ou gravações ativas ao carregar
   useEffect(() => {
     const salvo = localStorage.getItem("telemetria_rascunho");
     if (salvo) {
@@ -131,6 +131,24 @@ export default function App() {
         setRascunhoAtivo(JSON.parse(salvo));
       } catch (e) {
         // ignora erro de parsing
+      }
+    }
+
+    // Verifica se havia uma gravação ativa antes do F5 / refresh
+    const gravacaoAtivaSalva = localStorage.getItem("telemetria_gravacao_ativa");
+    if (gravacaoAtivaSalva) {
+      try {
+        const parsed = JSON.parse(gravacaoAtivaSalva);
+        if (parsed && parsed.inicio) {
+          setProvaAtiva(true);
+          setInicioTimestamp(parsed.inicio);
+          
+          // Calcula exatamente quantos segundos passaram desde o início da gravação até o F5
+          const segundosDecorridos = Math.floor((Date.now() - new Date(parsed.inicio).getTime()) / 1000);
+          setRecordingTime(segundosDecorridos > 0 ? segundosDecorridos : 0);
+        }
+      } catch (e) {
+        // ignora erro
       }
     }
   }, []);
@@ -692,12 +710,15 @@ function tocarSomSuave() {
 function prova_iniciar() {
     const agora = new Date().toISOString();
     
-    // Ativa o estado localmente sem consumir IDs do banco antecipadamente
+    // Ativa o estado localmente
     setProvaAtiva(true);
     setInicioTimestamp(agora);
     setNomeDefinitivoProva("");
     setPedirConfirmacaoDescarte(false);
-    set_idProvaAtual(-1); // Reseta o ID ao iniciar
+    set_idProvaAtual(-1);
+
+    // Salva no localStorage para resistir ao F5 / refresh
+    localStorage.setItem("telemetria_gravacao_ativa", JSON.stringify({ inicio: agora }));
 
     dispararToast("Gravação iniciada com sucesso!");
   }
@@ -713,7 +734,7 @@ function prova_iniciar() {
     setShowModalFinalizacao(true);
   }
 
-// Opção 1: Salvar definitivo (Envia para o Supabase e limpa o rascunho local)
+// Opção 1: Salvar definitivo
   async function salvarProvaComNome() {
     if (!nomeDefinitivoProva.trim()) {
       dispararToast("Por favor, digite um nome para a gravação.", "aviso");
@@ -738,13 +759,14 @@ function prova_iniciar() {
       return;
     }
 
-  // Atualiza o ID atual com o ID real gerado pelo Supabase
     if (data) {
       set_idProvaAtual(data.id);
     }
     
-    // Limpa o rascunho local pois foi salvo definitivamente
+    // Limpa o rascunho e a gravação ativa do localStorage
     localStorage.removeItem("telemetria_rascunho");
+    localStorage.removeItem("telemetria_gravacao_ativa");
+    
     setRascunhoAtivo(null);
     setProvaAtiva(false);
     setShowModalFinalizacao(false);
@@ -752,28 +774,27 @@ function prova_iniciar() {
     dispararToast(`Gravação #${data.id} salva com sucesso!`);
   }
 
-// Opção 2: Salvar como Rascunho prevendo o próximo ID sequencial do Supabase
+  // Opção 2: Salvar como Rascunho
   async function deixarComoRascunho() {
-    // 1. Consulta o Supabase para descobrir o maior ID atual
     const { data: ultimoRegistro } = await supabase
       .from("estado_prova")
       .select("id")
       .order("id", { ascending: false })
       .limit(1);
 
-    // 2. Define o próximo ID (se a tabela estiver vazia, começa em 1)
     const proximoId = ultimoRegistro && ultimoRegistro.length > 0 ? ultimoRegistro[0].id + 1 : 1;
-
     const nomeRascunho = nomeDefinitivoProva.trim() || `Rascunho - ${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR")}`;
 
     const rascunhoObj = {
-      id: proximoId, // Usa o ID sequencial previsto
+      id: proximoId,
       nome: nomeRascunho,
       inicio: inicioTimestamp,
       fim: fimTimestamp || new Date().toISOString()
     };
 
     localStorage.setItem("telemetria_rascunho", JSON.stringify(rascunhoObj));
+    localStorage.removeItem("telemetria_gravacao_ativa"); // Remove da gravação ativa
+    
     setRascunhoAtivo(rascunhoObj);
     setProvaAtiva(false);
     setShowModalFinalizacao(false);
@@ -781,9 +802,11 @@ function prova_iniciar() {
     dispararToast(`Rascunho guardado com a previsão de ID #${proximoId}!`, "aviso");
   }
 
-  // Opção 3: Descartar (Limpa a tela e remove qualquer rascunho local)
+  // Opção 3: Descartar
   function executarDescarte() {
     localStorage.removeItem("telemetria_rascunho");
+    localStorage.removeItem("telemetria_gravacao_ativa"); // Remove da gravação ativa
+    
     setRascunhoAtivo(null);
     setProvaAtiva(false);
     setShowModalFinalizacao(false);
