@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 
 const supabase = require("../supabase")
-
 const buffer = require("../buffer/telemetria")
 
 
@@ -57,10 +56,6 @@ router.get("/", async(req, res) => {
 
 // Rota para a coleta do ultimo dado das medicoes individuais das celulas
 // GET > "/api/celulas/ultimo"
-// router.get("/ultimo", async(req, res) => {
-//   res.json(buffer.coletar_ult_Celulas());
-// });
-
 router.get("/ultimo", async (req, res) => {
     try {
         const dados = await buffer.coletar_ult_Celulas();
