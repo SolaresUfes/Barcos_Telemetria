@@ -1474,7 +1474,7 @@ app.get("/", async (req, res) => {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 4px 7px;
+      padding: 5px 9px;
       border: 1px solid rgba(49,140,255,.25);
       border-radius: 6px;
       background: rgba(49,140,255,.07);
@@ -1483,6 +1483,7 @@ app.get("/", async (req, res) => {
       font: 9px ui-monospace, SFMono-Regular, Menlo, monospace;
       font-weight: 800;
       letter-spacing: .4px;
+      transition: .15s ease;
     }
 
     .route-button:hover {
@@ -1626,25 +1627,31 @@ app.get("/", async (req, res) => {
 <body>
   <main class="container">
 
-    <header class="header">
-      <div class="brand">
-        <div class="logo">⌘</div>
-        <div>
-          <h1>Telemetria <span style="color:var(--cyan)">/</span> Backend</h1>
-          <p class="subtitle">Camada de diagnóstico e comunicação do Barcos Telemetria</p>
+    <header class="header"> 
+      <div class="brand"> 
+        <div class="logo">⌘</div> 
+        <div> 
+          <h1>Telemetria <span style="color:var(--cyan)">/</span> Backend</h1> 
+          <p class="subtitle">Camada de diagnóstico e comunicação do Barcos Telemetria</p> 
+        </div> 
+      </div> 
+    
+      <div class="header-right"> 
+        <div class="environment"> 
+          ${process.env.VERCEL_ENV || process.env.NODE_ENV || "ambiente não informado"} 
+        </div> 
+    
+        <div class="status ${statusClass}"> 
+          <span class="dot"></span> 
+          BACKEND ${status} 
         </div>
-      </div>
 
-      <div class="header-right">
-        <div class="environment">
-          ${process.env.VERCEL_ENV || process.env.NODE_ENV || "ambiente não informado"}
+        <div class="header-actions">
+          <a href="/api/sensores" class="header-button">SENSORES</a>
+          <a href="/api/celulas" class="header-button">CÉLULAS</a>
+          <a href="/api/alertas" class="header-button">ALERTAS</a>
         </div>
-
-        <div class="status ${statusClass}">
-          <span class="dot"></span>
-          BACKEND ${status}
-        </div>
-      </div>
+      </div> 
     </header>
 
     <section class="grid">
