@@ -1470,6 +1470,27 @@ app.get("/", async (req, res) => {
       flex: 0 0 auto;
     }
 
+    .route-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 7px;
+      border: 1px solid rgba(49,140,255,.25);
+      border-radius: 6px;
+      background: rgba(49,140,255,.07);
+      color: var(--blue);
+      text-decoration: none;
+      font: 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-weight: 800;
+      letter-spacing: .4px;
+    }
+
+    .route-button:hover {
+      background: rgba(49,140,255,.14);
+      border-color: rgba(49,140,255,.45);
+      color: #58a6ff;
+    }
+
     /* JSON */
 
     pre {
@@ -1805,6 +1826,33 @@ app.get("/", async (req, res) => {
       </article>
 
       <!-- ROTAS -->
+
+      <div class="route">
+        <div class="route-left">
+          <span class="route-method">GET</span>
+          <span class="route-path">/api/sensores</span>
+        </div>
+
+        <a href="/api/sensores" class="route-button">ABRIR →</a>
+      </div>
+
+      <div class="route">
+        <div class="route-left">
+          <span class="route-method">GET</span>
+          <span class="route-path">/api/celulas</span>
+        </div>
+
+        <a href="/api/celulas" class="route-button">ABRIR →</a>
+      </div>
+
+      <div class="route">
+        <div class="route-left">
+          <span class="route-method">GET</span>
+          <span class="route-path">/api/alertas</span>
+        </div>
+
+        <a href="/api/alertas" class="route-button">ABRIR →</a>
+      </div>
 
       <article class="card span-12">
         <div class="card-header">
