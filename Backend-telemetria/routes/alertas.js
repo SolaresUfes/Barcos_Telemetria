@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 
 const supabase = require("../supabase")
-
 const buffer = require("../buffer/telemetria");
 
 // Rota pra envio dos dados dos alertas pro Supabase.
@@ -57,10 +56,6 @@ router.get("/", async (req, res) => {
 
 // Rota para a coleta do dado do ultimo alerta
 // GET > "/api/alertas/ultimo"
-// router.get("/ultimo", async (req, res) => {
-//   res.json(buffer.coletar_ult_Alertas());
-// });
-
 router.get("/ultimo", async (req, res) => {
     try {
         const dados = await buffer.coletar_ult_Alertas();
@@ -78,9 +73,3 @@ router.get("/ultimo", async (req, res) => {
 
 
 module.exports = router
-
-
-
-
-
-
