@@ -699,39 +699,6 @@ function tocarSomSuave() {
   };
 
 
-
-
-
-async function buscarProvas() {
-  const { data, error } = await supabase
-    .from("estado_prova")
-    .select("*")
-    .order("inicio", { ascending: true });
-
-  if (error) {
-    console.log("Erro ao buscar provas:", error);
-    return;
-  }
-
-  const provas = data.map((prova, index) => ({
-    ...prova,
-    numero: index + 1
-  }));
-
-  console.log(provas);
-
-  {
-    id:
-    nome:
-    inicio:
-    fim:
-    numero: 
-  }
-}
-
-
-
-
 function prova_iniciar() {
     const agora = new Date().toISOString();
     
