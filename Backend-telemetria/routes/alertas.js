@@ -18,11 +18,18 @@ router.post("/", async (req, res) => {
     return res.status(400).json({ erro: "Não há alertas" });
   }
 
-  buffer.atualizar_ult_Alertas(dados);
+  await buffer.atualizar_ult_Alertas(dados);
 
   // salvar no banco. O json precisa estar configurado com os nomes certos das colunas e com os valores corretos.
-  const { error } = await supabase.from("alertas").insert(dados);
+  const dados_supabase = {
+      mensagem: dados.mensagem,
+      risco: dados.risco,
+      codigos: dados.codigos
+  };
 
+const { error } = await supabase
+    .from("alertas")
+    .insert(dados_supabase);
   if (error) {
     console.error(error);
     return res.status(500).json({ erro: error.message });
@@ -50,8 +57,23 @@ router.get("/", async (req, res) => {
 
 // Rota para a coleta do dado do ultimo alerta
 // GET > "/api/alertas/ultimo"
+// router.get("/ultimo", async (req, res) => {
+//   res.json(buffer.coletar_ult_Alertas());
+// });
+
 router.get("/ultimo", async (req, res) => {
-  res.json(buffer.coletar_ult_Alertas());
+    try {
+        const dados = await buffer.coletar_ult_Alertas();
+
+        res.json(dados);
+
+    } catch (erro) {
+        console.error(erro);
+
+        res.status(500).json({
+            erro: "Erro ao obter últimos alertas"
+        });
+    }
 });
 
 

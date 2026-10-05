@@ -25,11 +25,11 @@ const CHAVE_SENSORES = "telemetria:sensores";
 
 const CHAVE_CELULAS = "telemetria:celulas";
 
-let buffer_alertas  = [{
-    mensagem: "SEM_DADOS",
-    risco: SEM_DADOS,
-    codigos: Array(12).fill(SEM_DADOS)
-}];
+// let buffer_alertas  = [{
+//     mensagem: "SEM_DADOS",
+//     risco: SEM_DADOS,
+//     codigos: Array(12).fill(SEM_DADOS)
+// }];
 
 // Função responsavel
 // function atualizar_ult_Sensores(dados_sensores) { 
@@ -46,6 +46,8 @@ let buffer_alertas  = [{
 // async function atualizar_ult_Sensores(dados_sensores) {
 //     await redis.set(CHAVE_SENSORES, dados_sensores);
 // }
+
+const CHAVE_ALERTAS = "telemetria:alertas";
 
 async function atualizar_ult_Sensores(dados_sensores) {
     const dados = {
@@ -124,13 +126,34 @@ async function coletar_ult_Celulas() {
 
 
 
-function atualizar_ult_Alertas(dados_alertas) {
-    buffer_alertas = dados_alertas;    
+// function atualizar_ult_Alertas(dados_alertas) {
+//     buffer_alertas = dados_alertas;    
+// }
+
+// function coletar_ult_Alertas() {
+//     return buffer_alertas;
+// }
+
+
+async function atualizar_ult_Alertas(dados_alertas) {
+    await redis.set(CHAVE_ALERTAS, dados_alertas);
 }
 
-function coletar_ult_Alertas() {
-    return buffer_alertas;
+async function coletar_ult_Alertas() {
+    const dados = await redis.get(CHAVE_ALERTAS);
+
+    if (dados === null) {
+        return [{
+            mensagem: "SEM_DADOS",
+            risco: SEM_DADOS,
+            codigos: Array(12).fill(SEM_DADOS)
+        }];
+    }
+
+    return dados;
 }
+
+
 
 module.exports = {
     atualizar_ult_Sensores,
