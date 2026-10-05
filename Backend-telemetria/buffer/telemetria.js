@@ -18,10 +18,12 @@ const SEM_DADOS = -2
 
 const CHAVE_SENSORES = "telemetria:sensores";
 
-let buffer_celulas = [{
-    celula: Array(16).fill(SEM_DADOS),
-    temperatura: Array(16).fill(SEM_DADOS) 
-}];
+// let buffer_celulas = [{
+//     celula: Array(16).fill(SEM_DADOS),
+//     temperatura: Array(16).fill(SEM_DADOS) 
+// }];
+
+const CHAVE_CELULAS = "telemetria:celulas";
 
 let buffer_alertas  = [{
     mensagem: "SEM_DADOS",
@@ -76,16 +78,50 @@ async function coletar_ult_Sensores() {
 }
 
 
-function atualizar_ult_Celulas(dados_celulas) { 
-    buffer_celulas = [{
+
+
+
+
+
+// function atualizar_ult_Celulas(dados_celulas) { 
+//     buffer_celulas = [{
+//         celula: dados_celulas.cells,
+//         temperatura: Array(16).fill(SEM_DADOS) // MODIFICAR QUANDO ENVIAR TEMPERATURA!!!!
+//     }];
+// }
+
+async function atualizar_ult_Celulas(dados_celulas) {
+    const dados = {
         celula: dados_celulas.cells,
-        temperatura: Array(16).fill(SEM_DADOS) // MODIFICAR QUANDO ENVIAR TEMPERATURA!!!!
-    }];
+        temperatura: Array(16).fill(SEM_DADOS)
+    };
+
+    await redis.set(CHAVE_CELULAS, dados);
 }
 
-function coletar_ult_Celulas() {
-    return buffer_celulas;
+// function coletar_ult_Celulas() {
+//     return buffer_celulas;
+// }
+
+async function coletar_ult_Celulas() {
+    const dados = await redis.get(CHAVE_CELULAS);
+
+    if (dados === null) {
+        return [{
+            celula: Array(16).fill(SEM_DADOS),
+            temperatura: Array(16).fill(SEM_DADOS)
+        }];
+    }
+
+    return [dados];
 }
+
+
+
+
+
+
+
 
 
 function atualizar_ult_Alertas(dados_alertas) {

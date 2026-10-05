@@ -26,7 +26,7 @@ router.post("/", async (req, res) => {
   }
 
   // Se tudo estiver certo, insere os dados no buffer correspondente
-  buffer.atualizar_ult_Celulas(dados);
+  await buffer.atualizar_ult_Celulas(dados);
 
   // Insere o array inteiro de uma só vez em uma única linha no Supabase
   const { error } = await supabase.from("celulas").insert({
@@ -57,10 +57,24 @@ router.get("/", async(req, res) => {
 
 // Rota para a coleta do ultimo dado das medicoes individuais das celulas
 // GET > "/api/celulas/ultimo"
-router.get("/ultimo", async(req, res) => {
-  res.json(buffer.coletar_ult_Celulas());
-});
+// router.get("/ultimo", async(req, res) => {
+//   res.json(buffer.coletar_ult_Celulas());
+// });
 
+router.get("/ultimo", async (req, res) => {
+    try {
+        const dados = await buffer.coletar_ult_Celulas();
+
+        res.json(dados);
+
+    } catch (erro) {
+        console.error(erro);
+
+        res.status(500).json({
+            erro: "Erro ao obter últimas células"
+        });
+    }
+});
 
 module.exports = router
 
