@@ -49,6 +49,7 @@ router.get("/", async (req, res) => {
 // Rota para coleta dos dados da ultima medição
 // GET > "/api/sensores/ultimo/"
 router.get("/ultimo", async (req, res) => {
+  console.log("BUFEER SENSORES: ", buffer.coletar_ult_Sensores())
   res.json(buffer.coletar_ult_Sensores());
 });
 
