@@ -1,79 +1,3 @@
-// const express = require("express");
-// const router = express.Router();
-
-// const supabase = require("../supabase")
-// const buffer = require("../buffer/telemetria")
-
-
-// // Rota para envio de dados individuais das celulas do barco (32)
-// // POST > "/api/celulas"
-// router.post("/", async (req, res) => {
-//   // req.body receberá { "tensoes": [3.21, 5.49, 1.92, ...] }
-//   const dados = req.body; 
-
-//   // Verifica se a chave "cells" existe e se tem 16 valores
-//   if (!dados.cells || dados.cells.length !== 16) {
-//     return res.status(400).json({ erro: "Pacote incompleto ou inválido!" });
-//   }
-
-//   // Valida se algum valor dentro do array é nulo ou indefinido
-//   for (let i = 0; i < dados.cells.length; i++) {
-//     if (dados.cells[i] === undefined || dados.cells[i] === null) {
-//       console.log(`Erro célula: ${i + 1}`);
-//       return res.status(400).json({ erro: `élula ${i + 1} incompleta!` });
-//     }
-//   }
-
-//   // Se tudo estiver certo, insere os dados no buffer correspondente
-//   await buffer.atualizar_ult_Celulas(dados);
-
-//   // Insere o array inteiro de uma só vez em uma única linha no Supabase
-//   const { error } = await supabase.from("celulas").insert({
-//     celula: dados.cells // Associa o array do JS à coluna do banco
-//   });
-
-//   if (error) {
-//     console.error(error);
-//     return res.status(500).json({ erro: error.message });
-//   }
-
-//   return res.status(200).json({ sucesso: true });
-// });
-
-
-// // Rota para a coleta dos dados de tensao nas celulas individuais
-// // GET > "/api/celulas"
-// router.get("/", async(req, res) => {
-  
-//   const { data, error } = await supabase
-//     .from("celulas")
-//     .select("*")
-
-//   if (error) return res.status(500).json({erro: error.message});
-
-//   res.json(data);
-// });
-
-// // Rota para a coleta do ultimo dado das medicoes individuais das celulas
-// // GET > "/api/celulas/ultimo"
-// router.get("/ultimo", async (req, res) => {
-//     try {
-//         const dados = await buffer.coletar_ult_Celulas();
-
-//         res.json(dados);
-
-//     } catch (erro) {
-//         console.error(erro);
-
-//         res.status(500).json({
-//             erro: "Erro ao obter últimas células"
-//         });
-//     }
-// });
-
-// module.exports = router
-
-
 const express = require("express");
 const router = express.Router();
 
@@ -82,59 +6,69 @@ const buffer = require("../buffer/telemetria");
 
 
 // ============================================================
-// POST /api/celulas
-// Recebe os dados das 16 células
+// POST — ENVIO DOS DADOS DAS CÉLULAS
+//
+// POST > "/api/celulas"
 // ============================================================
 
 router.post("/", async (req, res) => {
-  // req.body receberá { "cells": [3.21, 5.49, 1.92, ...] }
-  const dados = req.body;
+  try {
+    const dados = req.body;
 
-  // Verifica se a chave "cells" existe e se tem 16 valores
-  if (!dados.cells || dados.cells.length !== 16) {
-    return res.status(400).json({
-      erro: "Pacote incompleto ou inválido!"
-    });
-  }
-
-  // Valida se algum valor dentro do array é nulo ou indefinido
-  for (let i = 0; i < dados.cells.length; i++) {
-    if (dados.cells[i] === undefined || dados.cells[i] === null) {
-      console.log(`Erro célula: ${i + 1}`);
-
+    // Verifica se a chave "cells" existe e possui 16 valores
+    if (!dados.cells || dados.cells.length !== 16) {
       return res.status(400).json({
-        erro: `Célula ${i + 1} incompleta!`
+        erro: "Pacote incompleto ou inválido!"
       });
     }
-  }
 
-  // Se tudo estiver certo, insere os dados no buffer correspondente
-  await buffer.atualizar_ult_Celulas(dados);
+    // Verifica se alguma célula possui valor nulo ou indefinido
+    for (let i = 0; i < dados.cells.length; i++) {
+      if (dados.cells[i] === undefined || dados.cells[i] === null) {
+        console.log(`Erro célula: ${i + 1}`);
 
-  // Insere o array inteiro de uma só vez em uma única linha no Supabase
-  const { error } = await supabase
-    .from("celulas")
-    .insert({
-      celula: dados.cells
+        return res.status(400).json({
+          erro: `Célula ${i + 1} incompleta!`
+        });
+      }
+    }
+
+    // Atualiza o buffer
+    await buffer.atualizar_ult_Celulas(dados);
+
+    // Salva no Supabase
+    const { error } = await supabase
+      .from("celulas")
+      .insert({
+        celula: dados.cells
+      });
+
+    if (error) {
+      console.error(error);
+
+      return res.status(500).json({
+        erro: error.message
+      });
+    }
+
+    return res.status(200).json({
+      sucesso: true
     });
 
-  if (error) {
-    console.error(error);
+  } catch (erro) {
+    console.error(erro);
 
     return res.status(500).json({
-      erro: error.message
+      erro: "Erro interno"
     });
   }
-
-  return res.status(200).json({
-    sucesso: true
-  });
 });
 
 
 // ============================================================
-// GET /api/celulas/todos
-// Coleta todos os dados das células no Supabase
+// GET — TODOS OS DADOS DAS CÉLULAS
+//
+// GET > "/api/celulas/todos"
 // ============================================================
 
 router.get("/todos", async (req, res) => {
@@ -154,8 +88,9 @@ router.get("/todos", async (req, res) => {
 
 
 // ============================================================
-// GET /api/celulas/ultimo
-// Coleta o último dado das células no buffer
+// GET — ÚLTIMO DADO DAS CÉLULAS
+//
+// GET > "/api/celulas/ultimo"
 // ============================================================
 
 router.get("/ultimo", async (req, res) => {
@@ -175,1024 +110,1984 @@ router.get("/ultimo", async (req, res) => {
 
 
 // ============================================================
-// GET /api/celulas
-// Página visual de diagnóstico
+// PAINEL DE TESTE — CÉLULAS
+//
+// URL:
+// /api/celulas
+//
+// Esta página NÃO altera a lógica das três rotas acima.
+// Ela apenas chama essas rotas pelo navegador para diagnóstico.
 // ============================================================
 
 router.get("/", (req, res) => {
-
   res.status(200).send(`<!DOCTYPE html>
-
 <html lang="pt-BR">
 
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+
+  <title>Telemetria / Células</title>
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #080d14;
+      --card: #101923;
+      --card2: #0c141d;
+      --line: rgba(148,170,195,.14);
+      --text: #e9f0f8;
+      --muted: #8292a6;
+      --muted2: #5e6e81;
+      --blue: #318cff;
+      --cyan: #27c7e8;
+      --green: #35df8b;
+      --orange: #ff9d32;
+      --red: #ff5264;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+
+      font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+      background:
+        radial-gradient(
+          circle at 8% 0%,
+          rgba(49,140,255,.12),
+          transparent 28%
+        ),
+        radial-gradient(
+          circle at 92% 8%,
+          rgba(39,199,232,.07),
+          transparent 25%
+        ),
+        var(--bg);
+    }
+
+    body::before {
+      content: "";
+
+      position: fixed;
+      inset: 0;
 
-<meta charset="UTF-8">
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Telemetria / Células</title>
-
-<style>
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  background: #111315;
-  color: #e8edf2;
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-button,
-textarea {
-  font-family: inherit;
-}
-
-.container {
-  width: min(1250px, 94%);
-  margin: 0 auto;
-  padding: 28px 0 40px;
-}
-
-/* =========================================================
-   CABEÇALHO
-   ========================================================= */
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  background: #191c20;
-  border: 1px solid #292e34;
-  border-radius: 12px;
-
-  padding: 20px 22px;
-  margin-bottom: 18px;
-}
-
-.header-left h1 {
-  margin: 0;
-  font-size: 23px;
-  letter-spacing: 0.5px;
-}
-
-.header-left p {
-  margin: 6px 0 0;
-  color: #89939d;
-  font-size: 13px;
-}
-
-.route {
-  color: #58b9ff;
-  font-family: monospace;
-}
-
-.status-area {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.status-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #777;
-}
-
-.status-dot.online {
-  background: #39d98a;
-  box-shadow: 0 0 10px rgba(57, 217, 138, 0.5);
-}
-
-.status-dot.error {
-  background: #ff5f56;
-  box-shadow: 0 0 10px rgba(255, 95, 86, 0.45);
-}
-
-.status-text {
-  font-size: 12px;
-  font-weight: bold;
-  letter-spacing: 0.8px;
-}
-
-.status-code {
-  color: #7d8791;
-  font-family: monospace;
-  font-size: 11px;
-}
-
-
-/* =========================================================
-   GRID PRINCIPAL
-   ========================================================= */
-
-.grid {
-  display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
-  gap: 18px;
-}
-
-.card {
-  background: #191c20;
-  border: 1px solid #292e34;
-  border-radius: 12px;
-  padding: 18px;
-}
-
-.card-title {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  margin-bottom: 16px;
-
-  color: #dfe6ec;
-  font-size: 13px;
-  font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-}
-
-.card-title span:last-child {
-  color: #69747f;
-  font-family: monospace;
-  font-size: 11px;
-  font-weight: normal;
-}
-
-
-/* =========================================================
-   CELULAS
-   ========================================================= */
-
-.cells-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 9px;
-}
-
-.cell {
-  background: #131619;
-  border: 1px solid #292e34;
-  border-radius: 8px;
-
-  padding: 12px 10px;
-
-  min-height: 76px;
-
-  transition:
-    border-color 0.15s,
-    background 0.15s;
-}
-
-.cell:hover {
-  border-color: #367da8;
-  background: #151a1e;
-}
-
-.cell-number {
-  color: #6f7b85;
-  font-size: 10px;
-  font-family: monospace;
-  text-transform: uppercase;
-  margin-bottom: 8px;
-}
-
-.cell-value {
-  color: #55bdff;
-  font-family: monospace;
-  font-size: 17px;
-  font-weight: bold;
-}
-
-.cell-temp {
-  margin-top: 5px;
-  color: #7e8993;
-  font-family: monospace;
-  font-size: 10px;
-}
-
-
-/* =========================================================
-   RESUMO
-   ========================================================= */
-
-.metrics {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
-
-.metric {
-  background: #131619;
-  border: 1px solid #292e34;
-  border-radius: 8px;
-  padding: 14px;
-}
-
-.metric-label {
-  color: #717c86;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.7px;
-}
-
-.metric-value {
-  margin-top: 7px;
-
-  color: #e8edf2;
-  font-family: monospace;
-  font-size: 18px;
-  font-weight: bold;
-}
-
-
-/* =========================================================
-   BOTÕES
-   ========================================================= */
-
-.actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-button {
-  border: 1px solid #30373e;
-  border-radius: 7px;
-
-  padding: 9px 13px;
-
-  background: #20252a;
-  color: #dbe4eb;
-
-  font-size: 11px;
-  font-weight: bold;
-  letter-spacing: 0.5px;
-
-  cursor: pointer;
-
-  transition:
-    background 0.15s,
-    border-color 0.15s;
-}
-
-button:hover {
-  background: #293138;
-  border-color: #4388b1;
-}
-
-button.primary {
-  background: #173b50;
-  border-color: #2b7198;
-  color: #6cc8ff;
-}
-
-button.primary:hover {
-  background: #1b4a63;
-}
-
-
-/* =========================================================
-   POST
-   ========================================================= */
-
-textarea {
-  width: 100%;
-  min-height: 180px;
-
-  resize: vertical;
-
-  background: #101214;
-  border: 1px solid #2b3036;
-  border-radius: 8px;
-
-  padding: 13px;
-
-  color: #bcdfff;
-
-  font-family: Consolas, monospace;
-  font-size: 12px;
-  line-height: 1.5;
-
-  outline: none;
-}
-
-textarea:focus {
-  border-color: #367da8;
-}
-
-.post-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  margin-top: 10px;
-
-  color: #68737d;
-  font-family: monospace;
-  font-size: 10px;
-}
+      pointer-events: none;
 
-
-/* =========================================================
-   RESPOSTA
-   ========================================================= */
-
-.response {
-  margin-top: 18px;
-}
-
-.response-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+      background-image:
+        linear-gradient(
+          rgba(255,255,255,.018) 1px,
+          transparent 1px
+        ),
+        linear-gradient(
+          90deg,
+          rgba(255,255,255,.018) 1px,
+          transparent 1px
+        );
 
-  margin-bottom: 8px;
-}
+      background-size: 42px 42px;
 
-.response-status {
-  font-family: monospace;
-  font-size: 11px;
-}
+      mask-image:
+        linear-gradient(
+          to bottom,
+          black,
+          transparent 85%
+        );
+    }
 
-.response-time {
-  color: #6f7b85;
-  font-family: monospace;
-  font-size: 10px;
-}
+    .container {
+      width: min(1380px, calc(100% - 40px));
 
-pre {
-  margin: 0;
+      margin: 0 auto;
 
-  max-height: 400px;
-  overflow: auto;
+      padding: 28px 0 38px;
+    }
 
-  padding: 15px;
+    .header {
+      display: flex;
 
-  background: #101214;
-  border: 1px solid #292e34;
-  border-radius: 8px;
+      justify-content: space-between;
+      align-items: center;
 
-  color: #b9c7d3;
+      gap: 24px;
 
-  font-family: Consolas, monospace;
-  font-size: 11px;
-  line-height: 1.5;
-}
+      padding-bottom: 24px;
 
+      border-bottom:
+        1px solid var(--line);
 
-/* =========================================================
-   ROTAS
-   ========================================================= */
+      margin-bottom: 20px;
+    }
 
-.routes {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+    .brand {
+      display: flex;
 
-  margin-top: 18px;
-}
+      align-items: center;
 
-.route-item {
-  background: #15181b;
-  border: 1px solid #292e34;
-  border-radius: 8px;
+      gap: 14px;
+    }
 
-  padding: 11px;
-}
+    .logo {
+      width: 44px;
+      height: 44px;
 
-.route-method {
-  color: #58b9ff;
-  font-family: monospace;
-  font-size: 10px;
-  font-weight: bold;
-}
+      display: grid;
+      place-items: center;
 
-.route-path {
-  margin-top: 5px;
+      border:
+        1px solid rgba(49,140,255,.35);
 
-  color: #dce3e9;
-  font-family: monospace;
-  font-size: 11px;
-}
+      border-radius: 12px;
 
-.route-desc {
-  margin-top: 5px;
+      background:
+        linear-gradient(
+          145deg,
+          rgba(49,140,255,.18),
+          rgba(39,199,232,.07)
+        );
 
-  color: #68737d;
-  font-size: 10px;
-}
+      color: var(--cyan);
 
+      font-size: 20px;
 
-/* =========================================================
-   RESPONSIVO
-   ========================================================= */
+      box-shadow:
+        0 0 28px rgba(49,140,255,.08);
+    }
 
-@media (max-width: 850px) {
+    h1 {
+      margin: 0;
 
-  .grid {
-    grid-template-columns: 1fr;
-  }
+      font-size: 23px;
 
-  .cells-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
+      letter-spacing: -.5px;
+    }
 
-  .routes {
-    grid-template-columns: 1fr;
-  }
+    .subtitle {
+      margin: 4px 0 0;
 
-}
+      color: var(--muted);
 
-@media (max-width: 520px) {
+      font-size: 12px;
+    }
 
-  .header {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 15px;
-  }
+    .back {
+      color: var(--muted);
 
-  .cells-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+      text-decoration: none;
 
-  .metrics {
-    grid-template-columns: 1fr;
-  }
+      font-size: 11px;
 
-}
+      border:
+        1px solid var(--line);
 
-</style>
+      padding: 8px 11px;
 
+      border-radius: 8px;
+
+      background:
+        rgba(255,255,255,.025);
+    }
+
+    .back:hover {
+      color: var(--text);
+
+      border-color:
+        rgba(49,140,255,.4);
+    }
+
+    .grid {
+      display: grid;
+
+      grid-template-columns:
+        repeat(12, 1fr);
+
+      gap: 14px;
+    }
+
+    .card {
+      min-width: 0;
+
+      border:
+        1px solid var(--line);
+
+      border-radius: 13px;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(16,25,35,.94),
+          rgba(11,18,27,.94)
+        );
+
+      box-shadow:
+        0 12px 34px rgba(0,0,0,.14);
+
+      overflow: hidden;
+    }
+
+    .span-4 {
+      grid-column: span 4;
+    }
+
+    .span-6 {
+      grid-column: span 6;
+    }
+
+    .span-8 {
+      grid-column: span 8;
+    }
+
+    .span-12 {
+      grid-column: span 12;
+    }
+
+    .card-header {
+      min-height: 48px;
+
+      padding: 13px 16px;
+
+      border-bottom:
+        1px solid var(--line);
+
+      display: flex;
+
+      justify-content: space-between;
+
+      align-items: center;
+
+      gap: 10px;
+    }
+
+    .card-header h2 {
+      margin: 0;
+
+      font-size: 12px;
+
+      letter-spacing: .35px;
+    }
+
+    .card-body {
+      padding: 16px;
+    }
+
+    .badge {
+      padding: 4px 7px;
+
+      border-radius: 6px;
+
+      font-size: 9px;
+
+      font-weight: 850;
+
+      letter-spacing: .5px;
+    }
+
+    .ok {
+      color: var(--green);
+
+      background:
+        rgba(53,223,139,.08);
+
+      border:
+        1px solid rgba(53,223,139,.15);
+    }
+
+    .warning {
+      color: var(--orange);
+
+      background:
+        rgba(255,157,50,.08);
+
+      border:
+        1px solid rgba(255,157,50,.15);
+    }
+
+    .error {
+      color: var(--red);
+
+      background:
+        rgba(255,82,100,.08);
+
+      border:
+        1px solid rgba(255,82,100,.15);
+    }
+
+    .status-row {
+      display: flex;
+
+      align-items: center;
+
+      gap: 9px;
+
+      color: var(--muted);
+
+      font-size: 11px;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+
+      border-radius: 50%;
+
+      background: currentColor;
+
+      box-shadow:
+        0 0 9px currentColor;
+    }
+
+    .big-status {
+      display: flex;
+
+      align-items: center;
+
+      gap: 9px;
+
+      font-size: 24px;
+
+      font-weight: 800;
+
+      letter-spacing: -.6px;
+    }
+
+    .green {
+      color: var(--green);
+    }
+
+    .red {
+      color: var(--red);
+    }
+
+    .orange {
+      color: var(--orange);
+    }
+
+    .blue {
+      color: #58a6ff;
+    }
+
+    .cyan {
+      color: var(--cyan);
+    }
+
+    .muted {
+      color: var(--muted);
+
+      font-size: 11px;
+    }
+
+    .meta {
+      display: flex;
+
+      justify-content: space-between;
+
+      gap: 15px;
+
+      padding-top: 10px;
+
+      margin-top: 10px;
+
+      border-top:
+        1px solid var(--line);
+
+      color: var(--muted2);
+
+      font:
+        10px
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        monospace;
+    }
+
+    .metrics {
+      display: grid;
+
+      grid-template-columns:
+        repeat(3, 1fr);
+
+      gap: 9px;
+    }
+
+    .metric {
+      padding: 13px;
+
+      border:
+        1px solid var(--line);
+
+      border-radius: 9px;
+
+      background:
+        rgba(255,255,255,.018);
+    }
+
+    .metric-label {
+      color: var(--muted2);
+
+      font-size: 9px;
+
+      text-transform: uppercase;
+
+      letter-spacing: .7px;
+    }
+
+    .metric-value {
+      margin-top: 5px;
+
+      font-size: 21px;
+
+      font-weight: 800;
+    }
+
+    .button-row {
+      display: flex;
+
+      flex-wrap: wrap;
+
+      gap: 9px;
+    }
+
+    button {
+      border:
+        1px solid rgba(49,140,255,.3);
+
+      border-radius: 8px;
+
+      padding: 9px 13px;
+
+      color: #dcecff;
+
+      background:
+        rgba(49,140,255,.10);
+
+      cursor: pointer;
+
+      font:
+        700
+        10px
+        Inter,
+        sans-serif;
+
+      letter-spacing: .2px;
+    }
+
+    button:hover {
+      background:
+        rgba(49,140,255,.18);
+
+      border-color:
+        rgba(49,140,255,.55);
+    }
+
+    button:disabled {
+      opacity: .5;
+
+      cursor: wait;
+    }
+
+    button.primary {
+      color: white;
+
+      background:
+        linear-gradient(
+          135deg,
+          #1e74d8,
+          #167fbd
+        );
+
+      border-color:
+        rgba(80,170,255,.5);
+    }
+
+    button.danger {
+      color: #ffdce0;
+
+      background:
+        rgba(255,82,100,.07);
+
+      border-color:
+        rgba(255,82,100,.25);
+    }
+
+    .request-info {
+      display: grid;
+
+      grid-template-columns:
+        1fr 1fr;
+
+      gap: 9px;
+
+      margin-top: 13px;
+    }
+
+    .request-box {
+      padding: 10px;
+
+      border:
+        1px solid var(--line);
+
+      border-radius: 8px;
+
+      background:
+        rgba(255,255,255,.018);
+    }
+
+    .request-box label {
+      display: block;
+
+      color: var(--muted2);
+
+      font-size: 9px;
+
+      text-transform: uppercase;
+
+      letter-spacing: .6px;
+
+      margin-bottom: 4px;
+    }
+
+    .request-box span {
+      font:
+        11px
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        monospace;
+
+      color: #c8d5e4;
+    }
+
+    textarea {
+      width: 100%;
+
+      min-height: 170px;
+
+      resize: vertical;
+
+      border:
+        1px solid var(--line);
+
+      border-radius: 9px;
+
+      outline: none;
+
+      padding: 13px;
+
+      color: #cbd8e7;
+
+      background: #070b11;
+
+      font:
+        11px/1.5
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        monospace;
+    }
+
+    textarea:focus {
+      border-color:
+        rgba(49,140,255,.5);
+
+      box-shadow:
+        0 0 0 2px rgba(49,140,255,.08);
+    }
+
+    pre {
+      margin: 0;
+
+      max-height: 330px;
+
+      overflow: auto;
+
+      padding: 13px;
+
+      border:
+        1px solid var(--line);
+
+      border-radius: 9px;
+
+      color: #aebed0;
+
+      background: #070b11;
+
+      font:
+        11px/1.5
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        monospace;
+
+      white-space: pre-wrap;
+
+      word-break: break-word;
+    }
+
+    .response-status {
+      display: flex;
+
+      align-items: center;
+
+      gap: 8px;
+
+      margin-bottom: 10px;
+
+      min-height: 22px;
+    }
+
+    .response-code {
+      font:
+        800
+        12px
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        monospace;
+    }
+
+    .response-time {
+      color: var(--muted);
+
+      font:
+        10px
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        monospace;
+    }
+
+    .notice {
+      padding: 10px 12px;
+
+      border:
+        1px solid rgba(255,157,50,.16);
+
+      border-radius: 8px;
+
+      background:
+        rgba(255,157,50,.045);
+
+      color: #bfa27f;
+
+      font-size: 10px;
+
+      line-height: 1.5;
+
+      margin-bottom: 12px;
+    }
+
+    .footer {
+      margin-top: 18px;
+
+      color: var(--muted2);
+
+      font-size: 10px;
+
+      display: flex;
+
+      justify-content: space-between;
+
+      gap: 10px;
+    }
+
+
+    /* ========================================================
+       CÉLULAS
+       ======================================================== */
+
+    .cells-grid {
+      display: grid;
+
+      grid-template-columns:
+        repeat(4, 1fr);
+
+      gap: 9px;
+    }
+
+    .cell {
+      min-width: 0;
+
+      padding: 12px;
+
+      border:
+        1px solid var(--line);
+
+      border-radius: 9px;
+
+      background:
+        rgba(255,255,255,.018);
+    }
+
+    .cell-header {
+      display: flex;
+
+      justify-content: space-between;
+
+      align-items: center;
+
+      gap: 8px;
+
+      margin-bottom: 9px;
+    }
+
+    .cell-name {
+      color: var(--muted2);
+
+      font-size: 9px;
+
+      font-weight: 800;
+
+      letter-spacing: .7px;
+    }
+
+    .cell-status {
+      width: 6px;
+      height: 6px;
+
+      border-radius: 50%;
+
+      background: var(--green);
+
+      box-shadow:
+        0 0 8px var(--green);
+    }
+
+    .cell-status.missing {
+      background: var(--orange);
+
+      box-shadow:
+        0 0 8px var(--orange);
+    }
+
+    .cell-voltage {
+      font-size: 20px;
+
+      font-weight: 800;
+
+      letter-spacing: -.4px;
+
+      color: #58a6ff;
+    }
+
+    .cell-temperature {
+      margin-top: 4px;
+
+      color: var(--muted);
+
+      font:
+        10px
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        monospace;
+    }
+
+    .cells-summary {
+      display: grid;
+
+      grid-template-columns:
+        repeat(3, 1fr);
+
+      gap: 9px;
+    }
+
+
+    @media (max-width: 1000px) {
+
+      .cells-grid {
+        grid-template-columns:
+          repeat(2, 1fr);
+      }
+
+    }
+
+    @media (max-width: 900px) {
+
+      .span-4,
+      .span-6,
+      .span-8 {
+        grid-column: span 12;
+      }
+
+    }
+
+    @media (max-width: 650px) {
+
+      .container {
+        width:
+          min(
+            100% - 22px,
+            1380px
+          );
+
+        padding-top: 18px;
+      }
+
+      .header {
+        align-items: flex-start;
+
+        flex-direction: column;
+      }
+
+      .metrics,
+      .request-info,
+      .cells-summary {
+        grid-template-columns: 1fr;
+      }
+
+      .cells-grid {
+        grid-template-columns:
+          1fr 1fr;
+      }
+
+    }
+
+  </style>
 </head>
 
 
 <body>
 
-<div class="container">
+  <main class="container">
 
 
-  <!-- =====================================================
-       CABEÇALHO
-       ===================================================== -->
+    <!-- ======================================================
+         CABEÇALHO
+         ====================================================== -->
 
-  <div class="header">
+    <header class="header">
 
-    <div class="header-left">
+      <div class="brand">
 
-      <h1>Telemetria / Células</h1>
+        <div class="logo">≈</div>
 
-      <p>
-        Diagnóstico da rota
-        <span class="route">/api/celulas</span>
-      </p>
+        <div>
 
-    </div>
-
-    <div class="status-area">
-
-      <div id="statusDot" class="status-dot"></div>
-
-      <div>
-        <div id="statusText" class="status-text">
-          AGUARDANDO
-        </div>
-
-        <div id="statusCode" class="status-code">
-          —
-        </div>
-      </div>
-
-    </div>
-
-  </div>
-
-
-  <!-- =====================================================
-       CONTEÚDO PRINCIPAL
-       ===================================================== -->
-
-  <div class="grid">
-
-
-    <!-- ===================================================
-         CÉLULAS
-         =================================================== -->
-
-    <div class="card">
-
-      <div class="card-title">
-
-        <span>Última leitura</span>
-
-        <span id="bufferInfo">
-          aguardando consulta
-        </span>
-
-      </div>
-
-
-      <div class="cells-grid" id="cellsGrid">
-
-        <!-- preenchido pelo JavaScript -->
-
-      </div>
-
-
-      <div class="actions">
-
-        <button
-          class="primary"
-          onclick="chamarUltimo()"
-        >
-          ÚLTIMO
-        </button>
-
-        <button
-          onclick="chamarTodos()"
-        >
-          TODOS
-        </button>
-
-      </div>
-
-    </div>
-
-
-    <!-- ===================================================
-         RESUMO
-         =================================================== -->
-
-    <div class="card">
-
-      <div class="card-title">
-
-        <span>Resumo</span>
-
-        <span>BUFFER</span>
-
-      </div>
-
-
-      <div class="metrics">
-
-        <div class="metric">
-
-          <div class="metric-label">
+          <h1>
+            Telemetria
+            <span class="cyan">/</span>
             Células
-          </div>
+          </h1>
 
-          <div
-            id="cellCount"
-            class="metric-value"
-          >
-            —
-          </div>
-
-        </div>
-
-
-        <div class="metric">
-
-          <div class="metric-label">
-            Temperaturas
-          </div>
-
-          <div
-            id="tempCount"
-            class="metric-value"
-          >
-            —
-          </div>
-
-        </div>
-
-
-        <div class="metric">
-
-          <div class="metric-label">
-            Última chamada
-          </div>
-
-          <div
-            id="lastCall"
-            class="metric-value"
-          >
-            —
-          </div>
-
-        </div>
-
-
-        <div class="metric">
-
-          <div class="metric-label">
-            Tempo
-          </div>
-
-          <div
-            id="getTime"
-            class="metric-value"
-          >
-            —
-          </div>
+          <p class="subtitle">
+            Diagnóstico das rotas de entrada, consulta e buffer das células
+          </p>
 
         </div>
 
       </div>
 
-    </div>
 
-  </div>
+      <a class="back" href="/">
+        ← Painel principal
+      </a>
 
-
-  <!-- =====================================================
-       POST
-       ===================================================== -->
-
-  <div class="card" style="margin-top:18px;">
-
-    <div class="card-title">
-
-      <span>Enviar dados</span>
-
-      <span>POST /api/celulas</span>
-
-    </div>
+    </header>
 
 
-    <textarea id="postBody">{
+
+    <section class="grid">
+
+
+      <!-- ====================================================
+           ESTADO DA ROTA
+           ==================================================== -->
+
+      <article class="card span-4">
+
+        <div class="card-header">
+
+          <h2>
+            ESTADO DA ROTA
+          </h2>
+
+          <span
+            id="routeBadge"
+            class="badge warning"
+          >
+            AGUARDANDO
+          </span>
+
+        </div>
+
+
+        <div class="card-body">
+
+          <div
+            id="routeStatus"
+            class="big-status orange"
+          >
+
+            <span class="dot"></span>
+
+            AGUARDANDO
+
+          </div>
+
+
+          <div class="meta">
+
+            <span>
+              GET /api/celulas/ultimo
+            </span>
+
+            <span id="lastCall">
+              —
+            </span>
+
+          </div>
+
+        </div>
+
+      </article>
+
+
+
+      <!-- ====================================================
+           RESUMO DAS CÉLULAS
+           ==================================================== -->
+
+      <article class="card span-8">
+
+        <div class="card-header">
+
+          <h2>
+            ÚLTIMOS DADOS DO BUFFER
+          </h2>
+
+          <span class="badge ok">
+            BUFFER
+          </span>
+
+        </div>
+
+
+        <div class="card-body">
+
+
+          <div class="cells-summary">
+
+            <div class="metric">
+
+              <div class="metric-label">
+                Células recebidas
+              </div>
+
+              <div
+                id="cellsCount"
+                class="metric-value blue"
+              >
+                —
+              </div>
+
+            </div>
+
+
+            <div class="metric">
+
+              <div class="metric-label">
+                Tensão mínima
+              </div>
+
+              <div
+                id="minVoltage"
+                class="metric-value orange"
+              >
+                —
+              </div>
+
+            </div>
+
+
+            <div class="metric">
+
+              <div class="metric-label">
+                Tensão máxima
+              </div>
+
+              <div
+                id="maxVoltage"
+                class="metric-value cyan"
+              >
+                —
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <div class="meta">
+
+            <span>
+              ORIGEM: buffer/telemetria
+            </span>
+
+            <span id="bufferInfo">
+              aguardando chamada
+            </span>
+
+          </div>
+
+        </div>
+
+      </article>
+
+
+
+      <!-- ====================================================
+           VISUALIZAÇÃO DAS 16 CÉLULAS
+           ==================================================== -->
+
+      <article class="card span-12">
+
+        <div class="card-header">
+
+          <h2>
+            CÉLULAS INDIVIDUAIS
+          </h2>
+
+          <span class="badge ok">
+            16 CANAIS
+          </span>
+
+        </div>
+
+
+        <div class="card-body">
+
+          <div
+            id="cellsGrid"
+            class="cells-grid"
+          >
+
+            <!--
+              Os 16 cards são criados pelo JavaScript.
+            -->
+
+          </div>
+
+        </div>
+
+      </article>
+
+
+
+      <!-- ====================================================
+           CHAMADAS GET
+           ==================================================== -->
+
+      <article class="card span-6">
+
+        <div class="card-header">
+
+          <h2>
+            CHAMADAS GET
+          </h2>
+
+          <span class="badge ok">
+            SEM ALTERAÇÃO DE DADOS
+          </span>
+
+        </div>
+
+
+        <div class="card-body">
+
+
+          <div class="button-row">
+
+            <button
+              class="primary"
+              onclick="chamarUltimo()"
+            >
+              GET ÚLTIMO
+            </button>
+
+
+            <button
+              onclick="chamarTodos()"
+            >
+              GET TODOS
+            </button>
+
+          </div>
+
+
+          <div class="request-info">
+
+            <div class="request-box">
+
+              <label>
+                Último
+              </label>
+
+              <span>
+                /api/celulas/ultimo
+              </span>
+
+            </div>
+
+
+            <div class="request-box">
+
+              <label>
+                Todos
+              </label>
+
+              <span>
+                /api/celulas/todos
+              </span>
+
+            </div>
+
+          </div>
+
+
+          <div class="meta">
+
+            <span id="getMethod">
+              Nenhuma chamada
+            </span>
+
+            <span id="getTime">
+              —
+            </span>
+
+          </div>
+
+        </div>
+
+      </article>
+
+
+
+      <!-- ====================================================
+           CHAMADA POST
+           ==================================================== -->
+
+      <article class="card span-6">
+
+        <div class="card-header">
+
+          <h2>
+            CHAMADA POST
+          </h2>
+
+          <span class="badge warning">
+            GRAVA NO SUPABASE
+          </span>
+
+        </div>
+
+
+        <div class="card-body">
+
+
+          <div class="notice">
+
+            Esta chamada executa a rota real
+            <b>POST /api/celulas</b>.
+
+            Ela atualiza o buffer e tenta inserir
+            o array na tabela <b>celulas</b>.
+
+            Use somente quando quiser fazer
+            um teste real.
+
+          </div>
+
+
+          <textarea id="postBody">{
   "cells": [
     3.21,
     3.22,
-    3.20,
-    3.21,
-    3.22,
-    3.20,
-    3.21,
-    3.22,
-    3.20,
-    3.21,
-    3.22,
-    3.20,
-    3.21,
-    3.22,
-    3.20,
-    3.21
+    3.23,
+    3.24,
+    3.25,
+    3.26,
+    3.27,
+    3.28,
+    3.29,
+    3.30,
+    3.31,
+    3.32,
+    3.33,
+    3.34,
+    3.35,
+    3.36
   ]
 }</textarea>
 
 
-    <div class="post-info">
+          <div
+            class="button-row"
+            style="margin-top:10px"
+          >
+
+            <button
+              class="primary"
+              onclick="enviarPost()"
+            >
+              ENVIAR POST
+            </button>
+
+
+            <button
+              onclick="formatarBody()"
+            >
+              FORMATAR JSON
+            </button>
+
+          </div>
+
+        </div>
+
+      </article>
+
+
+
+      <!-- ====================================================
+           RESPOSTA
+           ==================================================== -->
+
+      <article class="card span-8">
+
+        <div class="card-header">
+
+          <h2>
+            RESPOSTA DA ÚLTIMA CHAMADA
+          </h2>
+
+          <span
+            id="responseBadge"
+            class="badge warning"
+          >
+            SEM CHAMADA
+          </span>
+
+        </div>
+
+
+        <div class="card-body">
+
+
+          <div class="response-status">
+
+            <span
+              id="responseCode"
+              class="response-code"
+            >
+              —
+            </span>
+
+            <span
+              id="responseTime"
+              class="response-time"
+            >
+              —
+            </span>
+
+          </div>
+
+
+          <pre id="response">Nenhuma requisição realizada.</pre>
+
+        </div>
+
+      </article>
+
+
+
+      <!-- ====================================================
+           ROTAS RELACIONADAS
+           ==================================================== -->
+
+      <article class="card span-4">
+
+        <div class="card-header">
+
+          <h2>
+            ROTAS RELACIONADAS
+          </h2>
+
+          <span class="badge ok">
+            API
+          </span>
+
+        </div>
+
+
+        <div class="card-body">
+
+
+          <div
+            class="meta"
+            style="margin-top:0"
+          >
+
+            <span>
+              POST
+            </span>
+
+            <span>
+              /api/celulas
+            </span>
+
+          </div>
+
+
+          <div class="meta">
+
+            <span>
+              GET
+            </span>
+
+            <span>
+              /api/celulas/todos
+            </span>
+
+          </div>
+
+
+          <div class="meta">
+
+            <span>
+              GET
+            </span>
+
+            <span>
+              /api/celulas/ultimo
+            </span>
+
+          </div>
+
+
+          <div class="meta">
+
+            <span>
+              DIAGNÓSTICO
+            </span>
+
+            <span>
+              /api/celulas
+            </span>
+
+          </div>
+
+        </div>
+
+      </article>
+
+
+    </section>
+
+
+
+    <footer class="footer">
 
       <span>
-        Corpo JSON enviado diretamente para a rota
+        Barcos Telemetria • Cell Route Diagnostic
       </span>
 
-      <button
-        class="primary"
-        onclick="enviarPost()"
-      >
-        ENVIAR POST
-      </button>
-
-    </div>
-
-  </div>
-
-
-  <!-- =====================================================
-       RESPOSTA
-       ===================================================== -->
-
-  <div class="card response">
-
-    <div class="response-head">
-
-      <div
-        id="getMethod"
-        class="response-status"
-      >
-        Nenhuma requisição realizada
-      </div>
-
-      <div
-        id="responseTime"
-        class="response-time"
-      >
+      <span id="footerTime">
         —
-      </div>
+      </span>
 
-    </div>
-
-
-    <pre id="response">
-A resposta da API aparecerá aqui.
-    </pre>
-
-  </div>
+    </footer>
 
 
-  <!-- =====================================================
-       ROTAS RELACIONADAS
-       ===================================================== -->
+  </main>
 
-  <div class="routes">
-
-    <div class="route-item">
-
-      <div class="route-method">
-        DIAGNÓSTICO
-      </div>
-
-      <div class="route-path">
-        /api/celulas
-      </div>
-
-      <div class="route-desc">
-        Esta página
-      </div>
-
-    </div>
-
-
-    <div class="route-item">
-
-      <div class="route-method">
-        GET
-      </div>
-
-      <div class="route-path">
-        /api/celulas/ultimo
-      </div>
-
-      <div class="route-desc">
-        Último pacote do buffer
-      </div>
-
-    </div>
-
-
-    <div class="route-item">
-
-      <div class="route-method">
-        GET
-      </div>
-
-      <div class="route-path">
-        /api/celulas/todos
-      </div>
-
-      <div class="route-desc">
-        Histórico completo
-      </div>
-
-    </div>
-
-  </div>
-
-
-</div>
 
 
 <script>
 
-// ============================================================
-// ELEMENTOS
-// ============================================================
-
-const $ = (id) => document.getElementById(id);
+  const $ = (id) =>
+    document.getElementById(id);
 
 
-// ============================================================
-// DATA / HORA
-// ============================================================
+  function agora() {
 
-function agora() {
-
-  return new Date().toLocaleTimeString("pt-BR");
-
-}
-
-
-// ============================================================
-// STATUS
-// ============================================================
-
-function atualizarStatus(online, texto, codigo) {
-
-  const dot = $("statusDot");
-
-  dot.classList.remove("online", "error");
-
-  if (online) {
-    dot.classList.add("online");
-  } else {
-    dot.classList.add("error");
-  }
-
-  $("statusText").textContent = texto;
-
-  $("statusCode").textContent = codigo;
-
-}
-
-
-// ============================================================
-// RESPOSTA
-// ============================================================
-
-function mostrarResposta(status, tempo, dados) {
-
-  $("responseTime").textContent =
-    tempo + " ms";
-
-  if (status === null) {
-
-    $("getMethod").textContent =
-      "FETCH ERROR";
-
-  } else {
-
-    $("getMethod").textContent =
-      "HTTP " + status;
+    return new Date()
+      .toLocaleTimeString("pt-BR");
 
   }
 
 
-  if (typeof dados === "string") {
+  // ==========================================================
+  // CRIA OS 16 CARDS DAS CÉLULAS
+  // ==========================================================
 
-    $("response").textContent = dados;
+  function criarCelulas() {
 
-  } else {
+    const grid =
+      $("cellsGrid");
+
+    grid.innerHTML = "";
+
+
+    for (let i = 0; i < 16; i++) {
+
+      const numero =
+        String(i + 1)
+          .padStart(2, "0");
+
+
+      const card =
+        document.createElement("div");
+
+      card.className = "cell";
+
+
+      card.innerHTML = `
+
+        <div class="cell-header">
+
+          <span class="cell-name">
+            CÉLULA ${numero}
+          </span>
+
+          <span
+            id="cellStatus${i}"
+            class="cell-status missing"
+          ></span>
+
+        </div>
+
+
+        <div
+          id="cellVoltage${i}"
+          class="cell-voltage"
+        >
+          —
+        </div>
+
+
+        <div
+          id="cellTemperature${i}"
+          class="cell-temperature"
+        >
+          Temp: —
+        </div>
+
+      `;
+
+
+      grid.appendChild(card);
+
+    }
+
+  }
+
+
+  // ==========================================================
+  // ATUALIZA AS 16 CÉLULAS
+  // ==========================================================
+
+  function atualizarCelulas(
+    celulas,
+    temperaturas
+  ) {
+
+    let quantidade = 0;
+
+    let valoresValidos = [];
+
+
+    for (let i = 0; i < 16; i++) {
+
+      const tensao =
+        celulas?.[i];
+
+      const temperatura =
+        temperaturas?.[i];
+
+
+      const voltageElement =
+        $(`cellVoltage${i}`);
+
+      const temperatureElement =
+        $(`cellTemperature${i}`);
+
+      const statusElement =
+        $(`cellStatus${i}`);
+
+
+      if (
+        tensao != null &&
+        tensao !== -2 &&
+        Number.isFinite(Number(tensao))
+      ) {
+
+        const valor =
+          Number(tensao);
+
+
+        voltageElement.textContent =
+          valor.toFixed(3) + " V";
+
+
+        quantidade++;
+
+        valoresValidos.push(valor);
+
+
+        statusElement.className =
+          "cell-status";
+
+      } else {
+
+        voltageElement.textContent =
+          "—";
+
+
+        statusElement.className =
+          "cell-status missing";
+
+      }
+
+
+      if (
+        temperatura != null &&
+        temperatura !== -2 &&
+        Number.isFinite(Number(temperatura))
+      ) {
+
+        temperatureElement.textContent =
+          "Temp: " +
+          Number(temperatura).toFixed(1) +
+          " °C";
+
+      } else {
+
+        temperatureElement.textContent =
+          "Temp: —";
+
+      }
+
+    }
+
+
+    $("cellsCount").textContent =
+      quantidade + " / 16";
+
+
+    if (valoresValidos.length > 0) {
+
+      const minimo =
+        Math.min(...valoresValidos);
+
+      const maximo =
+        Math.max(...valoresValidos);
+
+
+      $("minVoltage").textContent =
+        minimo.toFixed(3) + " V";
+
+
+      $("maxVoltage").textContent =
+        maximo.toFixed(3) + " V";
+
+    } else {
+
+      $("minVoltage").textContent =
+        "—";
+
+      $("maxVoltage").textContent =
+        "—";
+
+    }
+
+  }
+
+
+  // ==========================================================
+  // RESPOSTA DA REQUISIÇÃO
+  // ==========================================================
+
+  function mostrarResposta(
+    status,
+    tempo,
+    dados
+  ) {
+
+    $("responseCode").textContent =
+      status
+        ? String(status)
+        : "ERRO";
+
+
+    $("responseTime").textContent =
+      tempo + " ms";
+
 
     $("response").textContent =
-      JSON.stringify(dados, null, 2);
-
-  }
-
-}
-
-
-// ============================================================
-// INICIALIZA CÉLULAS
-// ============================================================
-
-function inicializarCelulas() {
-
-  const grid = $("cellsGrid");
-
-  grid.innerHTML = "";
-
-  for (let i = 0; i < 16; i++) {
-
-    const div = document.createElement("div");
-
-    div.className = "cell";
-
-    div.innerHTML = \`
-      <div class="cell-number">
-        CÉLULA \${i + 1}
-      </div>
-
-      <div
-        id="cell-\${i}"
-        class="cell-value"
-      >
-        —
-      </div>
-
-      <div
-        id="temp-\${i}"
-        class="cell-temp"
-      >
-        TEMP: —
-      </div>
-    \`;
-
-    grid.appendChild(div);
-
-  }
-
-}
+      typeof dados === "string"
+        ? dados
+        : JSON.stringify(
+            dados,
+            null,
+            2
+          );
 
 
-// ============================================================
-// ATUALIZA CÉLULAS
-// ============================================================
-
-function atualizarCelulas(dados) {
-
-  const ultimo =
-    Array.isArray(dados)
-      ? dados[0]
-      : dados;
-
-  const celulas =
-    ultimo?.celula;
-
-  const temperaturas =
-    ultimo?.temperatura;
-
-
-  if (!Array.isArray(celulas)) {
-
-    $("cellCount").textContent = "0";
-
-    return;
-
-  }
-
-
-  $("cellCount").textContent =
-    celulas.length;
-
-
-  let temperaturasValidas = 0;
-
-
-  for (let i = 0; i < 16; i++) {
-
-    const valor = celulas[i];
-
-    const temp =
-      Array.isArray(temperaturas)
-        ? temperaturas[i]
-        : null;
-
-
-    $("cell-" + i).textContent =
-      valor != null && valor !== -2
-        ? Number(valor).toFixed(3) + " V"
-        : "—";
+    const badge =
+      $("responseBadge");
 
 
     if (
-      temp != null &&
-      temp !== -2
+      status >= 200 &&
+      status < 300
     ) {
 
-      $("temp-" + i).textContent =
-        "TEMP: " +
-        Number(temp).toFixed(1) +
-        " °C";
+      badge.textContent =
+        "SUCESSO";
 
-      temperaturasValidas++;
+      badge.className =
+        "badge ok";
 
     } else {
 
-      $("temp-" + i).textContent =
-        "TEMP: —";
+      badge.textContent =
+        "ERRO";
+
+      badge.className =
+        "badge error";
 
     }
 
   }
 
 
-  $("tempCount").textContent =
-    temperaturasValidas + "/16";
+  // ==========================================================
+  // STATUS DA ROTA
+  // ==========================================================
 
-}
+  function atualizarStatus(
+    ok,
+    texto,
+    badgeTexto
+  ) {
 
+    const status =
+      $("routeStatus");
 
-// ============================================================
-// GET /api/celulas/ultimo
-// ============================================================
-
-async function chamarUltimo() {
-
-  const inicio =
-    performance.now();
-
-
-  $("getMethod").textContent =
-    "GET /api/celulas/ultimo";
-
-  $("getTime").textContent =
-    "consultando...";
+    const badge =
+      $("routeBadge");
 
 
-  try {
-
-    const resposta =
-      await fetch("/api/celulas/ultimo");
-
-
-    const texto =
-      await resposta.text();
+    status.className =
+      "big-status " +
+      (ok ? "green" : "red");
 
 
-    const tempo =
-      Math.round(
-        performance.now() - inicio
+    status.innerHTML =
+      '<span class="dot"></span>' +
+      texto;
+
+
+    badge.textContent =
+      badgeTexto;
+
+
+    badge.className =
+      "badge " +
+      (ok ? "ok" : "error");
+
+  }
+
+
+  // ==========================================================
+  // GET /ultimo
+  // ==========================================================
+
+  async function chamarUltimo() {
+
+    const inicio =
+      performance.now();
+
+
+    $("getMethod").textContent =
+      "GET /api/celulas/ultimo";
+
+
+    $("getTime").textContent =
+      "consultando...";
+
+
+    try {
+
+      const resposta =
+        await fetch(
+          "/api/celulas/ultimo"
+        );
+
+
+      const texto =
+        await resposta.text();
+
+
+      const tempo =
+        Math.round(
+          performance.now() -
+          inicio
+        );
+
+
+      let dados;
+
+
+      try {
+
+        dados =
+          JSON.parse(texto);
+
+      } catch {
+
+        dados =
+          texto;
+
+      }
+
+
+      mostrarResposta(
+        resposta.status,
+        tempo,
+        dados
       );
 
+
+      if (resposta.ok) {
+
+        atualizarStatus(
+          true,
+          "ONLINE",
+          "200 OK"
+        );
+
+
+        const ultimo =
+          Array.isArray(dados)
+            ? dados[0]
+            : dados;
+
+
+        const celulas =
+          ultimo?.celula;
+
+
+        const temperaturas =
+          ultimo?.temperatura;
+
+
+        atualizarCelulas(
+          celulas,
+          temperaturas
+        );
+
+
+        $("bufferInfo").textContent =
+          "última leitura: " +
+          agora();
+
+      } else {
+
+        atualizarStatus(
+          false,
+          "ERRO",
+          resposta.status
+        );
+
+      }
+
+
+      $("lastCall").textContent =
+        agora();
+
+
+      $("getTime").textContent =
+        tempo + " ms";
+
+
+    } catch (erro) {
+
+      const tempo =
+        Math.round(
+          performance.now() -
+          inicio
+        );
+
+
+      mostrarResposta(
+        null,
+        tempo,
+        {
+          erro: erro.message
+        }
+      );
+
+
+      atualizarStatus(
+        false,
+        "SEM RESPOSTA",
+        "FETCH ERROR"
+      );
+
+
+      $("getTime").textContent =
+        tempo + " ms";
+
+    }
+
+  }
+
+
+  // ==========================================================
+  // GET /todos
+  // ==========================================================
+
+  async function chamarTodos() {
+
+    const inicio =
+      performance.now();
+
+
+    $("getMethod").textContent =
+      "GET /api/celulas/todos";
+
+
+    $("getTime").textContent =
+      "consultando...";
+
+
+    try {
+
+      const resposta =
+        await fetch(
+          "/api/celulas/todos"
+        );
+
+
+      const texto =
+        await resposta.text();
+
+
+      const tempo =
+        Math.round(
+          performance.now() -
+          inicio
+        );
+
+
+      let dados;
+
+
+      try {
+
+        dados =
+          JSON.parse(texto);
+
+      } catch {
+
+        dados =
+          texto;
+
+      }
+
+
+      mostrarResposta(
+        resposta.status,
+        tempo,
+        dados
+      );
+
+
+      if (resposta.ok) {
+
+        atualizarStatus(
+          true,
+          "ONLINE",
+          "200 OK"
+        );
+
+
+        $("bufferInfo").textContent =
+          Array.isArray(dados)
+            ? dados.length +
+              " registros retornados"
+            : "resposta recebida";
+
+      } else {
+
+        atualizarStatus(
+          false,
+          "ERRO",
+          resposta.status
+        );
+
+      }
+
+
+      $("lastCall").textContent =
+        agora();
+
+
+      $("getTime").textContent =
+        tempo + " ms";
+
+
+    } catch (erro) {
+
+      const tempo =
+        Math.round(
+          performance.now() -
+          inicio
+        );
+
+
+      mostrarResposta(
+        null,
+        tempo,
+        {
+          erro: erro.message
+        }
+      );
+
+
+      atualizarStatus(
+        false,
+        "SEM RESPOSTA",
+        "FETCH ERROR"
+      );
+
+
+      $("getTime").textContent =
+        tempo + " ms";
+
+    }
+
+  }
+
+
+  // ==========================================================
+  // POST /api/celulas
+  // ==========================================================
+
+  async function enviarPost() {
 
     let dados;
 
@@ -1200,361 +2095,187 @@ async function chamarUltimo() {
     try {
 
       dados =
-        JSON.parse(texto);
+        JSON.parse(
+          $("postBody").value
+        );
 
-    } catch {
+    } catch (erro) {
 
-      dados = texto;
+      mostrarResposta(
+        400,
+        0,
+        {
+          erro:
+            "JSON inválido no campo de teste"
+        }
+      );
+
+      return;
 
     }
 
 
-    mostrarResposta(
-      resposta.status,
-      tempo,
-      dados
-    );
-
-
-    if (resposta.ok) {
-
-      atualizarStatus(
-        true,
-        "ONLINE",
-        "200 OK"
-      );
-
-
-      atualizarCelulas(dados);
-
-
-      $("bufferInfo").textContent =
-        "última leitura: " + agora();
-
-    } else {
-
-      atualizarStatus(
-        false,
-        "ERRO",
-        resposta.status
-      );
-
-    }
-
-
-    $("lastCall").textContent =
-      agora();
-
-    $("getTime").textContent =
-      tempo + " ms";
-
-
-  } catch (erro) {
-
-    const tempo =
-      Math.round(
-        performance.now() - inicio
-      );
-
-
-    mostrarResposta(
-      null,
-      tempo,
-      {
-        erro: erro.message
-      }
-    );
-
-
-    atualizarStatus(
-      false,
-      "SEM RESPOSTA",
-      "FETCH ERROR"
-    );
-
-
-    $("getTime").textContent =
-      tempo + " ms";
-
-  }
-
-}
-
-
-// ============================================================
-// GET /api/celulas/todos
-// ============================================================
-
-async function chamarTodos() {
-
-  const inicio =
-    performance.now();
-
-
-  $("getMethod").textContent =
-    "GET /api/celulas/todos";
-
-  $("getTime").textContent =
-    "consultando...";
-
-
-  try {
-
-    const resposta =
-      await fetch("/api/celulas/todos");
-
-
-    const dados =
-      await resposta.json();
-
-
-    const tempo =
-      Math.round(
-        performance.now() - inicio
-      );
-
-
-    mostrarResposta(
-      resposta.status,
-      tempo,
-      dados
-    );
-
-
-    if (resposta.ok) {
-
-      atualizarStatus(
-        true,
-        "ONLINE",
-        "200 OK"
-      );
-
-
-      $("bufferInfo").textContent =
-        Array.isArray(dados)
-          ? dados.length +
-            " registros retornados"
-          : "resposta recebida";
-
-    } else {
-
-      atualizarStatus(
-        false,
-        "ERRO",
-        resposta.status
-      );
-
-    }
-
-
-    $("lastCall").textContent =
-      agora();
-
-    $("getTime").textContent =
-      tempo + " ms";
-
-
-  } catch (erro) {
-
-    const tempo =
-      Math.round(
-        performance.now() - inicio
-      );
-
-
-    mostrarResposta(
-      null,
-      tempo,
-      {
-        erro: erro.message
-      }
-    );
-
-
-    atualizarStatus(
-      false,
-      "SEM RESPOSTA",
-      "FETCH ERROR"
-    );
-
-
-    $("getTime").textContent =
-      tempo + " ms";
-
-  }
-
-}
-
-
-// ============================================================
-// POST /api/celulas
-// ============================================================
-
-async function enviarPost() {
-
-  const inicio =
-    performance.now();
-
-
-  $("getMethod").textContent =
-    "POST /api/celulas";
-
-  $("responseTime").textContent =
-    "enviando...";
-
-
-  let body;
-
-
-  try {
-
-    body =
-      JSON.parse(
-        $("postBody").value
-      );
-
-  } catch (erro) {
-
-    mostrarResposta(
-      null,
-      0,
-      {
-        erro: "JSON inválido",
-        detalhe: erro.message
-      }
-    );
-
-    atualizarStatus(
-      false,
-      "JSON INVÁLIDO",
-      "CLIENT"
-    );
-
-    return;
-
-  }
-
-
-  try {
-
-    const resposta =
-      await fetch("/api/celulas", {
-
-        method: "POST",
-
-        headers: {
-          "Content-Type":
-            "application/json"
-        },
-
-        body:
-          JSON.stringify(body)
-
-      });
-
-
-    const texto =
-      await resposta.text();
-
-
-    const tempo =
-      Math.round(
-        performance.now() - inicio
-      );
-
-
-    let dados;
+    const inicio =
+      performance.now();
 
 
     try {
 
-      dados =
-        JSON.parse(texto);
+      const resposta =
+        await fetch(
+          "/api/celulas",
+          {
+            method: "POST",
 
-    } catch {
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
 
-      dados = texto;
-
-    }
-
-
-    mostrarResposta(
-      resposta.status,
-      tempo,
-      dados
-    );
+            body:
+              JSON.stringify(dados)
+          }
+        );
 
 
-    if (resposta.ok) {
+      const texto =
+        await resposta.text();
 
-      atualizarStatus(
-        true,
-        "ONLINE",
-        resposta.status + " OK"
+
+      const tempo =
+        Math.round(
+          performance.now() -
+          inicio
+        );
+
+
+      let retorno;
+
+
+      try {
+
+        retorno =
+          JSON.parse(texto);
+
+      } catch {
+
+        retorno =
+          texto;
+
+      }
+
+
+      mostrarResposta(
+        resposta.status,
+        tempo,
+        retorno
       );
 
-    } else {
+
+      if (resposta.ok) {
+
+        atualizarStatus(
+          true,
+          "ONLINE",
+          "POST OK"
+        );
+
+
+        $("bufferInfo").textContent =
+          "POST executado às " +
+          agora();
+
+      } else {
+
+        atualizarStatus(
+          false,
+          "ERRO",
+          resposta.status
+        );
+
+      }
+
+
+      $("lastCall").textContent =
+        agora();
+
+
+    } catch (erro) {
+
+      const tempo =
+        Math.round(
+          performance.now() -
+          inicio
+        );
+
+
+      mostrarResposta(
+        null,
+        tempo,
+        {
+          erro: erro.message
+        }
+      );
+
 
       atualizarStatus(
         false,
-        "ERRO",
-        resposta.status
+        "SEM RESPOSTA",
+        "FETCH ERROR"
       );
 
     }
 
-
-    $("lastCall").textContent =
-      agora();
-
-    $("getTime").textContent =
-      tempo + " ms";
+  }
 
 
-  } catch (erro) {
+  // ==========================================================
+  // FORMATAR JSON
+  // ==========================================================
 
-    const tempo =
-      Math.round(
-        performance.now() - inicio
+  function formatarBody() {
+
+    try {
+
+      const objeto =
+        JSON.parse(
+          $("postBody").value
+        );
+
+
+      $("postBody").value =
+        JSON.stringify(
+          objeto,
+          null,
+          2
+        );
+
+    } catch {
+
+      alert(
+        "O conteúdo atual não é um JSON válido."
       );
 
-
-    mostrarResposta(
-      null,
-      tempo,
-      {
-        erro: erro.message
-      }
-    );
-
-
-    atualizarStatus(
-      false,
-      "SEM RESPOSTA",
-      "FETCH ERROR"
-    );
-
-
-    $("getTime").textContent =
-      tempo + " ms";
+    }
 
   }
 
-}
+
+  // ==========================================================
+  // INICIALIZAÇÃO
+  // ==========================================================
+
+  criarCelulas();
 
 
-// ============================================================
-// INICIALIZAÇÃO
-// ============================================================
-
-inicializarCelulas();
+  $("footerTime").textContent =
+    "Página aberta em " +
+    agora();
 
 </script>
 
 </body>
-
 </html>`);
-
 });
 
 
