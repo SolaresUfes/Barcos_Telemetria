@@ -58,15 +58,6 @@ router.get("/", async(req, res) => {
 // Rota para a coleta do ultimo dado das medicoes individuais das celulas
 // GET > "/api/celulas/ultimo"
 router.get("/ultimo", async(req, res) => {
-  
-  // const { data, error } = await supabase
-  //   .from("celulas")
-  //   .select("*")
-  //   .order("id", {ascending: false})
-  //   .limit(1);
-
-  // if (error) return res.status(500).json({erro: error.message});
-
   res.json(buffer.coletar_ult_Celulas());
 });
 
