@@ -3,11 +3,18 @@
 const express = require("express");
 const cors = require("cors");
 const app = express();
-app.use(express.json());
 
+const rotas_alertas  = require("./routes/alertas");
+const rotas_celulas  = require("./routes/celulas");
+const rotas_sensores = require("./routes/sensores");
 const supabase = require("./supabase");
 
+app.use(express.json());
 app.use(cors());
+
+app.use("/api/alertas", rotas_alertas);
+app.use("/api/celulas", rotas_celulas);
+app.use("/api/sensores", rotas_sensores);
 
 // Link: https://barcos-backendtelemetria.vercel.app/ 
 
@@ -548,15 +555,6 @@ app.get("/", async (req, res) => {
 </body>
 </html>`);
 });
-
-
-const rotas_alertas  = require("./routes/alertas");
-const rotas_celulas  = require("./routes/celulas");
-const rotas_sensores = require("./routes/sensores");
-
-app.use("/api/alertas", rotas_alertas);
-app.use("/api/celulas", rotas_celulas);
-app.use("/api/sensores", rotas_sensores);
 
 if (!process.env.VERCEL) {
     app.listen(3000, () => {
