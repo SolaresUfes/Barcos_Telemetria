@@ -896,24 +896,20 @@ router.get("/", (req, res) => {
 
 
 router.get("/teste-redis", async (req, res) => {
-    try {
-        const url = process.env.KV_REST_API_URL;
-        const token = process.env.KV_REST_API_TOKEN;
+    res.json({
+        vercel_env: process.env.VERCEL_ENV || null,
+        vercel_url: process.env.VERCEL_URL || null,
+        projeto: process.env.VERCEL_PROJECT_ID || null,
 
-        res.json({
-            url_existe: !!url,
-            url_inicio: url ? url.substring(0, 30) : null,
-            url_final: url ? url.substring(Math.max(0, url.length - 20)) : null,
-            token_existe: !!token,
-            token_tamanho: token ? token.length : 0
-        });
+        variaveis_redis: Object.keys(process.env)
+            .filter(nome =>
+                nome.includes("REDIS") ||
+                nome.includes("KV_")
+            ),
 
-    } catch (erro) {
-        res.status(500).json({
-            erro: erro.message,
-            tipo: erro.name
-        });
-    }
+        kv_url: !!process.env.KV_REST_API_URL,
+        kv_token: !!process.env.KV_REST_API_TOKEN
+    });
 });
 
 module.exports = router;
