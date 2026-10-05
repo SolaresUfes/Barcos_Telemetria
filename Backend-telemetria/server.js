@@ -1226,6 +1226,41 @@ app.get("/", async (req, res) => {
       box-shadow: 0 0 10px currentColor;
     }
 
+    .header-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+
+      padding: 6px 10px;
+
+      border: 1px solid rgba(148, 170, 195, .14);
+      border-radius: 6px;
+
+      background: var(--card);
+      color: var(--muted);
+
+      text-decoration: none;
+
+      font: 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-weight: 700;
+      letter-spacing: .5px;
+
+      transition: .15s ease;
+    }
+
+    .header-button:hover {
+      border-color: rgba(49, 140, 255, .45);
+      background: rgba(49, 140, 255, .08);
+      color: var(--blue);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 2px;
+    }
+
     .online { color: var(--green); }
     .warning { color: var(--orange); }
 
@@ -1646,7 +1681,7 @@ app.get("/", async (req, res) => {
           BACKEND ${status} 
         </div>
 
-        <div class="environment">
+        <div class="header-actions">
           <a href="/api/sensores" class="header-button">SENSORES</a>
           <a href="/api/celulas" class="header-button">CÉLULAS</a>
           <a href="/api/alertas" class="header-button">ALERTAS</a>
