@@ -897,16 +897,18 @@ router.get("/", (req, res) => {
 
 router.get("/teste-redis", async (req, res) => {
     try {
-        const dados = await redis.get("telemetria:sensores");
+        const url = process.env.KV_REST_API_URL;
+        const token = process.env.KV_REST_API_TOKEN;
 
         res.json({
-            status: "ok",
-            dados: dados
+            url_existe: !!url,
+            url_inicio: url ? url.substring(0, 30) : null,
+            url_final: url ? url.substring(Math.max(0, url.length - 20)) : null,
+            token_existe: !!token,
+            token_tamanho: token ? token.length : 0
         });
 
     } catch (erro) {
-        console.error("ERRO REDIS:", erro);
-
         res.status(500).json({
             erro: erro.message,
             tipo: erro.name
