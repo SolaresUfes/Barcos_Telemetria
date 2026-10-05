@@ -667,7 +667,7 @@ router.get("/", (req, res) => {
             </div>
             <div class="request-box">
               <label>Todos</label>
-              <span>/api/sensores</span>
+              <span>/api/sensores/todos</span>
             </div>
           </div>
 
@@ -738,7 +738,7 @@ router.get("/", (req, res) => {
 
           <div class="meta">
             <span>GET</span>
-            <span>/api/sensores</span>
+            <span>/api/sensores/todos</span>
           </div>
 
           <div class="meta">
@@ -747,8 +747,8 @@ router.get("/", (req, res) => {
           </div>
 
           <div class="meta">
-            <span>TESTE</span>
-            <span>/api/sensores/teste</span>
+            <span>DIAGNÓSTICO</span>
+            <span>/api/sensores</span>
           </div>
 
         </div>
@@ -815,22 +815,24 @@ router.get("/", (req, res) => {
 
       mostrarResposta(resposta.status, tempo, dados);
 
-      if (resposta.ok) {
+    if (resposta.ok) {
         atualizarStatus(true, "ONLINE", "200 OK");
 
+        const ultimo = Array.isArray(dados) ? dados[0] : dados;
+
         $("tensao").textContent =
-          dados?.tensao != null ? dados.tensao + " V" : "—";
+        ultimo?.tensao != null ? ultimo.tensao + " V" : "—";
 
         $("corrente").textContent =
-          dados?.corrente != null ? dados.corrente + " A" : "—";
+        ultimo?.corrente != null ? ultimo.corrente + " A" : "—";
 
         $("potencia").textContent =
-          dados?.potencia != null ? dados.potencia + " W" : "—";
+        ultimo?.potencia != null ? ultimo.potencia + " W" : "—";
 
         $("bufferInfo").textContent = "última leitura: " + agora();
-      } else {
+    } else {
         atualizarStatus(false, "ERRO", resposta.status);
-      }
+    }
 
       $("lastCall").textContent = agora();
       $("getTime").textContent = tempo + " ms";
@@ -850,11 +852,11 @@ router.get("/", (req, res) => {
   async function chamarTodos() {
     const inicio = performance.now();
 
-    $("getMethod").textContent = "GET /api/sensores";
+    $("getMethod").textContent = "GET /api/sensores/todos";
     $("getTime").textContent = "consultando...";
 
     try {
-      const resposta = await fetch("/api/sensores");
+      const resposta = await fetch("/api/sensores/todos");
       const dados = await resposta.json();
       const tempo = Math.round(performance.now() - inicio);
 
