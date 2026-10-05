@@ -122,8 +122,8 @@ router.post("/", async (req, res) => {
 });
 
 // Rota para a coleta dos dados das medicoes
-// GET > "/api/sensores/"
-router.get("/", async (req, res) => {
+// GET > "/api/sensores/todos"
+router.get("/todos", async (req, res) => {
 
   const { data, error } = await supabase
     .from("medicoes")
@@ -164,7 +164,7 @@ router.get("/ultimo", async (req, res) => {
 // Ela apenas chama essas rotas pelo navegador para diagnóstico.
 // ============================================================
 
-router.get("/teste", (req, res) => {
+router.get("/", (req, res) => {
   res.status(200).send(`<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
