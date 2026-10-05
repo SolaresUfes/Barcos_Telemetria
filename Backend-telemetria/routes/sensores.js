@@ -148,7 +148,8 @@ router.get("/ultimo", async (req, res) => {
         console.error(erro);
 
         res.status(500).json({
-            erro: "Erro ao obter últimos dados dos sensores"
+            erro: erro.message,
+            tipo: erro.name
         });
     }
 });
