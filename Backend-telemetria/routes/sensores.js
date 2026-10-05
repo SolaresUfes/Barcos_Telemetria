@@ -894,22 +894,4 @@ router.get("/", (req, res) => {
 </html>`);
 });
 
-
-router.get("/teste-redis", async (req, res) => {
-    res.json({
-        vercel_env: process.env.VERCEL_ENV || null,
-        vercel_url: process.env.VERCEL_URL || null,
-        projeto: process.env.VERCEL_PROJECT_ID || null,
-
-        variaveis_redis: Object.keys(process.env)
-            .filter(nome =>
-                nome.includes("REDIS") ||
-                nome.includes("KV_")
-            ),
-
-        kv_url: !!process.env.KV_REST_API_URL,
-        kv_token: !!process.env.KV_REST_API_TOKEN
-    });
-});
-
 module.exports = router;
