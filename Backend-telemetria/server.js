@@ -1646,7 +1646,7 @@ app.get("/", async (req, res) => {
           BACKEND ${status} 
         </div>
 
-        <div class="header-actions">
+        <div class="environment">
           <a href="/api/sensores" class="header-button">SENSORES</a>
           <a href="/api/celulas" class="header-button">CÉLULAS</a>
           <a href="/api/alertas" class="header-button">ALERTAS</a>
