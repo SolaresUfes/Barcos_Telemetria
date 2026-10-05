@@ -41,8 +41,17 @@ let buffer_alertas  = [{
 //     return buffer_sensores;
 // }
 
+// async function atualizar_ult_Sensores(dados_sensores) {
+//     await redis.set(CHAVE_SENSORES, dados_sensores);
+// }
+
 async function atualizar_ult_Sensores(dados_sensores) {
-    await redis.set(CHAVE_SENSORES, dados_sensores);
+    const dados = {
+        ...dados_sensores,
+        potencia: dados_sensores.tensao * dados_sensores.corrente
+    };
+
+    await redis.set(CHAVE_SENSORES, dados);
 }
 
 async function coletar_ult_Sensores() {
