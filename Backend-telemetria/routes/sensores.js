@@ -803,52 +803,63 @@ router.get("/", (req, res) => {
     badge.className = "badge " + (ok ? "ok" : "error");
   }
 
-  async function chamarUltimo() {
-    const inicio = performance.now();
+    async function chamarUltimo() {
+        const inicio = performance.now();
 
-    $("getMethod").textContent = "GET /api/sensores/ultimo";
-    $("getTime").textContent = "consultando...";
+        $("getMethod").textContent = "GET /api/sensores/ultimo";
+        $("getTime").textContent = "consultando...";
 
-    try {
-      const resposta = await fetch("/api/sensores/ultimo");
-      const dados = await resposta.json();
-      const tempo = Math.round(performance.now() - inicio);
+        try {
+            const resposta = await fetch("/api/sensores/ultimo");
 
-      mostrarResposta(resposta.status, tempo, dados);
+            const texto = await resposta.text();
 
-    if (resposta.ok) {
-        atualizarStatus(true, "ONLINE", "200 OK");
+            const tempo = Math.round(performance.now() - inicio);
 
-        const ultimo = Array.isArray(dados) ? dados[0] : dados;
+            let dados;
 
-        $("tensao").textContent =
-        ultimo?.tensao != null ? ultimo.tensao + " V" : "—";
+            try {
+                dados = JSON.parse(texto);
+            } catch {
+                dados = texto;
+            }
 
-        $("corrente").textContent =
-        ultimo?.corrente != null ? ultimo.corrente + " A" : "—";
+            mostrarResposta(resposta.status, tempo, dados);
 
-        $("potencia").textContent =
-        ultimo?.potencia != null ? ultimo.potencia + " W" : "—";
+            if (resposta.ok) {
+                atualizarStatus(true, "ONLINE", "200 OK");
 
-        $("bufferInfo").textContent = "última leitura: " + agora();
-    } else {
-        atualizarStatus(false, "ERRO", resposta.status);
+                const ultimo = Array.isArray(dados) ? dados[0] : dados;
+
+                $("tensao").textContent =
+                    ultimo?.tensao != null ? ultimo.tensao + " V" : "—";
+
+                $("corrente").textContent =
+                    ultimo?.corrente != null ? ultimo.corrente + " A" : "—";
+
+                $("potencia").textContent =
+                    ultimo?.potencia != null ? ultimo.potencia + " W" : "—";
+
+                $("bufferInfo").textContent =
+                    "última leitura: " + agora();
+            } else {
+                atualizarStatus(false, "ERRO", resposta.status);
+            }
+
+            $("lastCall").textContent = agora();
+            $("getTime").textContent = tempo + " ms";
+
+        } catch (erro) {
+            const tempo = Math.round(performance.now() - inicio);
+
+            mostrarResposta(null, tempo, {
+                erro: erro.message
+            });
+
+            atualizarStatus(false, "SEM RESPOSTA", "FETCH ERROR");
+            $("getTime").textContent = tempo + " ms";
+        }
     }
-
-      $("lastCall").textContent = agora();
-      $("getTime").textContent = tempo + " ms";
-
-    } catch (erro) {
-      const tempo = Math.round(performance.now() - inicio);
-
-      mostrarResposta(null, tempo, {
-        erro: erro.message
-      });
-
-      atualizarStatus(false, "SEM RESPOSTA", "FETCH ERROR");
-      $("getTime").textContent = tempo + " ms";
-    }
-  }
 
   async function chamarTodos() {
     const inicio = performance.now();
