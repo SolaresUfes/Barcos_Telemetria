@@ -14,7 +14,7 @@
 
 // Variaveis de controle de tempo para substituir o delay no loop -> ADICIONADO
 unsigned long tempo_anterior = 0;
-const unsigned long intervalo_leitura = 2000;
+const unsigned long intervalo_leitura = 500;
 
 // ----------------- SETUP -----------------
 

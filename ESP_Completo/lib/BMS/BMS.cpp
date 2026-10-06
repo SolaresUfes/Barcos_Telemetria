@@ -43,7 +43,7 @@ DADOS_BATERIA BMS_ler_dados() {
     // Espera a resposta
     unsigned long inicio_leitura = millis();
 
-    while (n < 64 && (millis() - inicio_leitura < 250))  if (Serial2.available())  resposta[n++] = Serial2.read();
+    while (n < 64 && (millis() - inicio_leitura < 150))  if (Serial2.available())  resposta[n++] = Serial2.read();
 
     // Verifica o tamanho (13 bytes)
     if (n < 13) {
@@ -117,7 +117,7 @@ ALERTAS_BATERIA BMS_ler_alertas() {
 
     unsigned long inicio_leitura = millis();
 
-    while (n < 64 && (millis() - inicio_leitura < 250))  if (Serial2.available())  resposta[n++] = Serial2.read();
+    while (n < 64 && (millis() - inicio_leitura < 150))  if (Serial2.available())  resposta[n++] = Serial2.read();
 
     // Checagem de tamanho
     if (n < 13) {
@@ -164,7 +164,7 @@ CELULAS_INDIVIDUAIS BMS_ler_celulas() {
     unsigned long inicio_leitura = millis();
     int frames_lidos = 0;
 
-    while (frames_lidos < 6 && (millis() - inicio_leitura < 250)) {
+    while (frames_lidos < 6 && (millis() - inicio_leitura < 150)) {
 
         if (Serial2.available() >= 13) {
             int n = 0;

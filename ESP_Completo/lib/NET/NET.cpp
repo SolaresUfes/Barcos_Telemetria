@@ -14,10 +14,9 @@ const char *password = "telemeteam157";
 
 // Dados pra conexão com o backend
 // Para conexão, colocamos o endereço do backend rodando no vercel
-const char *Url_dados = "https://painel-f8r7.vercel.app/api/sensores";
-const char *Url_alertas = "https://painel-f8r7.vercel.app/api/alertas";
-const char *Url_celulas = "https://painel-f8r7.vercel.app/api/celulas";
-
+const char *Url_dados = "https://barcos-backendtelemetria.vercel.app/api/sensores";
+const char *Url_alertas = "https://barcos-backendtelemetria.vercel.app/api/alertas";
+const char *Url_celulas = "https://barcos-backendtelemetria.vercel.app/api/celulas";
 
 // ----------------- FUNÇÕES -----------------
 
