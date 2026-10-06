@@ -1497,7 +1497,7 @@ if (isLoadingSession) {
                     <span
                       className={`text-sm sm:text-4xl font-black tabular-nums ${voltageImbalance > 0.15 ? "text-red-500" : "text-green-500"}`}
                     >
-                      {voltageImbalance.toFixed(2)}
+                      {voltageImbalance.toFixed(3)}
                     </span>
                     <span
                       className={`text-[10px] sm:text-xl font-bold ml-0.5 md:ml-1 ${voltageImbalance > 0.15 ? "text-red-500" : "text-green-500"}`}
@@ -2006,7 +2006,7 @@ if (isLoadingSession) {
                         <span
                           className={`font-bold text-xs md:text-base tabular-nums ${voltageImbalance > 0.15 ? "text-red-500" : "text-green-500"}`}
                         >
-                          Δ {voltageImbalance.toFixed(2)} V
+                          Δ {voltageImbalance.toFixed(3)} V
                         </span>
                       </div>
                       <div
