@@ -1572,7 +1572,7 @@ if (isLoadingSession) {
                           <span
                             className={`text-xs md:text-xl font-bold tabular-nums ${isLowVoltage || isHighVoltage ? "text-red-500" : darkMode ? "text-gray-200" : "text-gray-800"}`}
                           >
-                            {cell.voltage.toFixed(2)}
+                            {cell.voltage.toFixed(3)}
                           </span>
                           <span className="text-[8px] md:text-xs ml-0.5 md:ml-1 font-medium text-gray-500">
                             V
