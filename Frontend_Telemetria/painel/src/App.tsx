@@ -10,6 +10,9 @@ import { Menu, Moon, Sun, User, Activity, BarChart2, Zap, Settings, Database,
 // #endregion
 
 
+// O comentário "eslint-disable-next-line @typescript-eslint/no-explicit-any" é usado pra ignorar os erros que aparecem com o <any> de vez  em quando!
+
+
 
 // #region --- Criando Modelo de Usuário ---
 interface Member {
@@ -130,7 +133,7 @@ export default function App() {
       try {
         setRascunhoAtivo(JSON.parse(salvo));
       } catch (e) {
-        // ignora erro de parsing
+        console.log("Erro de parsing: ", e)
       }
     }
 
@@ -148,7 +151,7 @@ export default function App() {
           setRecordingTime(segundosDecorridos > 0 ? segundosDecorridos : 0);
         }
       } catch (e) {
-        // ignora erro
+        console.log("Erro no recordingTime(): ", e)
       }
     }
   }, []);
@@ -332,6 +335,7 @@ async function buscarEquipe() {
   const [pedirConfirmacaoDescarte, setPedirConfirmacaoDescarte] = useState(false);
   // Estados para a Planilha de Provas Salvas
   const [showModalAnalise, setShowModalAnalise] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [listaProvas, setListaProvas] = useState<any[]>([]);
   const [carregandoProvas, setCarregandoProvas] = useState(false);
   const [idEditando, setIdEditando] = useState<number | null>(null);
@@ -360,6 +364,7 @@ async function buscarEquipe() {
 // Função para tocar um sonzinho quando chegar notificação
 function tocarSomSuave() {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
@@ -379,7 +384,7 @@ function tocarSomSuave() {
     osc.start();
     osc.stop(audioCtx.currentTime + 0.18);
   } catch (e) {
-    // Ignora caso o navegador bloqueie áudio antes de alguma interação do usuário
+    console.log("Erro de audio: ", e)
   }
 }
 
