@@ -640,7 +640,7 @@ function tocarSomSuave() {
   const buscarUltimaMedicao = async () => {
     try {
       // Substitua pela URL real gerada pela Vercel para o seu backend
-      const res = await fetch("https://barcos-backendtelemetria.vercel.app/api/sensores/ultimo");
+      const res = await fetch("https://telemetria-be.vercel.app/api/sensores/ultimo");
       const data = await res.json();
 
       if (data && data.length > 0) {
@@ -664,7 +664,7 @@ function tocarSomSuave() {
 
   const buscarCelulas = async () => {
     try {
-      const res = await fetch("https://barcos-backendtelemetria.vercel.app/api/celulas/ultimo");
+      const res = await fetch("https://telemetria-be.vercel.app/api/celulas/ultimo");
       const data = await res.json();
 
       console.log("Resposta completa:", data);
