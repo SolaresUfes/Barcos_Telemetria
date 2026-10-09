@@ -3,6 +3,7 @@
 #include <esp_timer.h>
 
 #include "bateria.h"
+#include "busca_canal.h"
 #include "espnow.h"
 #include "led_status.h"
 #include "tela.h"
@@ -20,7 +21,9 @@ static constexpr uint8_t LIMITE_PEDIDOS_SEM_RESPOSTA = 3;
 static constexpr uint8_t LIMITE_FALHAS_PARA_X_CONECTADO = 10;
 
 static uint8_t pedidos_sem_resposta = 0;
-static bool canal_ja_confirmado = false;
+static BuscaCanal busca_canal;
+static bool radio_pronto = false;
+static int64_t proxima_inicializacao_us = 0;
 static bool contando_botao_reinicio = false;
 static bool reinicio_ja_enviado_nesta_pressao = false;
 static uint32_t inicio_botao_reinicio = 0;
@@ -61,7 +64,7 @@ static void processar_botao_reinicio_remoto()
 static bool receber_telemetria()
 {
   TelemetriaBarco telemetria;
-  if (obter_nova_telemetria(telemetria)) {
+  if (obter_nova_telemetria(telemetria) && busca_canal.recebeu(telemetria.instante_recebimento_us, esp_timer_get_time())) {
     agendar_telemetria_na_tela(
       telemetria.bateria_percentual,
       telemetria.corrente_amperes
@@ -125,7 +128,8 @@ void setup()
   inicializar_wifi_e_horario();
 
   // O ESP-NOW começa depois do Wi-Fi para conservar o mesmo canal de rádio.
-  iniciar_espnow();
+  radio_pronto = iniciar_espnow();
+  if (!radio_pronto) proxima_inicializacao_us = esp_timer_get_time() + 5000000;
   atualizar_relogio_e_bateria();
 }
 
@@ -133,45 +137,53 @@ void loop()
 {
   const int64_t inicio_ciclo = esp_timer_get_time();
   processar_botao_reinicio_remoto();
+  if (Serial.available() && Serial.read() == '?') diagnosticar_espnow();
 
   // Se a hora ainda não foi obtida, esta chamada aproveita uma eventual
   // reconexão. Depois da sincronização, ela retorna imediatamente.
   processar_wifi_e_horario();
 
-  // O rádio só permanece ativo durante a solicitação e a pequena janela de
-  // resposta. O transmissor devolve bateria e corrente no mesmo pacote.
-  solicitar_telemetria();
-  const uint32_t inicio_espera = millis();
-  bool recebeu_resposta = false;
-  while (millis() - inicio_espera < TEMPO_RESPOSTA_ESPNOW_MS) {
-    if (receber_telemetria()) {
-      recebeu_resposta = true;
-      break;
+  // Consome uma resposta tardia antes de decidir se o minuto terminou.
+  bool recebeu_resposta = receber_telemetria();
+  if (!recebeu_resposta) {
+    const bool estava_buscando = busca_canal.buscando;
+    const bool trocar = busca_canal.preparar_consulta(esp_timer_get_time());
+    if (!estava_buscando && busca_canal.buscando) {
+      Serial.println("ESP-NOW: um minuto sem resposta; iniciando busca de canais.");
+      atualizar_estado_comunicacao_na_tela(EstadoComunicacao::SEM_RESPOSTA);
     }
-    delay(5);
+    if (!radio_pronto && esp_timer_get_time() >= proxima_inicializacao_us) {
+      radio_pronto = iniciar_espnow();
+      proxima_inicializacao_us = esp_timer_get_time() + 5000000;
+    }
+    if (trocar && procurar_proximo_canal_espnow()) busca_canal.mudou_canal();
+
+    // Até o minuto de ausência, permanece no mesmo canal. Na busca, cada
+    // canal tem três consultas com sono entre elas, sem scan Wi-Fi bloqueante.
+    const bool envio_aceito = radio_pronto && solicitar_telemetria(busca_canal.buscando);
+    const int64_t fim_espera = esp_timer_get_time() + int64_t(TEMPO_RESPOSTA_ESPNOW_MS) * 1000;
+    while (envio_aceito && esp_timer_get_time() < fim_espera) {
+      if (receber_telemetria()) {
+        recebeu_resposta = true;
+        break;
+      }
+      delay(5);
+    }
   }
 
   if (recebeu_resposta) {
+    if (pedidos_sem_resposta >= LIMITE_PEDIDOS_SEM_RESPOSTA) {
+      Serial.println("ESP-NOW: resposta recebida; canal mantido e busca encerrada.");
+    }
     pedidos_sem_resposta = 0;
-    canal_ja_confirmado = true;
     atualizar_estado_comunicacao_na_tela(EstadoComunicacao::CONECTADO);
   } else {
-    const uint8_t limite_para_x = canal_ja_confirmado
-      ? LIMITE_FALHAS_PARA_X_CONECTADO
-      : LIMITE_PEDIDOS_SEM_RESPOSTA;
-    if (pedidos_sem_resposta < limite_para_x) {
-      ++pedidos_sem_resposta;
-    }
-    if (pedidos_sem_resposta >= limite_para_x) {
+    busca_canal.consulta_sem_resposta();
+    const uint8_t limite_para_x = busca_canal.teve_resposta
+      ? LIMITE_FALHAS_PARA_X_CONECTADO : LIMITE_PEDIDOS_SEM_RESPOSTA;
+    if (pedidos_sem_resposta < limite_para_x) ++pedidos_sem_resposta;
+    if (pedidos_sem_resposta >= limite_para_x || (busca_canal.buscando && busca_canal.teve_resposta)) {
       atualizar_estado_comunicacao_na_tela(EstadoComunicacao::SEM_RESPOSTA);
-    }
-
-    // A varredura existe apenas antes do primeiro contato. Depois que uma
-    // resposta confirma o canal, ele permanece travado até o próximo boot.
-    if (!canal_ja_confirmado &&
-        pedidos_sem_resposta >= LIMITE_PEDIDOS_SEM_RESPOSTA) {
-      procurar_proximo_canal_espnow();
-      pedidos_sem_resposta = 0;
     }
   }
 
