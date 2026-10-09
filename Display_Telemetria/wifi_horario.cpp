@@ -4,6 +4,7 @@
 #include <WiFi.h>
 #include <esp_wifi.h>
 #include <time.h>
+#include <esp_sntp.h>
 
 #include "configuracao_wifi.h"
 #include "src/i2c_bsp.h"
@@ -45,15 +46,39 @@ static bool sincronizar_rtc_pela_internet()
     horario_ntp.tm_sec
   );
 
+  // O driver não retorna o resultado da escrita: confirma por leitura.
+  const RtcDateTime_t gravado = rtc->get_rtcTime();
+  struct tm horario_rtc = {};
+  horario_rtc.tm_year = gravado.year - 1900;
+  horario_rtc.tm_mon = gravado.month - 1;
+  horario_rtc.tm_mday = gravado.day;
+  horario_rtc.tm_hour = gravado.hour;
+  horario_rtc.tm_min = gravado.minute;
+  horario_rtc.tm_sec = gravado.second;
+  horario_rtc.tm_isdst = -1;
+  const double diferenca = difftime(mktime(&horario_rtc), mktime(&horario_ntp));
+  if (gravado.month < 1 || gravado.month > 12 || gravado.day < 1 ||
+      gravado.day > 31 || gravado.hour > 23 || gravado.minute > 59 ||
+      gravado.second > 59 || diferenca < 0 || diferenca > 2) {
+    Serial.println("RTC não confirmou a hora gravada; mantendo novas tentativas.");
+    return false;
+  }
+
   horario_foi_sincronizado = true;
 
   // Guarda o canal antes de sair do roteador. A ESP do barco continua ligada
   // à mesma rede, portanto o ESP-NOW precisa permanecer neste canal.
   canal_espnow = WiFi.channel();
 
-  // Encerra somente a associação com a internet; o rádio continua em modo STA.
-  WiFi.setAutoReconnect(false);
-  WiFi.disconnect(false, false);
+  // Após sincronizar, encerra NTP e qualquer reconexão até o próximo boot.
+  // O rádio permanece em STA para o ESP-NOW.
+  esp_sntp_stop();
+  if (!WiFi.setAutoReconnect(false)) {
+    Serial.println("Falha ao desativar a reconexão Wi-Fi.");
+  }
+  if (!WiFi.disconnect(false, false)) {
+    Serial.println("Falha ao encerrar a associação Wi-Fi.");
+  }
   delay(50);
   esp_wifi_set_channel(canal_espnow, WIFI_SECOND_CHAN_NONE);
 

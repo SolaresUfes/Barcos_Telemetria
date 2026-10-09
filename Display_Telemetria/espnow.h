@@ -40,21 +40,25 @@ struct TelemetriaBarco {
   uint32_t sequencia;
   float bateria_percentual;
   float corrente_amperes;
+  int64_t instante_recebimento_us; // Metadados locais; não fazem parte do protocolo.
 };
 
 // Inicia o receptor no canal em que o Wi-Fi já está conectado.
 bool iniciar_espnow();
 
 // Solicita ao transmissor uma amostra atual de bateria e corrente.
-bool solicitar_telemetria();
+bool solicitar_telemetria(bool descoberta = false);
 
 // Troca para o próximo canal quando a ESP do barco não responde.
-void procurar_proximo_canal_espnow();
+bool procurar_proximo_canal_espnow();
 
 // Envia o mesmo comando três vezes para tolerar uma perda isolada de rádio.
 bool solicitar_reinicio_remoto();
 
 // Copia o último pacote válido uma única vez para o loop principal.
 bool obter_nova_telemetria(TelemetriaBarco &telemetria);
+
+// Resumo solicitado pela USB, sem imprimir dentro dos callbacks.
+void diagnosticar_espnow();
 
 #endif
