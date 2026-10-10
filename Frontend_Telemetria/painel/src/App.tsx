@@ -1,7 +1,7 @@
 // 'use client'
 
 // #region -- Bibliotecas Importadas ---
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "./lib/supabase";
 import { Menu, Moon, Sun, User, Activity, BarChart2, Zap, Settings, Database,
   ArrowLeft, LogOut, Unlock, Trash2, Plus, Info, Shield, AlertTriangle, ChevronDown,
@@ -67,6 +67,48 @@ const formatTimer = (totalSeconds: number) => {
   }
   return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 };
+
+// --- PARÂMETROS E FUNÇÃO DE AUTONOMIA ---
+const usableBatteryWh = 1996.8; // Capacidade de referência em Wh (2 x 12.8V x 78Ah)
+const historySeconds = 60;
+const minDischargePowerW = 5;
+
+function calculateBatteryAutonomy(
+  batterySoC: number,
+  batteryVoltage: number,
+  batteryCurrentA: number,
+  history: number[]
+) {
+  if (batterySoC < 0 || batterySoC > 100 || batteryVoltage <= 0) {
+    return null;
+  }
+
+  // 1. Potência Instantânea (P = V x I)
+  const instantaneousPowerW = batteryVoltage * Math.abs(batteryCurrentA);
+
+  // Média móvel da potência (P_médio)
+  const averagePowerW =
+    history.length > 0
+      ? history.reduce((sum, p) => sum + p, 0) / history.length
+      : instantaneousPowerW;
+
+  // 2. Energia Restante: E_restante = 1996.8 * (SOC / 100)
+  const remainingEnergyWh = usableBatteryWh * (batterySoC / 100);
+
+  // 3. Autonomia: t = E_restante / P_médio
+  let estimatedTimeRaw: number | null = null;
+
+  if (averagePowerW > minDischargePowerW) {
+    estimatedTimeRaw = remainingEnergyWh / averagePowerW;
+  }
+
+  return {
+    instantaneousPowerW,
+    averagePowerW,
+    remainingEnergyWh,
+    estimatedTimeRaw,
+  };
+}
 // #endregion
 
 // #region --- Ícones Customizados ---
@@ -615,6 +657,8 @@ function tocarSomSuave() {
   };
   // #endregion
 
+  const batteryPowerHistory = useRef<number[]>([]);
+
   // #region Cálculos Derivados
   const avgBmsTemp =
     cells.reduce((acc, cell) => acc + cell.temperature, 0) / cells.length;
@@ -628,9 +672,34 @@ function tocarSomSuave() {
   });
 
   const currentPower = mainData[0] || 0;
-  const estimatedTimeRaw = (battery / Math.max(10, currentPower)) * 2.5;
-  const estHours = Math.floor(estimatedTimeRaw);
-  const estMinutes = Math.floor((estimatedTimeRaw - estHours) * 60);
+  // Comentado para testes
+  // const estimatedTimeRaw = (battery / Math.max(10, currentPower)) * 2.5;
+  // const estHours = Math.floor(estimatedTimeRaw);
+  // const estMinutes = Math.floor((estimatedTimeRaw - estHours) * 60);
+  
+  // 1. Calcula o objeto de dados da autonomia
+  const autonomyData = calculateBatteryAutonomy(
+    battery,
+    tensaoReal,
+    correnteRealBateria,
+    batteryPowerHistory.current
+  );
+
+  // 2. Extrai as horas e minutos formatados
+  const estimatedHoursRaw = autonomyData?.estimatedTimeRaw ?? 0;
+  const estHours = Math.floor(estimatedHoursRaw);
+  const estMinutes = Math.floor((estimatedHoursRaw - estHours) * 60);
+  
+
+
+
+
+
+
+
+
+
+
 
   const userProfileSubtitle = currentUser?.isModerador
     ? currentUser.mainRole
@@ -661,6 +730,18 @@ function tocarSomSuave() {
         if (medicao.velocidade  != null) setSpeed(medicao.velocidade);
         if (medicao.string_1    != null) setString_1(medicao.string_1); 
         if (medicao.string_2    != null) setString_2(medicao.string_2); 
+
+        // Bloco de codigo de teste
+
+        // --- ALIMENTA O HISTÓRICO DE POTÊNCIA (P = V x I) ---
+        if (medicao.tensao != null && medicao.corrente != null) {
+          const pW = medicao.tensao * Math.abs(medicao.corrente);
+          batteryPowerHistory.current.push(pW);
+
+          if (batteryPowerHistory.current.length > historySeconds) {
+            batteryPowerHistory.current.shift();
+          }
+        }
       }
     } catch (error) {
       console.error("Erro na comunicação com o backend:", error);
