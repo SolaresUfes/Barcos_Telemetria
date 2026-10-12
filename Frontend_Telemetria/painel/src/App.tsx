@@ -2079,8 +2079,8 @@ if (isLoadingSession) {
                         <span
                           className={`font-bold text-[10px] md:text-base tabular-nums ${darkMode ? "text-gray-100" : "text-gray-800"}`}
                         >
-                          {maxVoltageCell.voltage.toFixed(2)} /{" "}
-                          {minVoltageCell.voltage.toFixed(2)}
+                          {maxVoltageCell.voltage.toFixed(3)} /{" "}
+                          {minVoltageCell.voltage.toFixed(3)}
                         </span>
                       </div>
                       <div
