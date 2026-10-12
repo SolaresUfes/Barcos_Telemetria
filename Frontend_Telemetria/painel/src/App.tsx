@@ -2269,7 +2269,7 @@ if (isLoadingSession) {
                       <span
                         className={`text-xl lg:text-5xl font-light tracking-tight tabular-nums ${darkMode ? "text-yellow-300" : "text-yellow-500"}`}
                       >
-                        {currentPower}
+                        {currentPower.toFixed(3)}
                       </span>
                       <span
                         className={`text-xs lg:text-2xl font-medium ml-1.5 ${darkMode ? "text-yellow-300" : "text-yellow-500"}`}
@@ -2294,7 +2294,7 @@ if (isLoadingSession) {
                           <span
                             className={`text-2xl lg:text-5xl font-light tracking-tight tabular-nums text-orange-500`}
                           >
-                            {correnteRealBateria}
+                            {correnteRealBateria.toFixed(3)}
                           </span>
                           <span
                             className={`text-xs lg:text-2xl font-medium ml-1 text-orange-500`}
@@ -2312,7 +2312,7 @@ if (isLoadingSession) {
                           <span
                             className={`text-2xl lg:text-5xl font-light tracking-tight tabular-nums text-amber-500`}
                           >
-                            {correnteMotor}
+                            {correnteMotor.toFixed(3)}
                           </span>
                           <span
                             className={`text-xs lg:text-2xl font-medium ml-1 text-amber-500`}
@@ -2337,7 +2337,7 @@ if (isLoadingSession) {
                       <span
                         className={`text-base lg:text-4xl font-bold ${darkMode ? "text-green-400" : "text-green-600"}`}
                       >
-                        {string_1}
+                        {string_1.toFixed(3)}
                       </span>
                     </div>
                   </div>
@@ -2352,7 +2352,7 @@ if (isLoadingSession) {
                       <span
                         className={`text-base lg:text-4xl font-bold ${darkMode ? "text-rose-400" : "text-rose-600"}`}
                       >
-                        {string_2}
+                        {string_2.toFixed(3)}
                       </span>
                     </div>
                   </div>
