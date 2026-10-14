@@ -49,6 +49,20 @@ const generatePolyline = (data: number[], width: number, height: number, maxVal:
     .join(" ");
 };
 
+const generateFullPolyline = (data: number[], width: number, height: number) => {
+  if (!data || data.length === 0) return `0,${height / 2}`;
+  if (data.length === 1) return `0,${height / 2} ${width},${height / 2}`;
+  
+  const maxVal = Math.max(...data.map(Math.abs), 1); // Evita divisão por zero
+  const stepX = width / (data.length - 1);
+  
+  return data.map((val, index) => {
+    const x = index * stepX;
+    const y = (height / 2) - (val / maxVal) * (height / 2);
+    return `${x},${y}`;
+  }).join(" ");
+};
+
 const generateNameFromEmail = (email: string) => {
   const prefix = email.split("@")[0];
   return prefix
@@ -446,8 +460,21 @@ function tocarSomSuave() {
   const [string_1, setString_1] = useState(-1);
   const [S1_power, setS1_power] = useState(-1)
   const [string_2, setString_2] = useState(-1);
-
   const [idProvaAtual, set_idProvaAtual] = useState(-1)
+  // --- novos estados para a area de desempenho ---
+  const provaAtivaRef = useRef(false);
+  useEffect(() => {
+    provaAtivaRef.current = provaAtiva;
+  }, [provaAtiva]);
+
+  const [recordingData, setRecordingData] = useState({
+    tensao: [] as number[], potenciaBateria: [] as number[], potenciaMotor: [] as number[],
+    potenciaGeracao: [] as number[], bateria: [] as number[], velocidade: [] as number[],
+    correnteBateria: [] as number[], correnteMotor: [] as number[], s1: [] as number[], s2: [] as number[]
+  });
+  
+  const [idleBatteryData, setIdleBatteryData] = useState<number[]>([]);
+  const [batteryHistoryRate, setBatteryHistoryRate] = useState<{time: number, bat: number}[]>([]);
 
 
   
@@ -660,6 +687,37 @@ function tocarSomSuave() {
 
   const batteryPowerHistory = useRef<number[]>([]);
 
+// aqui vamos ter um sinalizador pra ver se a bateria ta carregando ou descarregando (olhando os números fica óbvio, mas to deixando mais visual)
+  let batteryRate = 0;
+  let batteryStatus = "Parado";
+  if (batteryHistoryRate.length > 1) {
+      const first = batteryHistoryRate[0];
+      const last = batteryHistoryRate[batteryHistoryRate.length - 1];
+      const timeDiffMins = (last.time - first.time) / 60000;
+      if (timeDiffMins > 0) batteryRate = (last.bat - first.bat) / timeDiffMins;
+  }
+  if (batteryRate > 0.1) batteryStatus = "Carregando";
+  else if (batteryRate < -0.1) batteryStatus = "Descarregando";
+
+  // já acrescentando uma função pra exportar dados pra fazer a análise de dados futuramente
+  function exportarCSV() {
+      if (!recordingData.tensao || recordingData.tensao.length === 0) {
+          dispararToast("Nenhum dado gravado para exportar.", "aviso");
+          return;
+      }
+      const headers = "Tensão(V),Potência Bateria(W),Potência Motor(W),Potência Geração(W),Bateria(%),Velocidade,Corrente Bateria(A),Corrente Motor(A),S1,S2\n";
+      const rows = recordingData.tensao.map((_, i) => {
+          return `${recordingData.tensao[i]},${recordingData.potenciaBateria[i]},${recordingData.potenciaMotor[i]},${recordingData.potenciaGeracao[i]},${recordingData.bateria[i]},${recordingData.velocidade[i]},${recordingData.correnteBateria[i]},${recordingData.correnteMotor[i]},${recordingData.s1[i]},${recordingData.s2[i]}`;
+      }).join("\n");
+      const blob = new Blob([headers + rows], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `telemetria_prova_${new Date().getTime()}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+  }
+
   // #region Cálculos Derivados
   const avgBmsTemp =
     cells.reduce((acc, cell) => acc + cell.temperature, 0) / cells.length;
@@ -726,7 +784,16 @@ function tocarSomSuave() {
         if (medicao.corrente    != null) set_correnteRealBateria(medicao.corrente);
         if (medicao.corrente_2  != null) set_correnteMotor(medicao.corrente_2);
         if (medicao.potencia    != null) setMainData(prev => [medicao.potencia, ...prev].slice(0,40));
-        if (medicao.porcentagem != null) setBattery(medicao.porcentagem);
+        // if (medicao.porcentagem != null) setBattery(medicao.porcentagem); se der merda, apaga o de baixo e restaura esse daqui
+        // esse aqui vai pra taxa de bateria
+        if (medicao.porcentagem != null) {
+            setBattery(medicao.porcentagem);
+            setIdleBatteryData(prev => [medicao.porcentagem, ...prev].slice(0, 40)); // Gráfico em movimento contínuo
+            setBatteryHistoryRate(prev => {
+                const now = Date.now();
+                return [...prev, {time: now, bat: medicao.porcentagem}].filter(item => now - item.time <= 60000); // Mantém apenas os últimos 60 seg
+            });
+        }
         // if (medicao.rpm         != null) setRpm(medicao.rpm);
         if (medicao.tensao      != null) setRpm(medicao.tensao * medicao.corrente_2);
         if (medicao.velocidade  != null) setSpeed(medicao.velocidade);
@@ -734,8 +801,23 @@ function tocarSomSuave() {
           setString_1(medicao.string_1); 
           setS1_power(medicao.tensao * medicao.string_1);
         }
-
         if (medicao.string_2    != null) setString_2(medicao.string_2); 
+
+        // isso aqui é pra gravar os dados no grafico da aba de análise
+        if (provaAtivaRef.current) {
+            setRecordingData(prev => ({
+              tensao: [...prev.tensao, medicao.tensao ?? 0],
+              potenciaBateria: [...prev.potenciaBateria, medicao.potencia ?? 0],
+              potenciaMotor: [...prev.potenciaMotor, (medicao.tensao ?? 0) * (medicao.corrente_2 ?? 0)],
+              potenciaGeracao: [...prev.potenciaGeracao, (medicao.tensao ?? 0) * (medicao.string_1 ?? 0)],
+              bateria: [...prev.bateria, medicao.porcentagem ?? 0],
+              velocidade: [...prev.velocidade, medicao.velocidade ?? 0],
+              correnteBateria: [...prev.correnteBateria, medicao.corrente ?? 0],
+              correnteMotor: [...prev.correnteMotor, medicao.corrente_2 ?? 0],
+              s1: [...prev.s1, medicao.string_1 ?? 0],
+              s2: [...prev.s2, medicao.string_2 ?? 0]
+            }));
+        }
 
         // Bloco de codigo de teste
 
@@ -803,6 +885,12 @@ function prova_iniciar() {
 
     // Salva no localStorage para resistir ao F5 / refresh
     localStorage.setItem("telemetria_gravacao_ativa", JSON.stringify({ inicio: agora }));
+
+    setRecordingData({
+      tensao: [], potenciaBateria: [], potenciaMotor: [],
+      potenciaGeracao: [], bateria: [], velocidade: [],
+      correnteBateria: [], correnteMotor: [], s1: [], s2: []
+    });
 
     dispararToast("Gravação iniciada com sucesso!");
   }
@@ -1946,7 +2034,7 @@ if (isLoadingSession) {
               {/* #endregion */}
             </div>
 
-) : activeTab === "Resumo" ? (
+          ) : activeTab === "Resumo" ? (
             <div className="flex flex-col h-full w-full gap-2 md:gap-4 min-h-0 animate-in fade-in duration-300">
               <div className="flex gap-2 md:gap-6 md:max-h-[45%] flex-col md:flex-row shrink-0 w-full min-h-0">
                 <div
@@ -2476,101 +2564,114 @@ if (isLoadingSession) {
                     Análise de Dados de Prova
                   </button>
 
+                  <button 
+                        onClick={exportarCSV}
+                        className="w-full py-4 px-6 rounded-2xl font-bold text-white uppercase tracking-wider flex items-center justify-center transition-all bg-indigo-500 hover:bg-indigo-600 shadow-xl shadow-indigo-500/20 hover:scale-[1.02]"
+                      >
+                        <DownloadCloud size={20} className="mr-2" />
+                        Baixar CSV Gravado
+                      </button>
+
+                      <button 
+                        onClick={() => { setActiveTab("Análise"); setTimeout(() => window.print(), 500); }}
+                        className="w-full py-4 px-6 rounded-2xl font-bold text-white uppercase tracking-wider flex items-center justify-center transition-all bg-emerald-500 hover:bg-emerald-600 shadow-xl shadow-emerald-500/20 hover:scale-[1.02]"
+                      >
+                        <BarChart2 size={20} className="mr-2" />
+                        Imprimir Gráficos Finais (PDF)
+                      </button>
+
+                  
+
                 </div>
               </div>
               
             </div>
             
           ) : activeTab === "Análise" ? (
-            <div className="h-full w-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 min-h-0">
-              {/* #region Aba Análise */}
+            <div className="h-full w-full max-w-6xl mx-auto flex flex-col animate-in fade-in duration-300 min-h-0 overflow-y-auto pr-2">
               <div className="flex items-center space-x-3 mb-4 shrink-0">
                 <div className="p-3 bg-blue-500/10 rounded-2xl">
                   <BarChart2 className="text-blue-500" size={28} />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold">Análise de Desempenho</h2>
-                  <p
-                    className={`text-[10px] md:text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}
-                  >
-                    Previsões e métricas avançadas baseadas em telemetria
+                  <h2 className="text-2xl font-bold">Análise de Desempenho e Bateria</h2>
+                  <p className={`text-[10px] md:text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                    Taxa da Bateria e Gráficos Finais (Ativos durante a gravação).
                   </p>
                 </div>
               </div>
 
-              {/* overflow-x-hidden adicionado para remover a barra de rolagem */}
-              <div
-                className={`flex-1 rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-sm border mb-4 transition-colors duration-300 relative overflow-y-auto overflow-x-hidden ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100 shadow-xl shadow-gray-200/50"}`}
-              >
-                <div className="absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl"></div>
-
-                <div className="flex flex-col md:flex-row items-center justify-center md:justify-between relative z-10 min-h-full gap-8 md:gap-0 py-4 md:py-0">
-                  <div className="flex-1 mb-6 md:mb-0 md:pr-4 flex flex-col items-center md:items-start text-center md:text-left w-full justify-center">
-                    <h3 className="text-lg font-bold mb-2 flex items-center justify-center md:justify-start">
-                      <Zap className="mr-2 text-blue-500" size={20} />
-                      Tempo de Bateria Remanescente
-                    </h3>
-                    <p
-                      className={`text-sm mb-6 ${darkMode ? "text-gray-400" : "text-gray-500"}`}
-                    >
-                      Calculado dinamicamente relacionando o nível de carga com
-                      o consumo (W) atual.
-                    </p>
-
-                    <div className="flex flex-wrap justify-center md:justify-start gap-4">
-                      <div
-                        className={`px-4 py-2 rounded-xl border flex flex-col items-center text-center ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}
-                      >
-                        <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">
-                          Consumo
-                        </p>
-                        <p className="text-xl font-bold text-orange-500 tabular-nums">
-                          {currentPower.toFixed(1)} W
-                        </p>
-                      </div>
-                      <div
-                        className={`px-4 py-2 rounded-xl border flex flex-col items-center text-center ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}
-                      >
-                        <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">
-                          Velocidade
-                        </p>
-                        <p className="text-xl font-bold text-blue-500 tabular-nums">
-                          {speed}
-                        </p>
-                      </div>
-                      <div
-                        className={`px-4 py-2 rounded-xl border flex flex-col items-center text-center ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}
-                      >
-                        <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">
-                          Bateria
-                        </p>
-                        <p
-                          className={`text-xl font-bold tabular-nums ${battery > 20 ? "text-emerald-500" : "text-red-500"}`}
-                        >
-                          {battery}%
-                        </p>
-                      </div>
-                    </div>
+              {/* DADOS E GRÁFICO DA BATERIA */}
+              <div className={`p-4 md:p-6 rounded-3xl shadow-sm border mb-6 ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                <h3 className="text-lg font-bold mb-4 flex items-center"><Battery className="mr-2 text-green-500" /> Bateria em Tempo Real</h3>
+                <div className="flex flex-wrap gap-4 mb-4">
+                  <div className={`px-4 py-2 rounded-xl border flex flex-col items-center min-w-[120px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Carga Atual</p>
+                    <p className={`text-xl font-bold tabular-nums ${battery > 20 ? "text-green-500" : "text-red-500"}`}>{battery}%</p>
                   </div>
-
-                  <div className="flex-shrink-0 flex flex-col items-center justify-center p-6 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl shadow-lg shadow-blue-500/30 text-white min-w-[200px] md:min-w-[250px]">
-                    <span className="text-sm font-bold uppercase tracking-wider mb-2 opacity-80">
-                      Tempo Estimado
-                    </span>
-                    <div className="flex items-baseline space-x-2">
-                      <span className="text-6xl font-black tracking-tighter tabular-nums">
-                        {estHours}
-                      </span>
-                      <span className="text-2xl font-bold opacity-80">h</span>
-                      <span className="text-6xl font-black tracking-tighter tabular-nums">
-                        {estMinutes.toString().padStart(2, "0")}
-                      </span>
-                      <span className="text-2xl font-bold opacity-80">m</span>
-                    </div>
+                  <div className={`px-4 py-2 rounded-xl border flex flex-col items-center min-w-[120px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Taxa (1 min)</p>
+                    <p className={`text-xl font-bold tabular-nums ${batteryRate > 0 ? "text-green-500" : batteryRate < 0 ? "text-red-500" : "text-gray-500"}`}>
+                      {batteryRate > 0 ? "+" : ""}{batteryRate.toFixed(2)} %/min
+                    </p>
+                  </div>
+                  <div className={`px-4 py-2 rounded-xl border flex flex-col items-center min-w-[120px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Status</p>
+                    <p className={`text-sm font-black uppercase tracking-widest mt-1 ${batteryStatus === "Carregando" ? "text-green-500" : batteryStatus === "Descarregando" ? "text-red-500" : "text-gray-500"}`}>
+                      {batteryStatus}
+                    </p>
                   </div>
                 </div>
+                
+                <div className="w-full h-40 mt-4 border-t pt-4 dark:border-gray-700">
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">
+                      {provaAtiva ? "Histórico Completo (Gravando Estático)" : "Variação Dinâmica (Tempo Real)"}
+                  </span>
+                  <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                      <polyline
+                        points={provaAtiva 
+                            ? generateFullPolyline(recordingData.bateria, 1000, 200) 
+                            : generatePolyline(idleBatteryData, 1000, 200, 100)}
+                        fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+                      />
+                  </svg>
+                </div>
               </div>
-              {/* #endregion */}
+
+              {/* GRÁFICOS DAS DEMAIS VARIÁVEIS */}
+              {provaAtiva ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
+                  {[
+                      { label: "Tensão (V)", data: recordingData.tensao, color: "#3b82f6" },
+                      { label: "Potência Bateria (W)", data: recordingData.potenciaBateria, color: "#14b8a6" },
+                      { label: "Potência Motor (W)", data: recordingData.potenciaMotor, color: "#6b7280" },
+                      { label: "Potência Geração (W)", data: recordingData.potenciaGeracao, color: "#ef4444" },
+                      { label: "Velocidade", data: recordingData.velocidade, color: "#eab308" },
+                      { label: "Corrente Bateria (A)", data: recordingData.correnteBateria, color: "#f97316" },
+                      { label: "Corrente Motor (A)", data: recordingData.correnteMotor, color: "#f59e0b" },
+                      { label: "S1 Status", data: recordingData.s1, color: "#22c55e" },
+                      { label: "S2 Status", data: recordingData.s2, color: "#f43f5e" }
+                  ].map((graph, idx) => (
+                    <div key={idx} className={`p-4 rounded-2xl border flex flex-col ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                      <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{graph.label}</h4>
+                      <div className="w-full flex-1 h-32">
+                        <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                          <polyline
+                            points={generateFullPolyline(graph.data, 1000, 200)}
+                            fill="none" stroke={graph.color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className={`p-10 mt-4 text-center flex flex-col items-center justify-center border-2 border-dashed rounded-3xl ${darkMode ? "border-gray-700 text-gray-500" : "border-gray-300 text-gray-400"}`}>
+                  <Activity size={40} className="mb-4 opacity-50" />
+                  <p className="font-bold text-lg">Aguardando Início da Prova</p>
+                  <p className="text-sm mt-2 max-w-md">Os gráficos fixos baseados no quadro de "Métricas de Sistema" começarão a traçar e arquivar os dados assim que você iniciar a gravação.</p>
+                </div>
+              )}
             </div>
 
           ) : activeTab === "Mapa" ? (
@@ -2626,6 +2727,64 @@ if (isLoadingSession) {
               {/* #endregion */}
             </div>
             
+          ) : activeTab === "Potência" ? (
+            <div className="h-full w-full max-w-5xl mx-auto flex flex-col animate-in fade-in duration-300 min-h-0">
+              {/* #region Aba Potência */}
+              <div className="flex items-center space-x-3 mb-4 shrink-0">
+                <div className="p-3 bg-blue-500/10 rounded-2xl">
+                  <Zap className="text-blue-500" size={28} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">Análise de Desempenho</h2>
+                  <p className={`text-[10px] md:text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                    Previsões e métricas avançadas baseadas em telemetria
+                  </p>
+                </div>
+              </div>
+
+              <div className={`flex-1 rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-sm border mb-4 transition-colors duration-300 relative overflow-y-auto overflow-x-hidden ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100 shadow-xl shadow-gray-200/50"}`}>
+                <div className="absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl"></div>
+
+                <div className="flex flex-col md:flex-row items-center justify-center md:justify-between relative z-10 min-h-full gap-8 md:gap-0 py-4 md:py-0">
+                  <div className="flex-1 mb-6 md:mb-0 md:pr-4 flex flex-col items-center md:items-start text-center md:text-left w-full justify-center">
+                    <h3 className="text-lg font-bold mb-2 flex items-center justify-center md:justify-start">
+                      <Zap className="mr-2 text-blue-500" size={20} />
+                      Tempo de Bateria Remanescente
+                    </h3>
+                    <p className={`text-sm mb-6 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                      Calculado dinamicamente relacionando o nível de carga com o consumo (W) atual.
+                    </p>
+
+                    <div className="flex flex-wrap justify-center md:justify-start gap-4">
+                      <div className={`px-4 py-2 rounded-xl border flex flex-col items-center text-center ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                        <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Consumo</p>
+                        <p className="text-xl font-bold text-orange-500 tabular-nums">{currentPower.toFixed(1)} W</p>
+                      </div>
+                      <div className={`px-4 py-2 rounded-xl border flex flex-col items-center text-center ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                        <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Velocidade</p>
+                        <p className="text-xl font-bold text-blue-500 tabular-nums">{speed}</p>
+                      </div>
+                      <div className={`px-4 py-2 rounded-xl border flex flex-col items-center text-center ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                        <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Bateria</p>
+                        <p className={`text-xl font-bold tabular-nums ${battery > 20 ? "text-emerald-500" : "text-red-500"}`}>{battery}%</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex-shrink-0 flex flex-col items-center justify-center p-6 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl shadow-lg shadow-blue-500/30 text-white min-w-[200px] md:min-w-[250px]">
+                    <span className="text-sm font-bold uppercase tracking-wider mb-2 opacity-80">Tempo Estimado</span>
+                    <div className="flex items-baseline space-x-2">
+                      <span className="text-6xl font-black tracking-tighter tabular-nums">{estHours}</span>
+                      <span className="text-2xl font-bold opacity-80">h</span>
+                      <span className="text-6xl font-black tracking-tighter tabular-nums">{estMinutes.toString().padStart(2, "0")}</span>
+                      <span className="text-2xl font-bold opacity-80">m</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* #endregion */}
+            </div>
+
           ) : (
             <div className="flex h-full items-center justify-center text-gray-500">
               <p className="text-xl">Área de {activeTab} em desenvolvimento.</p>
