@@ -444,6 +444,7 @@ function tocarSomSuave() {
   const [rpm, setRpm] = useState(-1);                                  // Rpm motor
   const [speed, setSpeed] = useState(-1);                              // Velocidade do motor (em Km/h)
   const [string_1, setString_1] = useState(-1);
+  const [S1_power, setS1_power] = useState(-1)
   const [string_2, setString_2] = useState(-1);
 
   const [idProvaAtual, set_idProvaAtual] = useState(-1)
@@ -729,7 +730,11 @@ function tocarSomSuave() {
         // if (medicao.rpm         != null) setRpm(medicao.rpm);
         if (medicao.tensao      != null) setRpm(medicao.tensao * medicao.corrente_2);
         if (medicao.velocidade  != null) setSpeed(medicao.velocidade);
-        if (medicao.string_1    != null) setString_1(medicao.string_1); 
+        if (medicao.string_1    != null) {
+          setString_1(medicao.string_1); 
+          setS1_power(medicao.tensao * medicao.string_1);
+        }
+
         if (medicao.string_2    != null) setString_2(medicao.string_2); 
 
         // Bloco de codigo de teste
@@ -2231,13 +2236,14 @@ if (isLoadingSession) {
                     className={`p-2 lg:p-6 flex flex-col items-center justify-center w-full h-full ${darkMode ? "bg-gray-800" : "bg-white"}`}
                   >
                     <span className="text-[10px] lg:text-[13px] font-black uppercase tracking-wider text-gray-500 mb-1 text-center w-full">
-                      Temp. BMS
+                      {/* Temp. BMS */}
+                      Potência geração
                     </span>
                     <div className="flex items-baseline justify-center">
                       <span
                         className={`text-xl lg:text-5xl font-light tracking-tight tabular-nums ${darkMode ? "text-red-400" : "text-red-600"}`}
                       >
-                        {avgBmsTemp.toFixed(0)}
+                        {S1_power.toFixed(3)}
                       </span>
                       <span
                         className={`text-xs lg:text-2xl font-medium ml-1.5 ${darkMode ? "text-red-400" : "text-red-600"}`}
