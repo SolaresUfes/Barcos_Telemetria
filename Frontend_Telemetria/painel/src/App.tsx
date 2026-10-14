@@ -727,7 +727,7 @@ function tocarSomSuave() {
         if (medicao.potencia    != null) setMainData(prev => [medicao.potencia, ...prev].slice(0,40));
         if (medicao.porcentagem != null) setBattery(medicao.porcentagem);
         // if (medicao.rpm         != null) setRpm(medicao.rpm);
-        if (medicao.rpm         != null) setRpm(medicao.tensao * medicao.corrente_2);
+        if (medicao.rpm) setRpm(medicao.tensao * medicao.corrente_2);
         if (medicao.velocidade  != null) setSpeed(medicao.velocidade);
         if (medicao.string_1    != null) setString_1(medicao.string_1); 
         if (medicao.string_2    != null) setString_2(medicao.string_2); 
