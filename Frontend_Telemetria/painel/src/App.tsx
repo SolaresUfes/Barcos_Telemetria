@@ -726,7 +726,8 @@ function tocarSomSuave() {
         if (medicao.corrente_2  != null) set_correnteMotor(medicao.corrente_2);
         if (medicao.potencia    != null) setMainData(prev => [medicao.potencia, ...prev].slice(0,40));
         if (medicao.porcentagem != null) setBattery(medicao.porcentagem);
-        if (medicao.rpm         != null) setRpm(medicao.rpm);
+        // if (medicao.rpm         != null) setRpm(medicao.rpm);
+        if (medicao.rpm         != null) setRpm(medicao.tensao * medicao.corrente_2);
         if (medicao.velocidade  != null) setSpeed(medicao.velocidade);
         if (medicao.string_1    != null) setString_1(medicao.string_1); 
         if (medicao.string_2    != null) setString_2(medicao.string_2); 
@@ -2208,7 +2209,7 @@ if (isLoadingSession) {
                     className={`p-2 lg:p-6 flex flex-col items-center justify-center w-full h-full ${darkMode ? "bg-gray-800" : "bg-white"}`}
                   >
                     <span className="text-[10px] lg:text-[13px] font-black uppercase tracking-wider text-gray-500 mb-1 text-center w-full">
-                      Rotação
+                      Corrente MOTOR
                     </span>
                     <div className="flex items-baseline justify-center">
                       <span
