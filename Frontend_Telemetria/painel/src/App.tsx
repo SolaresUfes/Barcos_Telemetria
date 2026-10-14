@@ -2725,9 +2725,9 @@ if (isLoadingSession) {
                   <Zap className="text-blue-500" size={28} />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold">Análise de Desempenho</h2>
+                  <h2 className="text-2xl font-bold">Área de Potência</h2>
                   <p className={`text-[10px] md:text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                    Previsões e métricas avançadas baseadas em telemetria
+                    Umas continhas aí
                   </p>
                 </div>
               </div>
