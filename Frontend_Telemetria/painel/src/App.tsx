@@ -2640,7 +2640,14 @@ if (isLoadingSession) {
               <div id="area-graficos" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
                 {[
                     { label: "Tensão (V)", data: recordingData.tensao, color: "#3b82f6" },
-                    // ... (resto dos gráficos)
+                    { label: "Potência Bateria (W)", data: recordingData.potenciaBateria, color: "#14b8a6" },
+                    { label: "Potência Motor (W)", data: recordingData.potenciaMotor, color: "#8b5cf6" },
+                    { label: "Potência Geração (W)", data: recordingData.potenciaGeracao, color: "#ef4444" },
+                    { label: "Velocidade", data: recordingData.velocidade, color: "#eab308" },
+                    { label: "Corrente Bateria (A)", data: recordingData.correnteBateria, color: "#f97316" },
+                    { label: "Corrente Motor (A)", data: recordingData.correnteMotor, color: "#d946ef" },
+                    { label: "S1 Status", data: recordingData.s1, color: "#22c55e" },
+                    { label: "S2 Status", data: recordingData.s2, color: "#f43f5e" }
                 ].map((graph, idx) => (
                   <div key={idx} className={`p-4 rounded-2xl border flex flex-col ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{graph.label}</h4>
@@ -2981,7 +2988,7 @@ if (isLoadingSession) {
                             <button
                               onClick={() => {
                                 dispararToast("Lógica do CSV Histórico: Conecte sua API aqui!", "aviso");
-                                // fetch(`.../api/sensores?inicio=${prova.inicio}&fim=${prova.fim}`)
+                                // fetch(`.../api/sensores?inicio=${prova.inicio}&fim=${prova.fim}`) sixseven
                               }}
                               className="px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 font-bold text-xs rounded-xl transition-all border border-indigo-500/20"
                             >
@@ -2989,10 +2996,37 @@ if (isLoadingSession) {
                             </button>
 
                             <button
-                              onClick={() => {
-                                setActiveTab("Análise");
-                                setShowModalAnalise(false);
-                                setTimeout(() => window.print(), 800);
+                              onClick={async () => {
+                                dispararToast("A carregar gráficos para impressão...", "aviso");
+                                
+                                try {
+                                  // sixseven
+                                  const res = await fetch(`https://telemetria-be.vercel.app/api/sensores/historico?inicio=${prova.inicio}&fim=${prova.fim}`); // exemplo aleatório, n sei mexer nisso
+                                  const dadosHistoricos = await res.json();
+
+                                  // 2. Transforma a resposta da API nos arrays que a aba de Análise exige
+                                  setRecordingData({
+                                    tensao: dadosHistoricos.map((d: any) => d.tensao ?? 0),
+                                    potenciaBateria: dadosHistoricos.map((d: any) => d.potencia ?? 0),
+                                    potenciaMotor: dadosHistoricos.map((d: any) => (d.tensao ?? 0) * (d.corrente_2 ?? 0)),
+                                    potenciaGeracao: dadosHistoricos.map((d: any) => (d.tensao ?? 0) * (d.string_1 ?? 0)),
+                                    bateria: dadosHistoricos.map((d: any) => d.porcentagem ?? 0),
+                                    velocidade: dadosHistoricos.map((d: any) => d.velocidade ?? 0),
+                                    correnteBateria: dadosHistoricos.map((d: any) => d.corrente ?? 0),
+                                    correnteMotor: dadosHistoricos.map((d: any) => d.corrente_2 ?? 0),
+                                    s1: dadosHistoricos.map((d: any) => d.string_1 ?? 0),
+                                    s2: dadosHistoricos.map((d: any) => d.string_2 ?? 0)
+                                  });
+
+                                  // 3. Muda a aba e manda imprimir com um atraso para o React renderizar os SVG
+                                  setActiveTab("Análise");
+                                  setShowModalAnalise(false);
+                                  setTimeout(() => window.print(), 1000); 
+
+                                } catch (error) {
+                                  console.error("Erro ao carregar histórico:", error);
+                                  dispararToast("Erro ao carregar dados para impressão.", "erro");
+                                }
                               }}
                               className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold text-xs rounded-xl transition-all border border-emerald-500/20"
                             >
