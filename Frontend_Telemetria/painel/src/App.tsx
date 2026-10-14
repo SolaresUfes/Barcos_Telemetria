@@ -2200,7 +2200,8 @@ if (isLoadingSession) {
                       <span
                         className={`text-xs lg:text-2xl font-medium ml-1.5 ${darkMode ? "text-teal-400" : "text-teal-600"}`}
                       >
-                        km/h
+                        {/* km/h */}
+                        W
                       </span>
                     </div>
                   </div>
@@ -2220,7 +2221,8 @@ if (isLoadingSession) {
                       <span
                         className={`text-xs lg:text-2xl font-medium ml-1.5 ${darkMode ? "text-gray-400" : "text-gray-500"}`}
                       >
-                        RPM
+                        {/* RPM */}
+                        W
                       </span>
                     </div>
                   </div>
