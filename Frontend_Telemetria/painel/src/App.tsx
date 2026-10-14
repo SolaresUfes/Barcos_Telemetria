@@ -2189,13 +2189,13 @@ if (isLoadingSession) {
                     className={`p-2 lg:p-6 flex flex-col items-center justify-center w-full h-full ${darkMode ? "bg-gray-800" : "bg-white"}`}
                   >
                     <span className="text-[10px] lg:text-[13px] font-black uppercase tracking-wider text-gray-500 mb-1 text-center w-full">
-                      Velocidade
+                      POTÊNCIA BATERIA
                     </span>
                     <div className="flex items-baseline justify-center">
                       <span
                         className={`text-xl lg:text-5xl font-light tracking-tight tabular-nums ${darkMode ? "text-teal-400" : "text-teal-600"}`}
                       >
-                        {speed}
+                        {currentPower.toFixed(3)}
                       </span>
                       <span
                         className={`text-xs lg:text-2xl font-medium ml-1.5 ${darkMode ? "text-teal-400" : "text-teal-600"}`}
@@ -2209,13 +2209,13 @@ if (isLoadingSession) {
                     className={`p-2 lg:p-6 flex flex-col items-center justify-center w-full h-full ${darkMode ? "bg-gray-800" : "bg-white"}`}
                   >
                     <span className="text-[10px] lg:text-[13px] font-black uppercase tracking-wider text-gray-500 mb-1 text-center w-full">
-                      Corrente MOTOR
+                      POTÊNCIA MOTOR
                     </span>
                     <div className="flex items-baseline justify-center">
                       <span
                         className={`text-xl lg:text-5xl font-light tracking-tight tabular-nums ${darkMode ? "text-gray-300" : "text-gray-700"}`}
                       >
-                        {rpm}
+                        {rpm.toFixed(3)}
                       </span>
                       <span
                         className={`text-xs lg:text-2xl font-medium ml-1.5 ${darkMode ? "text-gray-400" : "text-gray-500"}`}
@@ -2264,13 +2264,13 @@ if (isLoadingSession) {
                     className={`p-2 lg:p-6 flex flex-col items-center justify-center w-full h-full ${darkMode ? "bg-gray-800" : "bg-white"}`}
                   >
                     <span className="text-[10px] lg:text-[13px] font-black uppercase tracking-wider text-gray-500 mb-1 text-center w-full">
-                      Potência
+                      VELOCIDADE
                     </span>
                     <div className="flex items-baseline justify-center">
                       <span
                         className={`text-xl lg:text-5xl font-light tracking-tight tabular-nums ${darkMode ? "text-yellow-300" : "text-yellow-500"}`}
                       >
-                        {currentPower.toFixed(3)}
+                        {speed}
                       </span>
                       <span
                         className={`text-xs lg:text-2xl font-medium ml-1.5 ${darkMode ? "text-yellow-300" : "text-yellow-500"}`}
