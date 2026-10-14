@@ -1432,6 +1432,25 @@ if (isLoadingSession) {
     <div
       className={`flex h-[100dvh] w-full transition-colors duration-300 font-sans overflow-hidden ${darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-100 text-gray-800"}`}
     >
+
+      {/* SCRIPT DE IMPRESSÃO: Esconde todo o site na hora de imprimir, mostrando apenas a área com a ID "area-graficos" */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          #area-graficos, #area-graficos * {
+            visibility: visible;
+          }
+          #area-graficos {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+        }
+      `}</style>
+
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm transition-opacity"
@@ -2546,42 +2565,21 @@ if (isLoadingSession) {
                     >
                       <DownloadCloud size={32} className="text-orange-500" />
                     </div>
-                    <h3 className="text-xl font-bold">Extração Póstuma</h3>
+                    <h3 className="text-xl font-bold">Gerenciamento de Gravações</h3>
                     <p
                       className={`text-sm mt-2 px-4 ${darkMode ? "text-gray-400" : "text-gray-500"}`}
                     >
-                      Envie todos os dados armazenados em cache para uma
-                      planilha externa. Utilizado para análise de desempenho
-                      após a bateria terminar.
+                      Consulte o histórico, exporte CSVs de provas passadas e imprima os relatórios gráficos oficiais.
                     </p>
                   </div>
 
                   <button 
                     onClick={abrirAnaliseDeDados}
-                    className="w-full py-4 md:py-5 px-6 rounded-2xl font-bold text-white uppercase tracking-wider flex items-center justify-center transition-all bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 shadow-xl shadow-orange-500/20 hover:scale-[1.02] mt-auto"
+                    className="w-full mt-auto py-4 md:py-5 px-6 rounded-2xl font-bold text-white uppercase tracking-wider flex items-center justify-center transition-all bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 shadow-xl shadow-orange-500/20 hover:scale-[1.02]"
                   >
                     <Database size={20} className="mr-2" />
-                    Análise de Dados de Prova
+                    Abrir Gravações Salvas
                   </button>
-
-                  <button 
-                        onClick={exportarCSV}
-                        className="w-full py-4 px-6 rounded-2xl font-bold text-white uppercase tracking-wider flex items-center justify-center transition-all bg-indigo-500 hover:bg-indigo-600 shadow-xl shadow-indigo-500/20 hover:scale-[1.02]"
-                      >
-                        <DownloadCloud size={20} className="mr-2" />
-                        Baixar CSV Gravado
-                      </button>
-
-                      <button 
-                        onClick={() => { setActiveTab("Análise"); setTimeout(() => window.print(), 500); }}
-                        className="w-full py-4 px-6 rounded-2xl font-bold text-white uppercase tracking-wider flex items-center justify-center transition-all bg-emerald-500 hover:bg-emerald-600 shadow-xl shadow-emerald-500/20 hover:scale-[1.02]"
-                      >
-                        <BarChart2 size={20} className="mr-2" />
-                        Imprimir Gráficos Finais (PDF)
-                      </button>
-
-                  
-
                 </div>
               </div>
               
@@ -2638,41 +2636,26 @@ if (isLoadingSession) {
                 </div>
               </div>
 
-              {/* GRÁFICOS DAS DEMAIS VARIÁVEIS */}
-              {provaAtiva ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
-                  {[
-                      { label: "Tensão (V)", data: recordingData.tensao, color: "#3b82f6" },
-                      { label: "Potência Bateria (W)", data: recordingData.potenciaBateria, color: "#14b8a6" },
-                      { label: "Potência Motor (W)", data: recordingData.potenciaMotor, color: "#6b7280" },
-                      { label: "Potência Geração (W)", data: recordingData.potenciaGeracao, color: "#ef4444" },
-                      { label: "Velocidade", data: recordingData.velocidade, color: "#eab308" },
-                      { label: "Corrente Bateria (A)", data: recordingData.correnteBateria, color: "#f97316" },
-                      { label: "Corrente Motor (A)", data: recordingData.correnteMotor, color: "#f59e0b" },
-                      { label: "S1 Status", data: recordingData.s1, color: "#22c55e" },
-                      { label: "S2 Status", data: recordingData.s2, color: "#f43f5e" }
-                  ].map((graph, idx) => (
-                    <div key={idx} className={`p-4 rounded-2xl border flex flex-col ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
-                      <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{graph.label}</h4>
-                      <div className="w-full flex-1 h-32">
-                        <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-                          <polyline
-                            points={generateFullPolyline(graph.data, 1000, 200)}
-                            fill="none" stroke={graph.color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
-                          />
-                        </svg>
-                      </div>
+              {/* GRÁFICOS DAS DEMAIS VARIÁVEIS (Sempre Visíveis) */}
+              <div id="area-graficos" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
+                {[
+                    { label: "Tensão (V)", data: recordingData.tensao, color: "#3b82f6" },
+                    // ... (resto dos gráficos)
+                ].map((graph, idx) => (
+                  <div key={idx} className={`p-4 rounded-2xl border flex flex-col ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{graph.label}</h4>
+                    <div className="w-full flex-1 h-32">
+                      <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                        <polyline
+                          points={generateFullPolyline(graph.data, 1000, 200)}
+                          fill="none" stroke={graph.color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+                        />
+                      </svg>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className={`p-10 mt-4 text-center flex flex-col items-center justify-center border-2 border-dashed rounded-3xl ${darkMode ? "border-gray-700 text-gray-500" : "border-gray-300 text-gray-400"}`}>
-                  <Activity size={40} className="mb-4 opacity-50" />
-                  <p className="font-bold text-lg">Aguardando Início da Prova</p>
-                  <p className="text-sm mt-2 max-w-md">Os gráficos fixos baseados no quadro de "Métricas de Sistema" começarão a traçar e arquivar os dados assim que você iniciar a gravação.</p>
-                </div>
-              )}
-            </div>
+                  </div>
+                ))}
+              </div>
+            </div> 
 
           ) : activeTab === "Mapa" ? (
 
@@ -2991,8 +2974,31 @@ if (isLoadingSession) {
                         </div>
 
                         {/* Botões de Ação */}
+                        {/* Botões de Ação */}
                         {idEditando !== prova.id && (
-                          <div className="flex items-center space-x-2 self-end sm:self-auto shrink-0">
+                          <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto shrink-0">
+                            
+                            <button
+                              onClick={() => {
+                                dispararToast("Lógica do CSV Histórico: Conecte sua API aqui!", "aviso");
+                                // fetch(`.../api/sensores?inicio=${prova.inicio}&fim=${prova.fim}`)
+                              }}
+                              className="px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 font-bold text-xs rounded-xl transition-all border border-indigo-500/20"
+                            >
+                              Baixar CSV
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setActiveTab("Análise");
+                                setShowModalAnalise(false);
+                                setTimeout(() => window.print(), 800);
+                              }}
+                              className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold text-xs rounded-xl transition-all border border-emerald-500/20"
+                            >
+                              Imprimir Gráficos
+                            </button>
+
                             <button
                               onClick={() => {
                                 setIdEditando(prova.id);
@@ -3002,6 +3008,7 @@ if (isLoadingSession) {
                             >
                               Editar Nome
                             </button>
+
                             <button
                               onClick={() => deletarProvaBanco(prova.id)}
                               className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold text-xs rounded-xl transition-all border border-red-500/20"
