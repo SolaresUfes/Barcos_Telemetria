@@ -2673,7 +2673,7 @@ if (isLoadingSession) {
                 </div>
               </div>
 
-              {/* GRÁFICOS DAS DEMAIS VARIÁVEIS (Sempre Visíveis) */}
+{/* GRÁFICOS DAS DEMAIS VARIÁVEIS (Sempre Visíveis) */}
               <div id="area-graficos" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
                 {[
                     { label: "Tensão (V)", data: recordingData.tensao, color: "#3b82f6" },
@@ -2692,36 +2692,14 @@ if (isLoadingSession) {
                     className={`p-4 rounded-2xl border flex flex-col cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
                   >
                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{graph.label}</h4>
-<div className="w-full h-48 mt-4 border-t pt-4 dark:border-gray-700 relative">
-                  <span className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">
-                      {provaAtiva ? "Histórico Completo (Gravando Estático)" : "Variação Dinâmica (Tempo Real)"}
-                  </span>
-                  <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-                      
-                      {/* Eixos X e Y (estética do Resumo) */}
-                      <line x1="0" y1="200" x2="1000" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
-                      <line x1="0" y1="0" x2="0" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
-
-                      {/* Grade da bateria (0 a 100 de 25 em 25) */}
-                      {[0, 25, 50, 75, 100].map((val) => {
-                        const y = 200 - (val / 100) * 200;
-                        return (
-                          <g key={`bat-grid-${val}`}>
-                            <line x1="0" y1={y} x2="1000" y2={y} stroke={darkMode ? "#374151" : "#f3f4f6"} strokeWidth="1" strokeDasharray="5,5" />
-                            <text x="10" y={y === 0 ? y + 12 : y - 5} fill={darkMode ? "#9ca3af" : "#6b7280"} fontSize="12" fontWeight="bold">
-                              {val}%
-                            </text>
-                          </g>
-                        );
-                      })}
-
-                      {/* Linha da Bateria Engrossada */}
-                      <polyline
-                        points={generateBatteryPath(provaAtiva ? recordingData.bateria : idleBatteryData, 1000, 200, !provaAtiva)}
-                        fill="none" stroke="#10b981" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-md"
-                      />
-                  </svg>
-                </div>
+                    <div className="w-full flex-1 h-32 pointer-events-none mt-2">
+                      <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                        <polyline
+                          points={generateFullPolyline(graph.data, 1000, 200)}
+                          fill="none" stroke={graph.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                        />
+                      </svg>
+                    </div>
                   </div>
                 ))}
               </div>
