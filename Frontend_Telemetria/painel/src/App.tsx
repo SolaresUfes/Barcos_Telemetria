@@ -2631,7 +2631,7 @@ if (isLoadingSession) {
                   <BarChart2 className="text-blue-500" size={24} />
                 </div>
                 <div>
-                  <h2 className="text-xl md:text-2xl font-bold">Análise de Desempenho e Bateria</h2>
+                  <h2 className="text-xl md:text-2xl font-bold">Análise de Desempenho e Eficiência Energética</h2>
                   <p className={`text-[10px] md:text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
                     Taxa da Bateria e Gráficos Finais (Ativos durante a gravação).
                   </p>
