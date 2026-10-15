@@ -82,6 +82,29 @@ const formatTimer = (totalSeconds: number) => {
   return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 };
 
+// faz o grafico da bateria variar só de 0 a 100
+const generateBatteryPath = (data: number[], width: number, height: number, isIdle: boolean) => {
+  if (!data || data.length === 0) return `1000,${height}`;
+  if (isIdle) {
+    const stepX = width / 39;
+    const reversedData = [...data].reverse();
+    const offsetX = width - ((reversedData.length - 1) * stepX);
+    return reversedData.map((val, index) => {
+      const x = offsetX + (index * stepX);
+      const y = height - (Math.max(0, Math.min(100, val)) / 100) * height;
+      return `${x},${y}`;
+    }).join(" ");
+  } else {
+    if (data.length === 1) return `0,${height - (data[0]/100)*height} ${width},${height - (data[0]/100)*height}`;
+    const stepX = width / (data.length - 1);
+    return data.map((val, index) => {
+      const x = index * stepX;
+      const y = height - (val / 100) * height;
+      return `${x},${y}`;
+    }).join(" ");
+  }
+};
+
 // --- PARÂMETROS E FUNÇÃO DE AUTONOMIA ---
 const usableBatteryWh = 1996.8; // Capacidade de referência em Wh (2 x 12.8V x 78Ah)
 const historySeconds = 60;
@@ -396,6 +419,8 @@ async function buscarEquipe() {
   const [carregandoProvas, setCarregandoProvas] = useState(false);
   const [idEditando, setIdEditando] = useState<number | null>(null);
   const [novoNomeEditado, setNovoNomeEditado] = useState("");
+  // estado para termos graficos espandidos
+  const [expandedGraph, setExpandedGraph] = useState<{ label: string, data: number[], color: string } | null>(null);
 
 // Função auxiliar para disparar notificações com animação de esmaecimento
   function dispararToast(mensagem: string, tipo: 'sucesso' | 'aviso' | 'erro' = 'sucesso') {
@@ -2627,9 +2652,7 @@ if (isLoadingSession) {
                   </span>
                   <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
                       <polyline
-                        points={provaAtiva 
-                            ? generateFullPolyline(recordingData.bateria, 1000, 200) 
-                            : generatePolyline(idleBatteryData, 1000, 200, 100)}
+                        points={generateBatteryPath(provaAtiva ? recordingData.bateria : idleBatteryData, 1000, 200, !provaAtiva)}
                         fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
                       />
                   </svg>
@@ -2649,9 +2672,13 @@ if (isLoadingSession) {
                     { label: "S1 Status", data: recordingData.s1, color: "#22c55e" },
                     { label: "S2 Status", data: recordingData.s2, color: "#f43f5e" }
                 ].map((graph, idx) => (
-                  <div key={idx} className={`p-4 rounded-2xl border flex flex-col ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                  <div 
+                    key={idx} 
+                    onClick={() => setExpandedGraph(graph)}
+                    className={`p-4 rounded-2xl border flex flex-col cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
+                  >
                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{graph.label}</h4>
-                    <div className="w-full flex-1 h-32">
+                    <div className="w-full flex-1 h-32 pointer-events-none">
                       <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
                         <polyline
                           points={generateFullPolyline(graph.data, 1000, 200)}
@@ -3070,6 +3097,76 @@ if (isLoadingSession) {
               )}
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL DO GRÁFICO EXPANDIDO (Estética do Resumo)             */}
+      {/* ========================================================= */}
+      {expandedGraph && (
+        <div 
+          className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-md flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-200"
+          onClick={() => setExpandedGraph(null)}
+        >
+          <div 
+            className={`relative w-full max-w-7xl h-[70vh] md:h-[80vh] p-6 md:p-10 rounded-3xl shadow-2xl border flex flex-col ${darkMode ? "bg-gray-800 border-gray-700 text-white" : "bg-white border-gray-200 text-gray-900"}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-6 shrink-0">
+              <h3 className="text-2xl md:text-3xl font-black flex items-center gap-3">
+                <Activity style={{ color: expandedGraph.color }} size={32} />
+                {expandedGraph.label}
+              </h3>
+              <button
+                onClick={() => setExpandedGraph(null)}
+                className="px-4 py-2 bg-gray-500/10 hover:bg-gray-500/20 rounded-xl font-bold transition-all"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div className="flex-1 w-full relative min-h-0 mt-4">
+              <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                <defs>
+                  <linearGradient id="expandedGradient" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor={expandedGraph.color} stopOpacity="0.4" />
+                    <stop offset="100%" stopColor={expandedGraph.color} stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
+
+                {/* Linhas de Grade */}
+                {[0, 50, 100, 150, 200].map((y) => (
+                  <line
+                    key={`grid-${y}`}
+                    x1="0" y1={y} x2="1000" y2={y}
+                    stroke={darkMode ? "#374151" : "#f3f4f6"}
+                    strokeWidth="1" strokeDasharray="5,5"
+                  />
+                ))}
+
+                {/* Linha Zero destacada (Metade da altura) */}
+                <line
+                  x1="0" y1="100" x2="1000" y2="100"
+                  stroke={expandedGraph.color} strokeWidth="2" strokeDasharray="4,4" opacity="0.8"
+                />
+                <text x="10" y="93" fill={darkMode ? "#9ca3af" : "#6b7280"} fontSize="12" fontWeight="bold">0</text>
+
+                {/* Área preenchida e Linha do Gráfico */}
+                <polygon
+                  points={`0,100 ${generateFullPolyline(expandedGraph.data, 1000, 200)} 1000,100`}
+                  fill="url(#expandedGradient)"
+                />
+                <polyline
+                  points={generateFullPolyline(expandedGraph.data, 1000, 200)}
+                  fill="none" stroke={expandedGraph.color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-md"
+                />
+                
+                {/* Bordas Eixo X e Y */}
+                <line x1="0" y1="200" x2="1000" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
+                <line x1="0" y1="0" x2="0" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
+              </svg>
+            </div>
           </div>
         </div>
       )}
