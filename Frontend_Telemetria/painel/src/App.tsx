@@ -435,6 +435,9 @@ async function buscarEquipe() {
   const [novoNomeEditado, setNovoNomeEditado] = useState("");
   // estado para termos graficos espandidos
   const [expandedGraph, setExpandedGraph] = useState<{ label: string, data: number[], color: string } | null>(null);
+  // novos estados para configurações de gráfico
+  const [overlaySelections, setOverlaySelections] = useState<string[]>([]);
+  const [showOverlayModal, setShowOverlayModal] = useState(false);
 
 // Função auxiliar para disparar notificações com animação de esmaecimento
   function dispararToast(mensagem: string, tipo: 'sucesso' | 'aviso' | 'erro' = 'sucesso') {
@@ -1116,6 +1119,25 @@ function prova_iniciar() {
       setListaProvas(listaProvas.filter(p => p.id !== id));
     }
   }
+
+  // Lista central de todos os gráficos disponíveis para facilitar os mapas e sobreposições
+  const availableGraphs = [
+    { id: "tensao", label: "Tensão (V)", data: recordingData.tensao, color: "#3b82f6" },
+    { id: "potBateria", label: "Pot. Bateria (W)", data: recordingData.potenciaBateria, color: "#14b8a6" },
+    { id: "potMotor", label: "Pot. Motor (W)", data: recordingData.potenciaMotor, color: "#8b5cf6" },
+    { id: "potGeracao", label: "Pot. Geração (W)", data: recordingData.potenciaGeracao, color: "#ef4444" },
+    { id: "velocidade", label: "Velocidade", data: recordingData.velocidade, color: "#eab308" },
+    { id: "corrBateria", label: "Corr. Bateria (A)", data: recordingData.correnteBateria, color: "#f97316" },
+    { id: "corrMotor", label: "Corr. Motor (A)", data: recordingData.correnteMotor, color: "#d946ef" },
+    { id: "s1", label: "S1 Status", data: recordingData.s1, color: "#22c55e" },
+    { id: "s2", label: "S2 Status", data: recordingData.s2, color: "#f43f5e" },
+    { id: "bateria", label: "Bateria (%)", data: recordingData.bateria, color: "#10b981" }
+  ];
+
+  // Função para marcar/desmarcar na configuração
+  const toggleOverlay = (id: string) => {
+    setOverlaySelections(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
 
 // --- TELA DE CARREGAMENTO INICIAL (Fica no escopo principal do componente) ---
 if (isLoadingSession) {
@@ -2625,162 +2647,166 @@ if (isLoadingSession) {
             </div>
             
 ) : activeTab === "Análise" ? (
-            <div className="h-full w-full max-w-6xl mx-auto flex flex-col animate-in fade-in duration-300 min-h-0 overflow-hidden">
+            <div className="h-full w-full max-w-[1400px] mx-auto flex flex-col animate-in fade-in duration-300 min-h-0 overflow-hidden">
               <div className="flex items-center space-x-3 mb-2 md:mb-4 shrink-0 px-2 md:px-0">
                 <div className="p-2 md:p-3 bg-blue-500/10 rounded-2xl">
                   <BarChart2 className="text-blue-500" size={24} />
                 </div>
                 <div>
-                  <h2 className="text-xl md:text-2xl font-bold">Análise de Desempenho e Eficiência Energética</h2>
+                  <h2 className="text-xl md:text-2xl font-bold">Análise de Desempenho e Bateria</h2>
                   <p className={`text-[10px] md:text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
                     Taxa da Bateria e Gráficos Finais (Ativos durante a gravação).
                   </p>
                 </div>
               </div>
 
-{/* ========================================== */}
-              {/* CAIXA 1: DADOS DA BATERIA E POTÊNCIAS      */}
-              {/* ========================================== */}
-              <div className={`p-3 md:p-4 rounded-3xl shadow-sm border mb-2 md:mb-3 flex flex-col shrink-0 ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
-                <h3 className="text-sm md:text-lg font-bold mb-2 md:mb-3 flex items-center shrink-0">
-                  <Battery className="mr-2 text-green-500 w-4 h-4 md:w-5 md:h-5" /> 
-                  Bateria em Tempo Real
-                </h3>
+              {/* CONTAINER LADO A LADO */}
+              <div className="flex flex-1 gap-4 min-h-0 overflow-hidden">
                 
-                <div className="flex flex-wrap gap-2 shrink-0">
-                  {/* Bateria Padrão */}
-                  <div className={`px-2 py-1.5 md:px-3 md:py-2 rounded-xl border flex flex-col items-center flex-1 min-w-[90px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
-                    <p className="text-[8px] md:text-[9px] text-gray-500 font-bold uppercase mb-0.5">Carga Atual</p>
-                    <p className={`text-sm md:text-base font-bold tabular-nums ${battery > 20 ? "text-green-500" : "text-red-500"}`}>{battery}%</p>
-                  </div>
-                  <div className={`px-2 py-1.5 md:px-3 md:py-2 rounded-xl border flex flex-col items-center flex-1 min-w-[90px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
-                    <p className="text-[8px] md:text-[9px] text-gray-500 font-bold uppercase mb-0.5">Taxa (1 min)</p>
-                    <p className={`text-sm md:text-base font-bold tabular-nums ${batteryRate > 0 ? "text-green-500" : batteryRate < 0 ? "text-red-500" : "text-gray-500"}`}>
-                      {batteryRate > 0 ? "+" : ""}{batteryRate.toFixed(2)} %/min
-                    </p>
-                  </div>
-                  <div className={`px-2 py-1.5 md:px-3 md:py-2 rounded-xl border flex flex-col items-center flex-1 min-w-[90px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
-                    <p className="text-[8px] md:text-[9px] text-gray-500 font-bold uppercase mb-0.5">Status</p>
-                    <p className={`text-[10px] md:text-xs font-black uppercase tracking-widest mt-0.5 ${batteryStatus === "Carregando" ? "text-green-500" : batteryStatus === "Descarregando" ? "text-red-500" : "text-gray-500"}`}>
-                      {batteryStatus}
-                    </p>
-                  </div>
-
-                  {/* NOVAS POTÊNCIAS */}
-                  <div className={`px-2 py-1.5 md:px-3 md:py-2 rounded-xl border flex flex-col items-center flex-1 min-w-[90px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
-                    <p className="text-[8px] md:text-[9px] text-gray-500 font-bold uppercase mb-0.5">Pot. Bateria</p>
-                    <p className={`text-sm md:text-base font-bold tabular-nums ${darkMode ? "text-teal-400" : "text-teal-600"}`}>{(currentPower || 0).toFixed(1)} W</p>
-                  </div>
-                  <div className={`px-2 py-1.5 md:px-3 md:py-2 rounded-xl border flex flex-col items-center flex-1 min-w-[90px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
-                    <p className="text-[8px] md:text-[9px] text-gray-500 font-bold uppercase mb-0.5">Pot. Motor</p>
-                    <p className={`text-sm md:text-base font-bold tabular-nums ${darkMode ? "text-gray-300" : "text-gray-700"}`}>{(rpm || 0).toFixed(1)} W</p>
-                  </div>
-                  <div className={`px-2 py-1.5 md:px-3 md:py-2 rounded-xl border flex flex-col items-center flex-1 min-w-[90px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
-                    <p className="text-[8px] md:text-[9px] text-gray-500 font-bold uppercase mb-0.5">Pot. Geração</p>
-                    <p className={`text-sm md:text-base font-bold tabular-nums ${darkMode ? "text-red-400" : "text-red-600"}`}>{(S1_power || 0).toFixed(1)} W</p>
-                  </div>
-                </div>
-              </div>
-
-{/* ========================================== */}
-              {/* CAIXA 2: GRÁFICO DA BATERIA COM DEGRADÊ    */}
-              {/* ========================================== */}
-              <div className={`p-3 md:p-4 rounded-3xl shadow-sm border mb-2 md:mb-3 flex flex-col shrink-0 ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
-                <div className="flex justify-between items-center mb-1 md:mb-2 ml-10">
-                  <span className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest block">
-                      {provaAtiva ? "Histórico Completo (Gravando Estático)" : "Variação Dinâmica (Tempo Real)"}
-                  </span>
-                </div>
-                
-                <div className="w-full h-24 md:h-32 flex relative shrink-0 mt-1">
+                {/* LADO ESQUERDO: GRÁFICOS (Esmaga para não ter rolagem) */}
+                <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden pr-1">
                   
-                  {/* Eixo Y em HTML (Garante que os números NÃO ficam esticados e não sobrepõem o gráfico) */}
-                  <div className="relative w-10 shrink-0 h-full">
-                    {[100, 75, 50, 25, 0].map((val) => (
-                      <span 
-                        key={`html-text-${val}`} 
-                        className="absolute right-2 text-[10px] md:text-[11px] font-bold text-gray-500 leading-none"
-                        style={{ 
-                          top: `${100 - val}%`, 
-                          /* Ajuste preciso: 100% fica no topo exato, 0% na base exata, restantes no meio */
-                          transform: val === 100 ? 'translateY(0)' : val === 0 ? 'translateY(-100%)' : 'translateY(-50%)' 
-                        }}
-                      >
-                        {val}%
+                  {/* CAIXA 1: DADOS DA BATERIA E POTÊNCIAS */}
+                  <div className={`p-3 md:p-4 rounded-3xl shadow-sm border mb-2 md:mb-3 flex flex-col shrink-0 ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                    <h3 className="text-sm md:text-lg font-bold mb-2 md:mb-3 flex items-center shrink-0">
+                      <Battery className="mr-2 text-green-500 w-4 h-4 md:w-5 md:h-5" /> 
+                      Bateria em Tempo Real
+                    </h3>
+                    <div className="flex flex-wrap gap-2 shrink-0">
+                      <div className={`px-2 py-1.5 md:px-3 md:py-2 rounded-xl border flex flex-col items-center flex-1 min-w-[90px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                        <p className="text-[8px] md:text-[9px] text-gray-500 font-bold uppercase mb-0.5">Carga Atual</p>
+                        <p className={`text-sm md:text-base font-bold tabular-nums ${battery > 20 ? "text-green-500" : "text-red-500"}`}>{battery}%</p>
+                      </div>
+                      <div className={`px-2 py-1.5 md:px-3 md:py-2 rounded-xl border flex flex-col items-center flex-1 min-w-[90px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                        <p className="text-[8px] md:text-[9px] text-gray-500 font-bold uppercase mb-0.5">Taxa (1 min)</p>
+                        <p className={`text-sm md:text-base font-bold tabular-nums ${batteryRate > 0 ? "text-green-500" : batteryRate < 0 ? "text-red-500" : "text-gray-500"}`}>
+                          {batteryRate > 0 ? "+" : ""}{batteryRate.toFixed(2)} %/min
+                        </p>
+                      </div>
+                      <div className={`px-2 py-1.5 md:px-3 md:py-2 rounded-xl border flex flex-col items-center flex-1 min-w-[90px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                        <p className="text-[8px] md:text-[9px] text-gray-500 font-bold uppercase mb-0.5">Status</p>
+                        <p className={`text-[10px] md:text-xs font-black uppercase tracking-widest mt-0.5 ${batteryStatus === "Carregando" ? "text-green-500" : batteryStatus === "Descarregando" ? "text-red-500" : "text-gray-500"}`}>
+                          {batteryStatus}
+                        </p>
+                      </div>
+                      <div className={`px-2 py-1.5 md:px-3 md:py-2 rounded-xl border flex flex-col items-center flex-1 min-w-[90px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                        <p className="text-[8px] md:text-[9px] text-gray-500 font-bold uppercase mb-0.5">Pot. Bateria</p>
+                        <p className={`text-sm md:text-base font-bold tabular-nums ${darkMode ? "text-teal-400" : "text-teal-600"}`}>{(currentPower || 0).toFixed(1)} W</p>
+                      </div>
+                      <div className={`px-2 py-1.5 md:px-3 md:py-2 rounded-xl border flex flex-col items-center flex-1 min-w-[90px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                        <p className="text-[8px] md:text-[9px] text-gray-500 font-bold uppercase mb-0.5">Pot. Motor</p>
+                        <p className={`text-sm md:text-base font-bold tabular-nums ${darkMode ? "text-gray-300" : "text-gray-700"}`}>{(rpm || 0).toFixed(1)} W</p>
+                      </div>
+                      <div className={`px-2 py-1.5 md:px-3 md:py-2 rounded-xl border flex flex-col items-center flex-1 min-w-[90px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                        <p className="text-[8px] md:text-[9px] text-gray-500 font-bold uppercase mb-0.5">Pot. Geração</p>
+                        <p className={`text-sm md:text-base font-bold tabular-nums ${darkMode ? "text-red-400" : "text-red-600"}`}>{(S1_power || 0).toFixed(1)} W</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CAIXA 2: GRÁFICO DA BATERIA COM DEGRADÊ */}
+                  <div className={`p-3 md:p-4 rounded-3xl shadow-sm border mb-2 md:mb-3 flex flex-col shrink-0 ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                    <div className="flex justify-between items-center mb-1 md:mb-2 ml-10">
+                      <span className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest block">
+                          {provaAtiva ? "Histórico Completo (Gravando Estático)" : "Variação Dinâmica (Tempo Real)"}
                       </span>
+                    </div>
+                    
+                    <div className="w-full h-24 md:h-32 flex relative shrink-0 mt-1">
+                      <div className="relative w-10 shrink-0 h-full">
+                        {[100, 75, 50, 25, 0].map((val) => (
+                          <span 
+                            key={`html-text-${val}`} 
+                            className="absolute right-2 text-[10px] md:text-[11px] font-bold text-gray-500 leading-none"
+                            style={{ top: `${100 - val}%`, transform: val === 100 ? 'translateY(0)' : val === 0 ? 'translateY(-100%)' : 'translateY(-50%)' }}
+                          >
+                            {val}%
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="flex-1 relative h-full cursor-pointer" onClick={() => setExpandedGraph(availableGraphs.find(g => g.id === "bateria") || null)}>
+                        <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                            <defs>
+                              <linearGradient id="batGradient" x1="0" x2="0" y1="0" y2="1">
+                                <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
+                                <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                              </linearGradient>
+                            </defs>
+                            <line x1="0" y1="200" x2="1000" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
+                            <line x1="0" y1="0" x2="0" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
+                            {[25, 50, 75].map((val) => {
+                              const y = 200 - (val / 100) * 200;
+                              return <line key={`bat-grid-${val}`} x1="0" y1={y} x2="1000" y2={y} stroke={darkMode ? "#374151" : "#f3f4f6"} strokeWidth="1" strokeDasharray="5,5" />;
+                            })}
+                            <polygon points={`${!provaAtiva && idleBatteryData.length > 0 ? 1000 - ((idleBatteryData.length - 1) * (1000 / 39)) : 0},200 ${generateBatteryPath(provaAtiva ? recordingData.bateria : idleBatteryData, 1000, 200, !provaAtiva)} 1000,200`} fill="url(#batGradient)" />
+                            <polyline points={generateBatteryPath(provaAtiva ? recordingData.bateria : idleBatteryData, 1000, 200, !provaAtiva)} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-md" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ÁREA DOS 9 GRÁFICOS (flex-1 para encolher no ecrã) */}
+                  <div id="area-graficos" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3 flex-1 min-h-0 pb-2">
+                    {availableGraphs.filter(g => g.id !== "bateria").map((graph) => (
+                      <div 
+                        key={graph.id} 
+                        onClick={() => setExpandedGraph(graph)}
+                        className={`p-2 md:p-3 rounded-2xl border flex flex-col cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all min-h-0 ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
+                      >
+                        <h4 className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 shrink-0">{graph.label}</h4>
+                        <div className="w-full flex-1 min-h-0 pointer-events-none mt-1">
+                          <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                            <polyline points={generateFullPolyline(graph.data, 1000, 200)} fill="none" stroke={graph.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </div>
+                      </div>
                     ))}
                   </div>
 
-                  {/* SVG do Gráfico */}
-                  <div className="flex-1 relative h-full">
-                    <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-                        <defs>
-                          <linearGradient id="batGradient" x1="0" x2="0" y1="0" y2="1">
-                            <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
-                            <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
-                          </linearGradient>
-                        </defs>
-
-                        {/* Eixos X e Y e Linhas de Grade */}
-                        <line x1="0" y1="200" x2="1000" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
-                        <line x1="0" y1="0" x2="0" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
-
-                        {/* Linhas pontilhadas internas */}
-                        {[25, 50, 75].map((val) => {
-                          const y = 200 - (val / 100) * 200;
-                          return (
-                            <line key={`bat-grid-${val}`} x1="0" y1={y} x2="1000" y2={y} stroke={darkMode ? "#374151" : "#f3f4f6"} strokeWidth="1" strokeDasharray="5,5" />
-                          );
-                        })}
-
-                        {/* Fundo Gradiente */}
-                        <polygon
-                          points={`${!provaAtiva && idleBatteryData.length > 0 ? 1000 - ((idleBatteryData.length - 1) * (1000 / 39)) : 0},200 ${generateBatteryPath(provaAtiva ? recordingData.bateria : idleBatteryData, 1000, 200, !provaAtiva)} 1000,200`}
-                          fill="url(#batGradient)"
-                        />
-
-                        {/* Linha Principal (Espessura reduzida para 2.5) */}
-                        <polyline
-                          points={generateBatteryPath(provaAtiva ? recordingData.bateria : idleBatteryData, 1000, 200, !provaAtiva)}
-                          fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-md"
-                        />
-                    </svg>
-                  </div>
-
                 </div>
-              </div>
 
-              {/* GRÁFICOS DAS DEMAIS VARIÁVEIS (Ocupam o espaço restante com flex-1 min-h-0) */}
-              <div id="area-graficos" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3 flex-1 min-h-0 pb-2">
-                {[
-                    { label: "Tensão (V)", data: recordingData.tensao, color: "#3b82f6" },
-                    { label: "Potência Bateria (W)", data: recordingData.potenciaBateria, color: "#14b8a6" },
-                    { label: "Potência Motor (W)", data: recordingData.potenciaMotor, color: "#8b5cf6" },
-                    { label: "Potência Geração (W)", data: recordingData.potenciaGeracao, color: "#ef4444" },
-                    { label: "Velocidade", data: recordingData.velocidade, color: "#eab308" },
-                    { label: "Corrente Bateria (A)", data: recordingData.correnteBateria, color: "#f97316" },
-                    { label: "Corrente Motor (A)", data: recordingData.correnteMotor, color: "#d946ef" },
-                    { label: "S1 Status", data: recordingData.s1, color: "#22c55e" },
-                    { label: "S2 Status", data: recordingData.s2, color: "#f43f5e" }
-                ].map((graph, idx) => (
-                  <div 
-                    key={idx} 
-                    onClick={() => setExpandedGraph(graph)}
-                    className={`p-2 md:p-3 rounded-2xl border flex flex-col cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all min-h-0 ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
-                  >
-                    <h4 className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 shrink-0">{graph.label}</h4>
-                    
-                    {/* flex-1 min-h-0 permite encolher dinamicamente */}
-                    <div className="w-full flex-1 min-h-0 pointer-events-none mt-1">
-                      <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-                        <polyline
-                          points={generateFullPolyline(graph.data, 1000, 200)}
-                          fill="none" stroke={graph.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                        />
-                      </svg>
-                    </div>
+                {/* LADO DIREITO: BARRA DE CONFIGURAÇÕES DE SOBREPOSIÇÃO */}
+                <div className={`hidden md:flex w-72 flex-col rounded-3xl shadow-sm border p-4 shrink-0 transition-colors ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                  <div className="shrink-0 mb-4">
+                    <h3 className="text-lg font-bold flex items-center">
+                      <Settings className="mr-2 text-gray-400" size={20} />
+                      Sobreposição
+                    </h3>
+                    <p className={`text-[10px] mt-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                      Selecione múltiplas variáveis para visualizar no mesmo eixo unificado.
+                    </p>
                   </div>
-                ))}
+
+                  <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                    {availableGraphs.map(g => (
+                      <label 
+                        key={g.id} 
+                        className={`flex items-center p-2.5 rounded-xl border cursor-pointer hover:scale-[1.02] transition-all select-none ${darkMode ? "bg-gray-900 border-gray-700 hover:border-gray-500" : "bg-gray-50 border-gray-200 hover:border-gray-300"} ${overlaySelections.includes(g.id) ? (darkMode ? "ring-1 ring-gray-400" : "ring-1 ring-gray-300") : ""}`}
+                      >
+                        <input 
+                          type="checkbox" 
+                          checked={overlaySelections.includes(g.id)} 
+                          onChange={() => toggleOverlay(g.id)} 
+                          className="w-4 h-4 rounded text-orange-500 focus:ring-orange-500 mr-3 cursor-pointer" 
+                        />
+                        <div className="w-3 h-3 rounded-full mr-2 shrink-0 shadow-sm" style={{backgroundColor: g.color}}></div>
+                        <span className={`text-xs font-bold ${darkMode ? "text-gray-300" : "text-gray-600"}`}>{g.label}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="shrink-0 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <button
+                      onClick={() => setShowOverlayModal(true)}
+                      disabled={overlaySelections.length === 0}
+                      className="w-full py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-95"
+                    >
+                      Abrir Gráfico Unificado
+                    </button>
+                  </div>
+                </div>
+
               </div>
             </div>
 
@@ -3266,6 +3292,75 @@ if (isLoadingSession) {
                 {/* Bordas Eixo X e Y principais */}
                 <line x1="0" y1="200" x2="1000" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
                 <line x1="0" y1="0" x2="0" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL DE SOBREPOSIÇÃO MÚLTIPLA                            */}
+      {/* ========================================================= */}
+      {showOverlayModal && (
+        <div 
+          className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-200"
+          onClick={() => setShowOverlayModal(false)}
+        >
+          <div 
+            className={`relative w-full max-w-7xl h-[80vh] p-6 md:p-10 rounded-3xl shadow-2xl border flex flex-col ${darkMode ? "bg-gray-800 border-gray-700 text-white" : "bg-white border-gray-200 text-gray-900"}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-6 shrink-0">
+              <div className="flex-1 pr-4">
+                <h3 className="text-2xl md:text-3xl font-black mb-4 flex items-center">
+                  <BarChart2 className="mr-3 text-orange-500" size={32} />
+                  Análise Unificada de Dados
+                </h3>
+                
+                {/* Legendas e Últimos Valores */}
+                <div className="flex flex-wrap gap-4 md:gap-8">
+                  {availableGraphs.filter(g => overlaySelections.includes(g.id)).map(g => (
+                    <div key={g.id} className="flex flex-col">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <div className="w-3 h-3 rounded-full shadow-sm" style={{backgroundColor: g.color}}></div>
+                        <span className="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-widest">{g.label}</span>
+                      </div>
+                      <span className="text-xl md:text-2xl font-black tabular-nums leading-none" style={{ color: g.color }}>
+                        {g.data.length > 0 ? g.data[g.data.length - 1].toFixed(2) : "0.00"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowOverlayModal(false)}
+                className="px-5 py-3 bg-gray-500/10 hover:bg-gray-500/20 rounded-xl font-bold transition-all text-sm md:text-base border border-transparent hover:border-gray-500/30 shrink-0"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div className="flex-1 w-full relative min-h-0 mt-4 bg-gray-900/5 rounded-2xl border dark:border-gray-700/50">
+              <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible p-4">
+                {/* Linhas de Grade */}
+                {[0, 50, 100, 150, 200].map((y) => (
+                  <line key={`over-grid-${y}`} x1="0" y1={y} x2="1000" y2={y} stroke={darkMode ? "#374151" : "#e5e7eb"} strokeWidth="1" strokeDasharray="4,4" />
+                ))}
+
+                {/* Linhas dos Gráficos Selecionados */}
+                {availableGraphs.filter(g => overlaySelections.includes(g.id)).map(g => (
+                  <polyline
+                    key={`over-line-${g.id}`}
+                    points={generateFullPolyline(g.data, 1000, 200)}
+                    fill="none" 
+                    stroke={g.color} 
+                    strokeWidth="3" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    className="drop-shadow-sm opacity-90 hover:opacity-100 hover:stroke-[5px] transition-all cursor-crosshair"
+                  />
+                ))}
               </svg>
             </div>
           </div>
