@@ -2682,59 +2682,71 @@ if (isLoadingSession) {
                 </div>
               </div>
 
-              {/* ========================================== */}
+{/* ========================================== */}
               {/* CAIXA 2: GRÁFICO DA BATERIA COM DEGRADÊ    */}
               {/* ========================================== */}
               <div className={`p-3 md:p-4 rounded-3xl shadow-sm border mb-2 md:mb-3 flex flex-col shrink-0 ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
-                <div className="flex justify-between items-center mb-1 md:mb-2">
+                <div className="flex justify-between items-center mb-1 md:mb-2 ml-10">
                   <span className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest block">
                       {provaAtiva ? "Histórico Completo (Gravando Estático)" : "Variação Dinâmica (Tempo Real)"}
                   </span>
                 </div>
                 
-                <div className="w-full h-24 md:h-32 relative shrink-0 mt-1">
-                  <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-                      <defs>
-                        <linearGradient id="batGradient" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
-                          <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
-                        </linearGradient>
-                      </defs>
+                <div className="w-full h-24 md:h-32 flex relative shrink-0 mt-1">
+                  
+                  {/* Eixo Y em HTML (Garante que os números NÃO ficam esticados e não sobrepõem o gráfico) */}
+                  <div className="relative w-10 shrink-0 h-full">
+                    {[100, 75, 50, 25, 0].map((val) => (
+                      <span 
+                        key={`html-text-${val}`} 
+                        className="absolute right-2 text-[10px] md:text-[11px] font-bold text-gray-500 leading-none"
+                        style={{ 
+                          top: `${100 - val}%`, 
+                          /* Ajuste preciso: 100% fica no topo exato, 0% na base exata, restantes no meio */
+                          transform: val === 100 ? 'translateY(0)' : val === 0 ? 'translateY(-100%)' : 'translateY(-50%)' 
+                        }}
+                      >
+                        {val}%
+                      </span>
+                    ))}
+                  </div>
 
-                      {/* Eixos X e Y e Linhas de Grade */}
-                      <line x1="0" y1="200" x2="1000" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
-                      <line x1="0" y1="0" x2="0" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
+                  {/* SVG do Gráfico */}
+                  <div className="flex-1 relative h-full">
+                    <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                        <defs>
+                          <linearGradient id="batGradient" x1="0" x2="0" y1="0" y2="1">
+                            <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
+                            <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                          </linearGradient>
+                        </defs>
 
-                      {[0, 25, 50, 75, 100].map((val) => {
-                        const y = 200 - (val / 100) * 200;
-                        return (
-                          <line key={`bat-grid-${val}`} x1="0" y1={y} x2="1000" y2={y} stroke={darkMode ? "#374151" : "#f3f4f6"} strokeWidth="1" strokeDasharray="5,5" />
-                        );
-                      })}
+                        {/* Eixos X e Y e Linhas de Grade */}
+                        <line x1="0" y1="200" x2="1000" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
+                        <line x1="0" y1="0" x2="0" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
 
-                      {/* Fundo Gradiente - Desenhado ANTES da linha principal */}
-                      <polygon
-                        points={`${!provaAtiva && idleBatteryData.length > 0 ? 1000 - ((idleBatteryData.length - 1) * (1000 / 39)) : 0},200 ${generateBatteryPath(provaAtiva ? recordingData.bateria : idleBatteryData, 1000, 200, !provaAtiva)} 1000,200`}
-                        fill="url(#batGradient)"
-                      />
+                        {/* Linhas pontilhadas internas */}
+                        {[25, 50, 75].map((val) => {
+                          const y = 200 - (val / 100) * 200;
+                          return (
+                            <line key={`bat-grid-${val}`} x1="0" y1={y} x2="1000" y2={y} stroke={darkMode ? "#374151" : "#f3f4f6"} strokeWidth="1" strokeDasharray="5,5" />
+                          );
+                        })}
 
-                      {/* Linha Principal (Grossura 3 para não tapar o zero) */}
-                      <polyline
-                        points={generateBatteryPath(provaAtiva ? recordingData.bateria : idleBatteryData, 1000, 200, !provaAtiva)}
-                        fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-md"
-                      />
+                        {/* Fundo Gradiente */}
+                        <polygon
+                          points={`${!provaAtiva && idleBatteryData.length > 0 ? 1000 - ((idleBatteryData.length - 1) * (1000 / 39)) : 0},200 ${generateBatteryPath(provaAtiva ? recordingData.bateria : idleBatteryData, 1000, 200, !provaAtiva)} 1000,200`}
+                          fill="url(#batGradient)"
+                        />
 
-                      {/* Textos de Percentagem ajustados para ficar sobre a linha */}
-                      {[0, 25, 50, 75, 100].map((val) => {
-                        const y = 200 - (val / 100) * 200;
-                        const textY = val === 100 ? y + 12 : val === 0 ? y - 6 : y - 5; 
-                        return (
-                          <text key={`bat-text-${val}`} x="10" y={textY} fill={darkMode ? "#9ca3af" : "#6b7280"} fontSize="12" fontWeight="bold">
-                            {val}%
-                          </text>
-                        );
-                      })}
-                  </svg>
+                        {/* Linha Principal (Espessura reduzida para 2.5) */}
+                        <polyline
+                          points={generateBatteryPath(provaAtiva ? recordingData.bateria : idleBatteryData, 1000, 200, !provaAtiva)}
+                          fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-md"
+                        />
+                    </svg>
+                  </div>
+
                 </div>
               </div>
 
