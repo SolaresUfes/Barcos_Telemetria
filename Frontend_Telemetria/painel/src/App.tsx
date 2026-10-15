@@ -2638,37 +2638,70 @@ if (isLoadingSession) {
                 </div>
               </div>
 
-              {/* DADOS E GRÁFICO DA BATERIA */}
-              <div className={`p-3 md:p-4 rounded-3xl shadow-sm border mb-3 md:mb-4 flex flex-col shrink-0 ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
-                <h3 className="text-sm md:text-lg font-bold mb-2 flex items-center shrink-0"><Battery className="mr-2 text-green-500 w-4 h-4 md:w-5 md:h-5" /> Bateria em Tempo Real</h3>
+{/* ========================================== */}
+              {/* CAIXA 1: DADOS DA BATERIA E POTÊNCIAS      */}
+              {/* ========================================== */}
+              <div className={`p-3 md:p-4 rounded-3xl shadow-sm border mb-2 md:mb-3 flex flex-col shrink-0 ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                <h3 className="text-sm md:text-lg font-bold mb-2 md:mb-3 flex items-center shrink-0">
+                  <Battery className="mr-2 text-green-500 w-4 h-4 md:w-5 md:h-5" /> 
+                  Bateria em Tempo Real
+                </h3>
                 
-                <div className="flex flex-wrap gap-2 md:gap-4 mb-2 shrink-0">
-                  <div className={`px-3 py-1.5 md:px-4 md:py-2 rounded-xl border flex flex-col items-center min-w-[100px] md:min-w-[120px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
-                    <p className="text-[8px] md:text-[10px] text-gray-500 font-bold uppercase mb-0.5 md:mb-1">Carga Atual</p>
-                    <p className={`text-sm md:text-xl font-bold tabular-nums ${battery > 20 ? "text-green-500" : "text-red-500"}`}>{battery}%</p>
+                <div className="flex flex-wrap gap-2 shrink-0">
+                  {/* Bateria Padrão */}
+                  <div className={`px-2 py-1.5 md:px-3 md:py-2 rounded-xl border flex flex-col items-center flex-1 min-w-[90px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                    <p className="text-[8px] md:text-[9px] text-gray-500 font-bold uppercase mb-0.5">Carga Atual</p>
+                    <p className={`text-sm md:text-base font-bold tabular-nums ${battery > 20 ? "text-green-500" : "text-red-500"}`}>{battery}%</p>
                   </div>
-                  <div className={`px-3 py-1.5 md:px-4 md:py-2 rounded-xl border flex flex-col items-center min-w-[100px] md:min-w-[120px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
-                    <p className="text-[8px] md:text-[10px] text-gray-500 font-bold uppercase mb-0.5 md:mb-1">Taxa (1 min)</p>
-                    <p className={`text-sm md:text-xl font-bold tabular-nums ${batteryRate > 0 ? "text-green-500" : batteryRate < 0 ? "text-red-500" : "text-gray-500"}`}>
+                  <div className={`px-2 py-1.5 md:px-3 md:py-2 rounded-xl border flex flex-col items-center flex-1 min-w-[90px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                    <p className="text-[8px] md:text-[9px] text-gray-500 font-bold uppercase mb-0.5">Taxa (1 min)</p>
+                    <p className={`text-sm md:text-base font-bold tabular-nums ${batteryRate > 0 ? "text-green-500" : batteryRate < 0 ? "text-red-500" : "text-gray-500"}`}>
                       {batteryRate > 0 ? "+" : ""}{batteryRate.toFixed(2)} %/min
                     </p>
                   </div>
-                  <div className={`px-3 py-1.5 md:px-4 md:py-2 rounded-xl border flex flex-col items-center min-w-[100px] md:min-w-[120px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
-                    <p className="text-[8px] md:text-[10px] text-gray-500 font-bold uppercase mb-0.5 md:mb-1">Status</p>
-                    <p className={`text-xs md:text-sm font-black uppercase tracking-widest mt-0.5 md:mt-1 ${batteryStatus === "Carregando" ? "text-green-500" : batteryStatus === "Descarregando" ? "text-red-500" : "text-gray-500"}`}>
+                  <div className={`px-2 py-1.5 md:px-3 md:py-2 rounded-xl border flex flex-col items-center flex-1 min-w-[90px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                    <p className="text-[8px] md:text-[9px] text-gray-500 font-bold uppercase mb-0.5">Status</p>
+                    <p className={`text-[10px] md:text-xs font-black uppercase tracking-widest mt-0.5 ${batteryStatus === "Carregando" ? "text-green-500" : batteryStatus === "Descarregando" ? "text-red-500" : "text-gray-500"}`}>
                       {batteryStatus}
                     </p>
                   </div>
+
+                  {/* NOVAS POTÊNCIAS */}
+                  <div className={`px-2 py-1.5 md:px-3 md:py-2 rounded-xl border flex flex-col items-center flex-1 min-w-[90px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                    <p className="text-[8px] md:text-[9px] text-gray-500 font-bold uppercase mb-0.5">Pot. Bateria</p>
+                    <p className={`text-sm md:text-base font-bold tabular-nums ${darkMode ? "text-teal-400" : "text-teal-600"}`}>{(currentPower || 0).toFixed(1)} W</p>
+                  </div>
+                  <div className={`px-2 py-1.5 md:px-3 md:py-2 rounded-xl border flex flex-col items-center flex-1 min-w-[90px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                    <p className="text-[8px] md:text-[9px] text-gray-500 font-bold uppercase mb-0.5">Pot. Motor</p>
+                    <p className={`text-sm md:text-base font-bold tabular-nums ${darkMode ? "text-gray-300" : "text-gray-700"}`}>{(rpm || 0).toFixed(1)} W</p>
+                  </div>
+                  <div className={`px-2 py-1.5 md:px-3 md:py-2 rounded-xl border flex flex-col items-center flex-1 min-w-[90px] ${darkMode ? "bg-gray-900 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                    <p className="text-[8px] md:text-[9px] text-gray-500 font-bold uppercase mb-0.5">Pot. Geração</p>
+                    <p className={`text-sm md:text-base font-bold tabular-nums ${darkMode ? "text-red-400" : "text-red-600"}`}>{(S1_power || 0).toFixed(1)} W</p>
+                  </div>
                 </div>
-                
-                {/* Altura reduzida para h-24 para poupar espaço vertical */}
-                <div className="w-full h-24 md:h-28 mt-2 border-t pt-2 dark:border-gray-700 relative shrink-0">
-                  <span className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 block">
+              </div>
+
+              {/* ========================================== */}
+              {/* CAIXA 2: GRÁFICO DA BATERIA COM DEGRADÊ    */}
+              {/* ========================================== */}
+              <div className={`p-3 md:p-4 rounded-3xl shadow-sm border mb-2 md:mb-3 flex flex-col shrink-0 ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                <div className="flex justify-between items-center mb-1 md:mb-2">
+                  <span className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest block">
                       {provaAtiva ? "Histórico Completo (Gravando Estático)" : "Variação Dinâmica (Tempo Real)"}
                   </span>
+                </div>
+                
+                <div className="w-full h-24 md:h-32 relative shrink-0 mt-1">
                   <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-                      
-                      {/* 1. Eixos X e Y e Linhas de Grade (Ficam no fundo) */}
+                      <defs>
+                        <linearGradient id="batGradient" x1="0" x2="0" y1="0" y2="1">
+                          <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
+                          <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                        </linearGradient>
+                      </defs>
+
+                      {/* Eixos X e Y e Linhas de Grade */}
                       <line x1="0" y1="200" x2="1000" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
                       <line x1="0" y1="0" x2="0" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
 
@@ -2679,17 +2712,22 @@ if (isLoadingSession) {
                         );
                       })}
 
-                      {/* 2. Linha da Bateria (Fica por cima das grades, espessura reduzida para 3) */}
+                      {/* Fundo Gradiente - Desenhado ANTES da linha principal */}
+                      <polygon
+                        points={`${!provaAtiva && idleBatteryData.length > 0 ? 1000 - ((idleBatteryData.length - 1) * (1000 / 39)) : 0},200 ${generateBatteryPath(provaAtiva ? recordingData.bateria : idleBatteryData, 1000, 200, !provaAtiva)} 1000,200`}
+                        fill="url(#batGradient)"
+                      />
+
+                      {/* Linha Principal (Grossura 3 para não tapar o zero) */}
                       <polyline
                         points={generateBatteryPath(provaAtiva ? recordingData.bateria : idleBatteryData, 1000, 200, !provaAtiva)}
                         fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-md"
                       />
 
-                      {/* 3. Textos (Desenhados no fim para ficarem sempre POR CIMA de tudo) */}
+                      {/* Textos de Percentagem ajustados para ficar sobre a linha */}
                       {[0, 25, 50, 75, 100].map((val) => {
                         const y = 200 - (val / 100) * 200;
-                        // Ajuste especial para o 0% subir um pouquinho mais (y - 8) e não tocar na linha verde
-                        const textY = val === 100 ? y + 12 : val === 0 ? y - 8 : y - 5; 
+                        const textY = val === 100 ? y + 12 : val === 0 ? y - 6 : y - 5; 
                         return (
                           <text key={`bat-text-${val}`} x="10" y={textY} fill={darkMode ? "#9ca3af" : "#6b7280"} fontSize="12" fontWeight="bold">
                             {val}%
