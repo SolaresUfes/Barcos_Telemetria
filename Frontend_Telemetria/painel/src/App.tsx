@@ -50,15 +50,29 @@ const generatePolyline = (data: number[], width: number, height: number, maxVal:
 };
 
 const generateFullPolyline = (data: number[], width: number, height: number) => {
-  if (!data || data.length === 0) return `0,${height / 2}`;
+  if (!data || data.length === 0) return `0,${height}`;
   if (data.length === 1) return `0,${height / 2} ${width},${height / 2}`;
   
-  const maxVal = Math.max(...data.map(Math.abs), 1); // Evita divisão por zero
+  const maxData = Math.max(...data);
+  const minData = Math.min(...data);
+  
+  // Se todos os valores forem iguais, desenha a linha no meio
+  if (maxData === minData) {
+    return data.map((_, i) => `${i * (width / (data.length - 1))},${height / 2}`).join(" ");
+  }
+
+  // Adiciona 15% de "respiro" no topo e na base
+  const padding = (maxData - minData) * 0.15;
+  const adjustedMax = maxData + padding;
+  const adjustedMin = minData - padding;
+  const range = adjustedMax - adjustedMin;
+  
   const stepX = width / (data.length - 1);
   
   return data.map((val, index) => {
     const x = index * stepX;
-    const y = (height / 2) - (val / maxVal) * (height / 2);
+    // Mapeia o valor perfeitamente dentro do SVG
+    const y = height - ((val - adjustedMin) / range) * height;
     return `${x},${y}`;
   }).join(" ");
 };
@@ -2678,14 +2692,36 @@ if (isLoadingSession) {
                     className={`p-4 rounded-2xl border flex flex-col cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
                   >
                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{graph.label}</h4>
-                    <div className="w-full flex-1 h-32 pointer-events-none">
-                      <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-                        <polyline
-                          points={generateFullPolyline(graph.data, 1000, 200)}
-                          fill="none" stroke={graph.color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
-                        />
-                      </svg>
-                    </div>
+<div className="w-full h-48 mt-4 border-t pt-4 dark:border-gray-700 relative">
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">
+                      {provaAtiva ? "Histórico Completo (Gravando Estático)" : "Variação Dinâmica (Tempo Real)"}
+                  </span>
+                  <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                      
+                      {/* Eixos X e Y (estética do Resumo) */}
+                      <line x1="0" y1="200" x2="1000" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
+                      <line x1="0" y1="0" x2="0" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
+
+                      {/* Grade da bateria (0 a 100 de 25 em 25) */}
+                      {[0, 25, 50, 75, 100].map((val) => {
+                        const y = 200 - (val / 100) * 200;
+                        return (
+                          <g key={`bat-grid-${val}`}>
+                            <line x1="0" y1={y} x2="1000" y2={y} stroke={darkMode ? "#374151" : "#f3f4f6"} strokeWidth="1" strokeDasharray="5,5" />
+                            <text x="10" y={y === 0 ? y + 12 : y - 5} fill={darkMode ? "#9ca3af" : "#6b7280"} fontSize="12" fontWeight="bold">
+                              {val}%
+                            </text>
+                          </g>
+                        );
+                      })}
+
+                      {/* Linha da Bateria Engrossada */}
+                      <polyline
+                        points={generateBatteryPath(provaAtiva ? recordingData.bateria : idleBatteryData, 1000, 200, !provaAtiva)}
+                        fill="none" stroke="#10b981" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-md"
+                      />
+                  </svg>
+                </div>
                   </div>
                 ))}
               </div>
@@ -3101,7 +3137,7 @@ if (isLoadingSession) {
         </div>
       )}
 
-      {/* ========================================================= */}
+{/* ========================================================= */}
       {/* MODAL DO GRÁFICO EXPANDIDO (Estética do Resumo)             */}
       {/* ========================================================= */}
       {expandedGraph && (
@@ -3118,12 +3154,25 @@ if (isLoadingSession) {
                 <Activity style={{ color: expandedGraph.color }} size={32} />
                 {expandedGraph.label}
               </h3>
-              <button
-                onClick={() => setExpandedGraph(null)}
-                className="px-4 py-2 bg-gray-500/10 hover:bg-gray-500/20 rounded-xl font-bold transition-all"
-              >
-                Fechar
-              </button>
+              
+              <div className="flex items-center space-x-5 md:space-x-8">
+                {/* Exibe o último valor lido em destaque */}
+                <div className="flex flex-col items-end text-right">
+                  <span className="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-widest">Último Valor</span>
+                  <span className="text-3xl font-black tabular-nums leading-none mt-1 drop-shadow-sm" style={{ color: expandedGraph.color }}>
+                    {expandedGraph.data.length > 0 
+                      ? expandedGraph.data[expandedGraph.data.length - 1].toFixed(2) 
+                      : "0.00"}
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => setExpandedGraph(null)}
+                  className="px-5 py-3 bg-gray-500/10 hover:bg-gray-500/20 rounded-xl font-bold transition-all text-sm md:text-base border border-transparent hover:border-gray-500/30"
+                >
+                  Fechar
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 w-full relative min-h-0 mt-4">
@@ -3135,7 +3184,7 @@ if (isLoadingSession) {
                   </linearGradient>
                 </defs>
 
-                {/* Linhas de Grade */}
+                {/* Linhas de Grade Genéricas (Fundo) */}
                 {[0, 50, 100, 150, 200].map((y) => (
                   <line
                     key={`grid-${y}`}
@@ -3145,24 +3194,19 @@ if (isLoadingSession) {
                   />
                 ))}
 
-                {/* Linha Zero destacada (Metade da altura) */}
-                <line
-                  x1="0" y1="100" x2="1000" y2="100"
-                  stroke={expandedGraph.color} strokeWidth="2" strokeDasharray="4,4" opacity="0.8"
-                />
-                <text x="10" y="93" fill={darkMode ? "#9ca3af" : "#6b7280"} fontSize="12" fontWeight="bold">0</text>
-
-                {/* Área preenchida e Linha do Gráfico */}
+                {/* Área preenchida (polygon) - desce agora até à base 200 */}
                 <polygon
-                  points={`0,100 ${generateFullPolyline(expandedGraph.data, 1000, 200)} 1000,100`}
+                  points={`0,200 ${generateFullPolyline(expandedGraph.data, 1000, 200)} 1000,200`}
                   fill="url(#expandedGradient)"
                 />
+                
+                {/* Linha do Gráfico Principal */}
                 <polyline
                   points={generateFullPolyline(expandedGraph.data, 1000, 200)}
                   fill="none" stroke={expandedGraph.color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-md"
                 />
                 
-                {/* Bordas Eixo X e Y */}
+                {/* Bordas Eixo X e Y principais */}
                 <line x1="0" y1="200" x2="1000" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
                 <line x1="0" y1="0" x2="0" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
               </svg>
