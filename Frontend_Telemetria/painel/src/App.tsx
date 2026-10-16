@@ -473,7 +473,7 @@ async function buscarEquipe() {
   const [showOverlayModal, setShowOverlayModal] = useState(false);
 
   // Estados para o sistema de cutucar / tchauzinho
-  const [showOnlineTooltip, setShowOnlineTooltip] = useState(false);
+  const [showOnlineMenu, setShowOnlineMenu] = useState(false);
   const [cutucaoRecebido, setCutucaoRecebido] = useState<{ remetente: string } | null>(null);
   
   // Estado para controlar o modal de informações de eficiência
@@ -1755,49 +1755,54 @@ if (isLoadingSession) {
                 {isTelemetryActive ? "ESP Online" : "ESP Offline"}
               </span>
 
-{/* Badge de Utilizadores Online com Tooltip de Cutucar */}
-              <div 
-                className="relative"
-                onMouseEnter={() => setShowOnlineTooltip(true)}
-                onMouseLeave={() => setShowOnlineTooltip(false)}
-              >
-                <span className="hidden md:flex px-3 py-1 text-xs font-bold bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20 rounded-full items-center whitespace-nowrap shadow-sm cursor-pointer select-none">
+              {/* Badge de Utilizadores Online com Menu de Clique */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowOnlineMenu(!showOnlineMenu)}
+                  className="hidden md:flex px-3 py-1 text-xs font-bold bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20 rounded-full items-center whitespace-nowrap shadow-sm cursor-pointer select-none transition-all hover:scale-105"
+                >
                   <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400 mr-2 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]"></span>
                   {onlineCount} Online
-                </span>
+                </button>
 
-                {/* Microtelinha Flutuante (Tooltip) */}
-                {showOnlineTooltip && (
-                  <div className="absolute top-full right-0 mt-2 w-64 p-3 rounded-2xl shadow-2xl border backdrop-blur-xl z-[100] animate-in fade-in zoom-in-95 duration-200 bg-gray-900/95 border-gray-700 text-white">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 border-b border-gray-800 pb-1">
-                      Membros Online ({onlineCount})
-                    </p>
-                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                      {members.filter(m => m.isOnline).map((membro) => (
-                        <div key={membro.id} className="flex items-center justify-between gap-2">
-                          <div className="flex items-center space-x-2 min-w-0">
-                            <img src={membro.photo} alt={membro.name} className="w-6 h-6 rounded-full object-cover shrink-0" />
-                            <span className="text-xs font-bold truncate">{membro.name.split(" ")[0]}</span>
+                {/* Menu Flutuante Posicionado Corretamente */}
+                {showOnlineMenu && (
+                  <>
+                    {/* Fundo invisível para fechar ao clicar fora */}
+                    <div className="fixed inset-0 z-[90]" onClick={() => setShowOnlineMenu(false)}></div>
+
+                    <div className="absolute right-0 top-full mt-3 w-64 p-3 rounded-2xl shadow-2xl border backdrop-blur-xl z-[100] animate-in fade-in zoom-in-95 duration-200 bg-gray-900 border-gray-700 text-white">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 border-b border-gray-800 pb-1">
+                        Membros Online ({onlineCount})
+                      </p>
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        {members.filter(m => m.isOnline).map((membro) => (
+                          <div key={membro.id} className="flex items-center justify-between gap-2 py-1">
+                            <div className="flex items-center space-x-2 min-w-0">
+                              <img src={membro.photo} alt={membro.name} className="w-6 h-6 rounded-full object-cover shrink-0" />
+                              <span className="text-xs font-bold truncate">{membro.name.split(" ")[0]}</span>
+                            </div>
+                            
+                            {membro.email !== currentUser?.email && (
+                              <button
+                                onClick={() => {
+                                  enviarCutucao(membro.email, membro.name);
+                                  setShowOnlineMenu(false);
+                                }}
+                                className="px-2.5 py-1 bg-orange-500/20 hover:bg-orange-500 text-orange-400 hover:text-white text-[10px] font-bold rounded-lg transition-all border border-orange-500/30 flex items-center space-x-1 shrink-0"
+                              >
+                                <span>👋</span>
+                                <span>Cutucar</span>
+                              </button>
+                            )}
                           </div>
-                          
-                          {/* Botão de Cutucar (só aparece se não for o próprio utilizador) */}
-                          {membro.email !== currentUser?.email && (
-                            <button
-                              onClick={() => enviarCutucao(membro.email, membro.name)}
-                              className="px-2.5 py-1 bg-orange-500/20 hover:bg-orange-500 text-orange-400 hover:text-white text-[10px] font-bold rounded-lg transition-all border border-orange-500/30 flex items-center space-x-1 shrink-0"
-                              title="Cutucar / Tchauzinho"
-                            >
-                              <span>👋</span>
-                              <span>Cutucar</span>
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                      {onlineCount === 0 && (
-                        <p className="text-xs text-gray-500 text-center py-2">Ninguém online de momento.</p>
-                      )}
+                        ))}
+                        {onlineCount === 0 && (
+                          <p className="text-xs text-gray-500 text-center py-2">Ninguém online de momento.</p>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
 
