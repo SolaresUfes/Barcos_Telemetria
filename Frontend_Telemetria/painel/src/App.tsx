@@ -6,7 +6,7 @@ import { supabase } from "./lib/supabase";
 import { Menu, Moon, Sun, User, Activity, BarChart2, Zap, Settings, Database,
   ArrowLeft, LogOut, Unlock, Trash2, Plus, Info, Shield, AlertTriangle, ChevronDown,
   Map, Clock, Battery, BatteryCharging, DownloadCloud,
-  Play, Square, Maximize, Minimize} from "lucide-react";
+  Play, Square, Maximize, Minimize, Server, Timer } from "lucide-react";
 // #endregion
 
 
@@ -1577,7 +1577,7 @@ if (isLoadingSession) {
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-4">
+<nav className="flex-1 overflow-y-auto py-4">
           <ul className="space-y-2 px-2">
             {[
               { icon: Activity, label: "Resumo" },
@@ -1586,14 +1586,22 @@ if (isLoadingSession) {
               { icon: BarChart2, label: "Análise" },
               { icon: Zap, label: "Potência" },
               { icon: Database, label: "Logs de Dados" },
+              { icon: Server, label: "Backend", url: "https://barcos-backendtelemetria.vercel.app" },
+              { icon: Timer, label: "Cronômetro", url: "https://cronometro-smoky-nine.vercel.app/" },
               { icon: Settings, label: "Configurações" },
             ].map((item, idx) => (
               <li key={idx}>
                 <button
                   onClick={() => {
-                    setActiveTab(item.label);
-                    if (window.innerWidth < 768) {
-                      setSidebarOpen(false);
+                    // Se o item tiver um URL definido, abre numa nova aba
+                    if (item.url) {
+                      window.open(item.url, '_blank');
+                    } else {
+                      // Se for um separador interno, muda o separador ativo normalmente
+                      setActiveTab(item.label);
+                      if (window.innerWidth < 768) {
+                        setSidebarOpen(false);
+                      }
                     }
                   }}
                   className={`w-full flex items-center py-3 rounded-xl transition-all ${
