@@ -2934,7 +2934,7 @@ if (isLoadingSession) {
                     ))}
                   </div>
 
-                  <div className="shrink-0 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="shrink-0 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex flex-col gap-2">
                     <button
                       onClick={() => setShowOverlayModal(true)}
                       disabled={overlaySelections.length === 0}
@@ -2942,7 +2942,16 @@ if (isLoadingSession) {
                     >
                       Abrir Gráfico Unificado
                     </button>
+                    {overlaySelections.length > 0 && (
+                      <button
+                        onClick={() => setOverlaySelections([])}
+                        className={`w-full py-2 rounded-xl text-xs font-bold transition-all border ${darkMode ? "border-gray-700 text-gray-400 hover:bg-gray-700 hover:text-white" : "border-gray-300 text-gray-500 hover:bg-gray-100 hover:text-gray-800"}`}
+                      >
+                        Desmarcar todos
+                      </button>
+                    )}
                   </div>
+
                 </div>
 
               </div>
@@ -3488,7 +3497,7 @@ if (isLoadingSession) {
         </div>
       )}
 
-      {/* ========================================================= */}
+{/* ========================================================= */}
       {/* MODAL DE SOBREPOSIÇÃO MÚLTIPLA                            */}
       {/* ========================================================= */}
       {showOverlayModal && (
@@ -3531,27 +3540,61 @@ if (isLoadingSession) {
               </button>
             </div>
 
-            <div className="flex-1 w-full relative min-h-0 mt-4 bg-gray-900/5 rounded-2xl border dark:border-gray-700/50">
-              <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible p-4">
-                {/* Linhas de Grade */}
-                {[0, 50, 100, 150, 200].map((y) => (
-                  <line key={`over-grid-${y}`} x1="0" y1={y} x2="1000" y2={y} stroke={darkMode ? "#374151" : "#e5e7eb"} strokeWidth="1" strokeDasharray="4,4" />
-                ))}
+            <div className="flex-1 w-full relative min-h-0 mt-4 bg-gray-900/5 rounded-2xl border dark:border-gray-700/50 flex py-4">
+              
+              {/* LÓGICA CONDICIONAL: SE TODAS AS ESCOLHAS SÃO DE POTÊNCIA */}
+              {(() => {
+                const isOnlyPower = overlaySelections.length > 0 && overlaySelections.every(id => id.startsWith("pot"));
+                
+                return (
+                  <>
+                    {/* Renderiza a Escala Lateral de +-2000 só se for potência */}
+                    {isOnlyPower && (
+                      <div className="relative w-12 shrink-0 h-full mr-2">
+                        {[2000, 1500, 1000, 500, 0, -500, -1000, -1500, -2000].map((val) => {
+                          const percent = ((2000 - val) / 4000) * 100;
+                          return (
+                            <span
+                              key={`scale-over-pot-${val}`}
+                              className="absolute right-2 text-[10px] md:text-[11px] font-bold text-gray-500 leading-none"
+                              style={{ top: `${percent}%`, transform: percent === 100 ? 'translateY(-100%)' : percent === 0 ? 'translateY(0)' : 'translateY(-50%)' }}
+                            >
+                              {val}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
 
-                {/* Linhas dos Gráficos Selecionados */}
-                {availableGraphs.filter(g => overlaySelections.includes(g.id)).map(g => (
-                  <polyline
-                    key={`over-line-${g.id}`}
-                    points={generateFullPolyline(g.data, 1000, 200)}
-                    fill="none" 
-                    stroke={g.color} 
-                    strokeWidth="3" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    className="drop-shadow-sm opacity-90 hover:opacity-100 hover:stroke-[5px] transition-all cursor-crosshair"
-                  />
-                ))}
-              </svg>
+                    <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible px-4">
+                      {/* Linhas de Grade Adaptativas */}
+                      {(isOnlyPower ? [0, 25, 50, 75, 100, 125, 150, 175, 200] : [0, 50, 100, 150, 200]).map((y) => (
+                        <line key={`over-grid-${y}`} x1="0" y1={y} x2="1000" y2={y} stroke={darkMode ? "#374151" : "#e5e7eb"} strokeWidth="1" strokeDasharray="4,4" />
+                      ))}
+
+                      {/* Linha do Zero destacada */}
+                      {isOnlyPower && (
+                        <line x1="0" y1="100" x2="1000" y2="100" stroke={darkMode ? "#ef4444" : "#f97316"} strokeWidth="1.5" strokeDasharray="4,4" />
+                      )}
+
+                      {/* Renderiza as Linhas com Escala Dinâmica vs Escala Fixa */}
+                      {availableGraphs.filter(g => overlaySelections.includes(g.id)).map(g => (
+                        <polyline
+                          key={`over-line-${g.id}`}
+                          points={isOnlyPower ? generateFixedPolyline(g.data, 1000, 200, -2000, 2000) : generateFullPolyline(g.data, 1000, 200)}
+                          fill="none" 
+                          stroke={g.color} 
+                          strokeWidth="3" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          className="drop-shadow-sm opacity-90 hover:opacity-100 hover:stroke-[5px] transition-all cursor-crosshair"
+                        />
+                      ))}
+                    </svg>
+                  </>
+                );
+              })()}
+              
             </div>
           </div>
         </div>
