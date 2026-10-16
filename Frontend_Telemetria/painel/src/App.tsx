@@ -473,7 +473,7 @@ async function buscarEquipe() {
   const [showOverlayModal, setShowOverlayModal] = useState(false);
 
   // Estados para o sistema de cutucar / tchauzinho
-  const [showOnlineMenu, setShowOnlineMenu] = useState<{ top: number, right: number } | null>(null);
+  const [showOnlineMenu, setShowOnlineMenu] = useState<{ top: number; left: number } | null>(null);
   const [cutucaoRecebido, setCutucaoRecebido] = useState<{ remetente: string } | null>(null);
   
   // Estado para controlar o modal de informações de eficiência
@@ -1761,22 +1761,32 @@ if (isLoadingSession) {
                 {isTelemetryActive ? "ESP Online" : "ESP Offline"}
               </span>
 
-              {/* Badge de Utilizadores Online com Menu Flutuante Absoluto na Raiz */}
+              {/* Badge de Utilizadores Online com Portal Fixado na Janela */}
               <div className="relative">
                 <button
-                  onClick={() => setShowOnlineMenu(showOnlineMenu ? null : { top: 70, right: 20 })}
+                  onClick={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    // Se já estiver aberto, fecha. Se estiver fechado, abre calculando a posição exata na tela.
+                    setShowOnlineMenu(showOnlineMenu ? null : {
+                      top: rect.bottom + 10,
+                      left: rect.left - 120 // Centraliza o menu de 256px abaixo do botão
+                    });
+                  }}
                   className="hidden md:flex px-3 py-1 text-xs font-bold bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20 rounded-full items-center whitespace-nowrap shadow-sm cursor-pointer select-none transition-all hover:scale-105"
                 >
                   <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400 mr-2 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]"></span>
                   {onlineCount} Online
                 </button>
 
-                {/* Menu Flutuante Renderizado com Z-Index Máximo (Fora de qualquer corte de container) */}
+                {/* Menu Flutuante com Position Fixed real (joga o elemento direto no body, imune a qualquer container) */}
                 {showOnlineMenu && (
                   <>
                     <div className="fixed inset-0 z-[99998]" onClick={() => setShowOnlineMenu(null)}></div>
 
-                    <div className="absolute right-0 top-full mt-3 w-64 p-3 rounded-2xl shadow-2xl border backdrop-blur-xl z-[99999] animate-in fade-in zoom-in-95 duration-200 bg-gray-900 border-gray-700 text-white">
+                    <div 
+                      style={{ top: `${showOnlineMenu.top}px`, left: `${showOnlineMenu.left}px` }}
+                      className="fixed w-64 p-3 rounded-2xl shadow-2xl border backdrop-blur-xl z-[99999] animate-in fade-in zoom-in-95 duration-200 bg-gray-900 border-gray-700 text-white"
+                    >
                       <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 border-b border-gray-800 pb-1">
                         Membros Online ({onlineCount})
                       </p>
