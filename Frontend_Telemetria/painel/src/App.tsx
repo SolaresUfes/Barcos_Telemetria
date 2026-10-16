@@ -461,6 +461,23 @@ function tocarSomSuave() {
   const [S1_power, setS1_power] = useState(-1)
   const [string_2, setString_2] = useState(-1);
   const [idProvaAtual, set_idProvaAtual] = useState(-1)
+  
+  const [tempoTotal, setTempoTotal] = useState<number>(0);
+  const [minutoAtual, setMinutoAtual] = useState<number>(0);
+
+  const previsaoBateria =
+    tempoTotal > 0
+      ? ((minutoAtual - tempoTotal) / tempoTotal) * -100
+      : 0;
+
+  const avancarMinuto = () => {
+    setMinutoAtual((minuto) => minuto + 1);
+  };
+
+  const retrocederMinuto = () => {
+    setMinutoAtual((minuto) => Math.max(0, minuto - 1));
+  };
+
   // --- novos estados para a area de desempenho ---
   const provaAtivaRef = useRef(false);
   useEffect(() => {
@@ -2458,11 +2475,9 @@ if (isLoadingSession) {
                     </div>
                   </div>
 
-                  <div
-                    className={`p-2 lg:p-6 flex flex-col items-center justify-center w-full h-full ${darkMode ? "bg-gray-800" : "bg-white"}`}
-                  >
+                  {/* <div className={`p-2 lg:p-6 flex flex-col items-center justify-center w-full h-full ${darkMode ? "bg-gray-800" : "bg-white"}`}>
                     <span className="text-[10px] lg:text-[13px] font-black uppercase tracking-wider text-gray-500 mb-1 text-center w-full">
-                      S2 Status
+                      Previsão Bateria
                     </span>
                     <div className="flex items-baseline justify-center">
                       <span
@@ -2471,7 +2486,95 @@ if (isLoadingSession) {
                         {string_2.toFixed(3)}
                       </span>
                     </div>
+                  </div> */}
+
+
+                  <div className={`p-2 lg:p-4 flex flex-col items-center justify-center w-full h-full ${darkMode ? "bg-gray-800" : "bg-white"}`}>
+                    <span className="text-[10px] lg:text-[13px] font-black uppercase tracking-wider text-gray-500 mb-2 text-center w-full">
+                      Previsão Bateria
+                    </span>
+
+                    {/* Input do tempo total */}
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <label className="text-xs text-gray-500 whitespace-nowrap">
+                        Tempo de prova:
+                      </label>
+
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={tempoTotal === 0 ? "" : tempoTotal}
+                        onChange={(e) => {
+                          const valor = e.target.value;
+                          setTempoTotal(
+                            valor === "" ? 0 : Math.max(0, Number(valor))
+                          );
+                        }}
+                        placeholder="Min"
+                        className={`w-16 rounded-md border px-1 py-1 text-center text-xs font-bold outline-none ${
+                          darkMode
+                            ? "bg-gray-700 border-gray-600 text-white"
+                            : "bg-gray-50 border-gray-300 text-gray-800"
+                        }`}
+                      />
+
+                      <span className="text-xs text-gray-500">min</span>
+                    </div>
+
+                    {/* Resultado */}
+                    <div className="flex flex-col items-center mb-2">
+                      <span
+                        className={`text-base lg:text-4xl font-bold ${
+                          darkMode ? "text-rose-400" : "text-rose-600"
+                        }`}
+                      >
+                        {tempoTotal > 0
+                          ? `${previsaoBateria.toFixed(2)}%`
+                          : "--"}
+                      </span>
+
+                      <span className="text-[10px] lg:text-xs text-gray-500 mt-1">
+                        Minuto atual: {minutoAtual}
+                      </span>
+                    </div>
+
+                    {/* Botões de controle manual */}
+                    <div className="flex items-center justify-center gap-3">
+                      <button
+                        type="button"
+                        onClick={retrocederMinuto}
+                        disabled={minutoAtual === 0}
+                        className={`w-8 h-7 rounded-md font-bold text-sm transition-colors disabled:opacity-40 ${
+                          darkMode
+                            ? "bg-gray-700 hover:bg-gray-600 text-white"
+                            : "bg-gray-200 hover:bg-gray-300 text-gray-800"
+                        }`}
+                        aria-label="Diminuir minuto atual"
+                      >
+                        −
+                      </button>
+
+                      <span className="text-xs font-bold text-gray-500">
+                        {minutoAtual} min
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={avancarMinuto}
+                        className={`w-8 h-7 rounded-md font-bold text-sm transition-colors ${
+                          darkMode
+                            ? "bg-gray-700 hover:bg-gray-600 text-white"
+                            : "bg-gray-200 hover:bg-gray-300 text-gray-800"
+                        }`}
+                        aria-label="Aumentar minuto atual"
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
+
+
                 </div>
               </div>
             </div>
