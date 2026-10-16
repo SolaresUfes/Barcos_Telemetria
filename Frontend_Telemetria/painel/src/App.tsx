@@ -3398,21 +3398,35 @@ if (isLoadingSession) {
 
             <div className="flex-1 w-full flex relative min-h-0 mt-4">
               
-              {/* ESCALA LATERAL: SÓ APARECE EM GRÁFICOS DE POTÊNCIA */}
-              {expandedGraph.id.startsWith("pot") && (
-                <div className="relative w-12 shrink-0 h-full border-r mr-3 border-gray-200 dark:border-gray-700">
-                  {[2000, 1500, 1000, 500, 0, -500, -1000, -1500, -2000].map((val) => {
-                    const percent = ((2000 - val) / 4000) * 100; // Cálculo de proporção matemática
-                    return (
-                      <span
-                        key={`scale-pot-${val}`}
-                        className="absolute right-2 text-[10px] md:text-[11px] font-bold text-gray-500 leading-none"
-                        style={{ top: `${percent}%`, transform: percent === 100 ? 'translateY(-100%)' : percent === 0 ? 'translateY(0)' : 'translateY(-50%)' }}
-                      >
-                        {val}
-                      </span>
-                    );
-                  })}
+              {/* ESCALA LATERAL: APARECE EM GRÁFICOS DE POTÊNCIA E BATERIA */}
+              {(expandedGraph.id.startsWith("pot") || expandedGraph.id === "bateria") && (
+                <div className="relative w-12 shrink-0 h-full">
+                  {expandedGraph.id.startsWith("pot") 
+                    ? [2000, 1500, 1000, 500, 0, -500, -1000, -1500, -2000].map((val) => {
+                        const percent = ((2000 - val) / 4000) * 100;
+                        return (
+                          <span
+                            key={`scale-pot-${val}`}
+                            className="absolute right-2 text-[10px] md:text-[11px] font-bold text-gray-500 leading-none"
+                            style={{ top: `${percent}%`, transform: percent === 100 ? 'translateY(-100%)' : percent === 0 ? 'translateY(0)' : 'translateY(-50%)' }}
+                          >
+                            {val}
+                          </span>
+                        );
+                      })
+                    : [100, 75, 50, 25, 0].map((val) => {
+                        const percent = 100 - val;
+                        return (
+                          <span
+                            key={`scale-bat-${val}`}
+                            className="absolute right-2 text-[10px] md:text-[11px] font-bold text-gray-500 leading-none"
+                            style={{ top: `${percent}%`, transform: percent === 100 ? 'translateY(-100%)' : percent === 0 ? 'translateY(0)' : 'translateY(-50%)' }}
+                          >
+                            {val}%
+                          </span>
+                        );
+                      })
+                  }
                 </div>
               )}
 
@@ -3426,7 +3440,7 @@ if (isLoadingSession) {
                     </linearGradient>
                   </defs>
 
-                  {/* Linhas de Grade de Fundo (Mais espaçadas para a Potência bater certo com as marcações de 500W) */}
+                  {/* Linhas de Grade de Fundo */}
                   {(expandedGraph.id.startsWith("pot") ? [0, 25, 50, 75, 100, 125, 150, 175, 200] : [0, 50, 100, 150, 200]).map((y) => (
                     <line
                       key={`grid-${y}`}
@@ -3446,6 +3460,8 @@ if (isLoadingSession) {
                     points={`0,${expandedGraph.id.startsWith("pot") ? 100 : 200} ${
                       expandedGraph.id.startsWith("pot")
                         ? generateFixedPolyline(expandedGraph.data, 1000, 200, -2000, 2000)
+                        : expandedGraph.id === "bateria"
+                        ? generateFixedPolyline(expandedGraph.data, 1000, 200, 0, 100)
                         : generateFullPolyline(expandedGraph.data, 1000, 200)
                     } 1000,${expandedGraph.id.startsWith("pot") ? 100 : 200}`}
                     fill="url(#expandedGradient)"
@@ -3455,6 +3471,8 @@ if (isLoadingSession) {
                     points={
                       expandedGraph.id.startsWith("pot")
                         ? generateFixedPolyline(expandedGraph.data, 1000, 200, -2000, 2000)
+                        : expandedGraph.id === "bateria"
+                        ? generateFixedPolyline(expandedGraph.data, 1000, 200, 0, 100)
                         : generateFullPolyline(expandedGraph.data, 1000, 200)
                     }
                     fill="none" stroke={expandedGraph.color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-md"
