@@ -2725,7 +2725,7 @@ if (isLoadingSession) {
                     <div 
                       onClick={() => setInfoModalOpen({
                         titulo: "Eficiência de Transferência (Bateria)",
-                        descricao: "Calculada puramente pelo nível de potência extraída ou injetada. Quando a potência de carga/descarga é muito elevada, a bateria sofre maiores perdas por resistência (calor), diminuindo a eficiência energética útil.",
+                        descricao: "tenho que calcular melhor isso, não entendi o suficiente ainda",
                         cor: "text-emerald-500"
                       })}
                       className={`p-3 rounded-2xl border cursor-pointer hover:scale-[1.02] transition-all flex flex-col items-center justify-center text-center ${darkMode ? "bg-gray-900 border-gray-700 hover:border-gray-500" : "bg-gray-50 border-gray-200 hover:border-gray-400"}`}
@@ -2739,7 +2739,7 @@ if (isLoadingSession) {
                     <div 
                       onClick={() => setInfoModalOpen({
                         titulo: "Eficiência de Consumo (Motor)",
-                        descricao: "Relação direta calculada a partir do Balanço Energético: Potência absorvida pelo Motor dividida pela Energia Total Fornecida (Potência do Painel + Potência extraída da Bateria). Quantifica o aproveitamento da energia elétrica circulante.",
+                        descricao: "tenho que calcular melhor isso, não entendi o suficiente ainda",
                         cor: "text-blue-500"
                       })}
                       className={`p-3 rounded-2xl border cursor-pointer hover:scale-[1.02] transition-all flex flex-col items-center justify-center text-center ${darkMode ? "bg-gray-900 border-gray-700 hover:border-gray-500" : "bg-gray-50 border-gray-200 hover:border-gray-400"}`}
@@ -2754,7 +2754,7 @@ if (isLoadingSession) {
                     <div 
                       onClick={() => setInfoModalOpen({
                         titulo: "Tempo Estimado de Carga",
-                        descricao: "Previsão calculada em tempo real com base na taxa de carregamento atual (% por minuto). Apenas é ativada quando o sistema deteta que o barco está a ganhar energia de forma constante.",
+                        descricao: "tenho que calcular melhor isso, não entendi o suficiente ainda",
                         cor: "text-emerald-500"
                       })}
                       className={`p-3 rounded-2xl border cursor-pointer hover:scale-[1.02] transition-all flex flex-col items-center justify-center text-center mt-6 ${darkMode ? "bg-gray-900 border-gray-700 hover:border-gray-500" : "bg-gray-50 border-gray-200 hover:border-gray-400"}`}
