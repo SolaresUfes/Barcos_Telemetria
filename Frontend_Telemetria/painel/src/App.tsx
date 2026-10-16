@@ -471,8 +471,12 @@ async function buscarEquipe() {
 // novos estados para configurações de gráfico
   const [overlaySelections, setOverlaySelections] = useState<string[]>([]);
   const [showOverlayModal, setShowOverlayModal] = useState(false);
+
+  // Estados para o sistema de cutucar / tchauzinho
+  const [showOnlineTooltip, setShowOnlineTooltip] = useState(false);
+  const [cutucaoRecebido, setCutucaoRecebido] = useState<{ remetente: string } | null>(null);
   
-  // Estado para controlar o modal de informações de eficiência (COLOCAR AQUI!)
+  // Estado para controlar o modal de informações de eficiência
   const [infoModalOpen, setInfoModalOpen] = useState<{ titulo: string; descricao: string; cor: string } | null>(null);
 
   const [provaFlags, setProvaFlags] = useState<number[]>([]);
@@ -613,14 +617,11 @@ function tocarSomSuave() {
   useEffect(() => {
     if (!currentUser) return;
 
-    // 1. Cria um canal de comunicação para a equipe
     const channel = supabase.channel("sala_equipe");
 
     channel
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState();
-
-        // 2. Extrai os e-mails de todos os usuários que estão com a tela aberta
         const onlineEmails = new Set();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         Object.values(state).forEach((presences: any) => {
@@ -628,7 +629,6 @@ function tocarSomSuave() {
           presences.forEach((p: any) => onlineEmails.add(p.email));
         });
 
-        // 3. Atualiza a interface, acendendo a bolinha verde para quem está na lista
         setMembers((prevMembers) =>
           prevMembers.map((m) => ({
             ...m,
@@ -636,26 +636,47 @@ function tocarSomSuave() {
             lastSeen: onlineEmails.has(m.email)
               ? "agora"
               : m.isOnline
-                ? new Date().toLocaleTimeString("pt-BR", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
+                ? new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
                 : m.lastSeen,
-          })),
+          }))
         );
+      })
+      .on("broadcast", { event: "cutucar" }, (payload) => {
+        // Se o cutucão for direcionado ao e-mail do utilizador atual
+        if (payload.payload.destinatario === currentUser.email) {
+          setCutucaoRecebido({ remetente: payload.payload.remetenteNome });
+          tocarSomSuave(); // Toca o sonzinho agradável
+
+          // Remove o aviso visual após 4 segundos
+          setTimeout(() => {
+            setCutucaoRecebido(null);
+          }, 4000);
+        }
       })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
-          // 4. Ao conectar, avisa ao servidor que este usuário entrou
           await channel.track({ email: currentUser.email });
         }
       });
 
-    // 5. Desconecta do canal se o usuário deslogar ou fechar o site
     return () => {
       supabase.removeChannel(channel);
     };
   }, [currentUser]);
+
+  // Função para enviar o sinal de cutucar
+  const enviarCutucao = async (membroEmail: string, membroNome: string) => {
+    const channel = supabase.channel("sala_equipe");
+    await channel.send({
+      type: "broadcast",
+      event: "cutucar",
+      payload: {
+        destinatario: membroEmail,
+        remetenteNome: currentUser?.name.split(" ")[0] || "Alguém",
+      },
+    });
+    dispararToast(`Cutucão enviado para ${membroNome}! 👋`, "sucesso");
+  };
 
   // Efeito que roda a função em loop quando o usuário está logado (Usado para buscar as medições)
   useEffect(() => {
@@ -1734,11 +1755,52 @@ if (isLoadingSession) {
                 {isTelemetryActive ? "ESP Online" : "ESP Offline"}
               </span>
 
-              {/* Badge de Utilizadores Online */}
-              <span className="hidden md:flex px-3 py-1 text-xs font-bold bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20 rounded-full items-center whitespace-nowrap shadow-sm">
-                <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400 mr-2 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]"></span>
-                {onlineCount} Online
-              </span>
+{/* Badge de Utilizadores Online com Tooltip de Cutucar */}
+              <div 
+                className="relative"
+                onMouseEnter={() => setShowOnlineTooltip(true)}
+                onMouseLeave={() => setShowOnlineTooltip(false)}
+              >
+                <span className="hidden md:flex px-3 py-1 text-xs font-bold bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20 rounded-full items-center whitespace-nowrap shadow-sm cursor-pointer select-none">
+                  <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400 mr-2 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]"></span>
+                  {onlineCount} Online
+                </span>
+
+                {/* Microtelinha Flutuante (Tooltip) */}
+                {showOnlineTooltip && (
+                  <div className="absolute top-full right-0 mt-2 w-64 p-3 rounded-2xl shadow-2xl border backdrop-blur-xl z-[100] animate-in fade-in zoom-in-95 duration-200 bg-gray-900/95 border-gray-700 text-white">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 border-b border-gray-800 pb-1">
+                      Membros Online ({onlineCount})
+                    </p>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {members.filter(m => m.isOnline).map((membro) => (
+                        <div key={membro.id} className="flex items-center justify-between gap-2">
+                          <div className="flex items-center space-x-2 min-w-0">
+                            <img src={membro.photo} alt={membro.name} className="w-6 h-6 rounded-full object-cover shrink-0" />
+                            <span className="text-xs font-bold truncate">{membro.name.split(" ")[0]}</span>
+                          </div>
+                          
+                          {/* Botão de Cutucar (só aparece se não for o próprio utilizador) */}
+                          {membro.email !== currentUser?.email && (
+                            <button
+                              onClick={() => enviarCutucao(membro.email, membro.name)}
+                              className="px-2.5 py-1 bg-orange-500/20 hover:bg-orange-500 text-orange-400 hover:text-white text-[10px] font-bold rounded-lg transition-all border border-orange-500/30 flex items-center space-x-1 shrink-0"
+                              title="Cutucar / Tchauzinho"
+                            >
+                              <span>👋</span>
+                              <span>Cutucar</span>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      {onlineCount === 0 && (
+                        <p className="text-xs text-gray-500 text-center py-2">Ninguém online de momento.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
             </div>
 
 
@@ -3717,6 +3779,21 @@ if (isLoadingSession) {
             >
               Entendido
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* AVISO FLUTUANTE DE CUTUCÃO (Canto Inferior Direito)       */}
+      {/* ========================================================= */}
+      {cutucaoRecebido && (
+        <div className="fixed bottom-6 right-6 z-[10001] animate-in slide-in-from-bottom-5 fade-in duration-300">
+          <div className="px-5 py-4 rounded-2xl shadow-2xl border bg-orange-950/90 border-orange-500/50 text-orange-200 shadow-orange-950/50 flex items-center space-x-3 text-sm font-semibold backdrop-blur-xl">
+            <span className="text-2xl animate-bounce">👋</span>
+            <div>
+              <p className="font-bold">Recebeu um tchauzinho!</p>
+              <p className="text-xs text-orange-300 font-normal">{cutucaoRecebido.remetente} cutucou-te na telemetria.</p>
+            </div>
           </div>
         </div>
       )}
