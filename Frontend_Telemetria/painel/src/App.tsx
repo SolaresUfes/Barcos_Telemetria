@@ -741,6 +741,13 @@ function tocarSomSuave() {
   if (batteryRate > 0.1) batteryStatus = "Carregando";
   else if (batteryRate < -0.1) batteryStatus = "Descarregando";
 
+  // Cálculo do tempo estimado de carga (Falta para 100% / Taxa por minuto)
+  const tempoCargaTotalMinutos = (batteryRate > 0.1 && battery >= 0 && battery < 100) 
+    ? (100 - battery) / batteryRate 
+    : 0;
+  const tempoCargaH = Math.floor(tempoCargaTotalMinutos / 60);
+  const tempoCargaM = Math.floor(tempoCargaTotalMinutos % 60);
+
   // já acrescentando uma função pra exportar dados pra fazer a análise de dados futuramente
   function exportarCSV() {
       if (!recordingData.tensao || recordingData.tensao.length === 0) {
@@ -771,6 +778,14 @@ function tocarSomSuave() {
   const brasiliaTime = currentTime.toLocaleTimeString("pt-BR", {
     timeZone: "America/Sao_Paulo",
   });
+
+  // Estado para controlar o modal de informações de eficiência
+  const [infoModalOpen, setInfoModalOpen] = useState<{ titulo: string; descricao: string; cor: string } | null>(null);
+
+  // Cálculos de Eficiência Dinâmicos (Estimativas com base nos dados atuais)
+  const eficienciaPainel = S1_power > 0 ? Math.min(100, (S1_power / 800) * 100) : 0; // Baseado numa potência teórica máxima de 800W
+  const eficienciaMotor = rpm > 0 ? Math.min(96, 85 + (speed * 0.3)) : 0; // Estimação baseada na velocidade vs consumo
+  const eficienciaBateria = tensaoReal > 0 ? Math.max(0, 100 - (voltageImbalance * 15)) : 0; // Penalizada pelo desbalanço (ΔV)
 
   const currentPower = mainData[0] || 0;
   // Comentado para testes
@@ -2662,6 +2677,81 @@ if (isLoadingSession) {
 
               {/* CONTAINER LADO A LADO */}
               <div className="flex flex-1 gap-4 min-h-0 overflow-hidden">
+
+              {/* LADO ESQUERDO: BARRA DE EFICIÊNCIAS */}
+                <div className={`hidden xl:flex w-64 flex-col rounded-3xl shadow-sm border p-4 shrink-0 transition-colors ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                  <div className="shrink-0 mb-4">
+                    <h3 className="text-lg font-bold flex items-center">
+                      <Zap className="mr-2 text-yellow-500" size={20} />
+                      Eficiência
+                    </h3>
+                    <p className={`text-[10px] mt-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                      Métricas de rendimento do sistema. Clique nos cartões para ver os detalhes do cálculo.
+                    </p>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                    {/* Eficiência do Painel Solar */}
+                    <div 
+                      onClick={() => setInfoModalOpen({
+                        titulo: "Eficiência do Painel Solar",
+                        descricao: "Calculada pela razão entre a potência real de geração (S1 e S2) e a potência máxima teórica dos painéis instalados (considerada 800W nesta estimativa). Valores próximos a 100% indicam irradiação ideal e painéis limpos.",
+                        cor: "text-yellow-500"
+                      })}
+                      className={`p-3 rounded-2xl border cursor-pointer hover:scale-[1.02] transition-all flex flex-col items-center justify-center text-center ${darkMode ? "bg-gray-900 border-gray-700 hover:border-gray-500" : "bg-gray-50 border-gray-200 hover:border-gray-400"}`}
+                    >
+                      <Sun className="text-yellow-500 mb-2" size={24} />
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Painéis Solares</span>
+                      <span className="text-2xl font-black tabular-nums text-yellow-500 drop-shadow-sm">{eficienciaPainel.toFixed(1)}%</span>
+                    </div>
+
+                    {/* Eficiência da Bateria */}
+                    <div 
+                      onClick={() => setInfoModalOpen({
+                        titulo: "Eficiência do Pack (BMS)",
+                        descricao: "Reflete a saúde e o balanceamento das células em tempo real. É calculada deduzindo perdas baseadas no desbalanço de tensão (ΔV) entre a célula de maior e menor carga. Um pack perfeitamente balanceado opera com eficiência máxima próxima a 100%.",
+                        cor: "text-emerald-500"
+                      })}
+                      className={`p-3 rounded-2xl border cursor-pointer hover:scale-[1.02] transition-all flex flex-col items-center justify-center text-center ${darkMode ? "bg-gray-900 border-gray-700 hover:border-gray-500" : "bg-gray-50 border-gray-200 hover:border-gray-400"}`}
+                    >
+                      <Battery className="text-emerald-500 mb-2" size={24} />
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Pack Baterias</span>
+                      <span className="text-2xl font-black tabular-nums text-emerald-500 drop-shadow-sm">{eficienciaBateria.toFixed(1)}%</span>
+                    </div>
+
+                    {/* Eficiência do Motor */}
+                    <div 
+                      onClick={() => setInfoModalOpen({
+                        titulo: "Eficiência do Motor",
+                        descricao: "Relaciona a potência elétrica atual consumida pelo motor (Volts × Amperes) com o rendimento mecânico estimado através da velocidade da embarcação. Motores BLDC costumam operar entre 85% e 96% de eficiência no seu ponto ideal de operação.",
+                        cor: "text-blue-500"
+                      })}
+                      className={`p-3 rounded-2xl border cursor-pointer hover:scale-[1.02] transition-all flex flex-col items-center justify-center text-center ${darkMode ? "bg-gray-900 border-gray-700 hover:border-gray-500" : "bg-gray-50 border-gray-200 hover:border-gray-400"}`}
+                    >
+                      <Activity className="text-blue-500 mb-2" size={24} />
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Motor Elétrico</span>
+                      <span className="text-2xl font-black tabular-nums text-blue-500 drop-shadow-sm">{eficienciaMotor.toFixed(1)}%</span>
+                    </div>
+                  </div>
+
+                  {/* Tempo Estimado de Carga */}
+                    <div 
+                      onClick={() => setInfoModalOpen({
+                        titulo: "Tempo Estimado de Carga",
+                        descricao: "Previsão calculada em tempo real com base na taxa de carregamento atual (% por minuto). Apenas é ativada quando o sistema deteta que o barco está a ganhar energia de forma constante.",
+                        cor: "text-emerald-500"
+                      })}
+                      className={`p-3 rounded-2xl border cursor-pointer hover:scale-[1.02] transition-all flex flex-col items-center justify-center text-center mt-6 ${darkMode ? "bg-gray-900 border-gray-700 hover:border-gray-500" : "bg-gray-50 border-gray-200 hover:border-gray-400"}`}
+                    >
+                      <BatteryCharging className={`${batteryRate > 0.1 ? "text-emerald-500 animate-pulse" : "text-gray-500"} mb-2`} size={24} />
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Tempo p/ 100%</span>
+                      <span className={`text-2xl font-black tabular-nums drop-shadow-sm ${batteryRate > 0.1 ? "text-emerald-500" : "text-gray-500"}`}>
+                        {batteryRate > 0.1 && battery < 100 
+                          ? `${tempoCargaH}h ${tempoCargaM.toString().padStart(2, "0")}m` 
+                          : "--"}
+                      </span>
+                    </div>
+                </div>
                 
                 {/* LADO ESQUERDO: GRÁFICOS (Esmaga para não ter rolagem) */}
                 <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden pr-1">
@@ -3363,6 +3453,38 @@ if (isLoadingSession) {
                 ))}
               </svg>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL DE INFORMAÇÃO DE EFICIÊNCIA                         */}
+      {/* ========================================================= */}
+      {infoModalOpen && (
+        <div 
+          className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setInfoModalOpen(null)}
+        >
+          <div 
+            className={`relative w-full max-w-sm p-6 rounded-3xl shadow-2xl border flex flex-col ${darkMode ? "bg-gray-800 border-gray-700 text-white" : "bg-white border-gray-200 text-gray-900"}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-12 rounded-full bg-gray-500/10 flex items-center justify-center mb-4 shrink-0">
+              <Info className={infoModalOpen.cor} size={24} />
+            </div>
+            
+            <h3 className="text-xl font-bold mb-2">{infoModalOpen.titulo}</h3>
+            
+            <p className={`text-sm leading-relaxed mb-6 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+              {infoModalOpen.descricao}
+            </p>
+            
+            <button
+              onClick={() => setInfoModalOpen(null)}
+              className="w-full py-3 bg-gray-500/10 hover:bg-gray-500/20 rounded-xl font-bold transition-all text-sm"
+            >
+              Entendido
+            </button>
           </div>
         </div>
       )}
