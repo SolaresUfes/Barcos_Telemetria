@@ -473,7 +473,7 @@ async function buscarEquipe() {
   const [showOverlayModal, setShowOverlayModal] = useState(false);
 
   // Estados para o sistema de cutucar / tchauzinho
-  const [showOnlineMenu, setShowOnlineMenu] = useState(false);
+  const [showOnlineMenu, setShowOnlineMenu] = useState<{ top: number, right: number } | null>(null);
   const [cutucaoRecebido, setCutucaoRecebido] = useState<{ remetente: string } | null>(null);
   
   // Estado para controlar o modal de informações de eficiência
@@ -613,11 +613,12 @@ function tocarSomSuave() {
     };
   }, [provaAtiva]);
 
-  // Efeito usado para verificar as pessoas online no supabase
+ // Efeito usado para verificar as pessoas online e gerar o canal de broadcast
   useEffect(() => {
     if (!currentUser) return;
 
     const channel = supabase.channel("sala_equipe");
+    teamChannelRef.current = channel; // Guarda a referência ativa do canal
 
     channel
       .on("presence", { event: "sync" }, () => {
@@ -642,12 +643,10 @@ function tocarSomSuave() {
         );
       })
       .on("broadcast", { event: "cutucar" }, (payload) => {
-        // Se o cutucão for direcionado ao e-mail do utilizador atual
         if (payload.payload.destinatario === currentUser.email) {
           setCutucaoRecebido({ remetente: payload.payload.remetenteNome });
-          tocarSomSuave(); // Toca o sonzinho agradável
+          tocarSomSuave();
 
-          // Remove o aviso visual após 4 segundos
           setTimeout(() => {
             setCutucaoRecebido(null);
           }, 4000);
@@ -661,13 +660,18 @@ function tocarSomSuave() {
 
     return () => {
       supabase.removeChannel(channel);
+      teamChannelRef.current = null;
     };
   }, [currentUser]);
 
-  // Função para enviar o sinal de cutucar
+  // Função correta que utiliza o canal já subscrevido
   const enviarCutucao = async (membroEmail: string, membroNome: string) => {
-    const channel = supabase.channel("sala_equipe");
-    await channel.send({
+    if (!teamChannelRef.current) {
+      dispararToast("Canal de equipa ainda não conectado.", "aviso");
+      return;
+    }
+
+    await teamChannelRef.current.send({
       type: "broadcast",
       event: "cutucar",
       payload: {
@@ -675,7 +679,8 @@ function tocarSomSuave() {
         remetenteNome: currentUser?.name.split(" ")[0] || "Alguém",
       },
     });
-    dispararToast(`Cutucão enviado para ${membroNome}! 👋`, "sucesso");
+    
+    dispararToast(`Cutucão enviado para ${membroNome}! 👋`, "sucesso");
   };
 
   // Efeito que roda a função em loop quando o usuário está logado (Usado para buscar as medições)
@@ -792,6 +797,7 @@ function tocarSomSuave() {
   // #endregion
 
   const batteryPowerHistory = useRef<number[]>([]);
+  const teamChannelRef = useRef<any>(null);
 
 // aqui vamos ter um sinalizador pra ver se a bateria ta carregando ou descarregando (olhando os números fica óbvio, mas to deixando mais visual)
   let batteryRate = 0;
@@ -1755,23 +1761,31 @@ if (isLoadingSession) {
                 {isTelemetryActive ? "ESP Online" : "ESP Offline"}
               </span>
 
-              {/* Badge de Utilizadores Online com Menu de Clique */}
+              {/* Badge de Utilizadores Online com Menu Flutuante Posicionado por Fixed */}
               <div className="relative">
                 <button
-                  onClick={() => setShowOnlineMenu(!showOnlineMenu)}
+                  onClick={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setShowOnlineMenu({
+                      top: rect.bottom + 8,
+                      right: window.innerWidth - rect.right
+                    });
+                  }}
                   className="hidden md:flex px-3 py-1 text-xs font-bold bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20 rounded-full items-center whitespace-nowrap shadow-sm cursor-pointer select-none transition-all hover:scale-105"
                 >
                   <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400 mr-2 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]"></span>
                   {onlineCount} Online
                 </button>
 
-                {/* Menu Flutuante Posicionado Corretamente */}
+                {/* Menu Flutuante com Position Fixed (Ignora qualquer overflow da header) */}
                 {showOnlineMenu && (
                   <>
-                    {/* Fundo invisível para fechar ao clicar fora */}
-                    <div className="fixed inset-0 z-[90]" onClick={() => setShowOnlineMenu(false)}></div>
+                    <div className="fixed inset-0 z-[9998]" onClick={() => setShowOnlineMenu(null)}></div>
 
-                    <div className="absolute right-0 top-full mt-3 w-64 p-3 rounded-2xl shadow-2xl border backdrop-blur-xl z-[100] animate-in fade-in zoom-in-95 duration-200 bg-gray-900 border-gray-700 text-white">
+                    <div 
+                      style={{ top: showOnlineMenu.top, right: showOnlineMenu.right }}
+                      className="fixed w-64 p-3 rounded-2xl shadow-2xl border backdrop-blur-xl z-[9999] animate-in fade-in zoom-in-95 duration-200 bg-gray-900 border-gray-700 text-white"
+                    >
                       <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 border-b border-gray-800 pb-1">
                         Membros Online ({onlineCount})
                       </p>
@@ -1787,7 +1801,7 @@ if (isLoadingSession) {
                               <button
                                 onClick={() => {
                                   enviarCutucao(membro.email, membro.name);
-                                  setShowOnlineMenu(false);
+                                  setShowOnlineMenu(null);
                                 }}
                                 className="px-2.5 py-1 bg-orange-500/20 hover:bg-orange-500 text-orange-400 hover:text-white text-[10px] font-bold rounded-lg transition-all border border-orange-500/30 flex items-center space-x-1 shrink-0"
                               >
