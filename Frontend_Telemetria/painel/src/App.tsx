@@ -1781,72 +1781,6 @@ if (isLoadingSession) {
                   {onlineCount} Online
                 </button>
 
-                {/* Menu Flutuante com Position Fixed real */}
-                {showOnlineMenu && (
-                  <>
-                    {/* Fundo invisível para fechar o menu (z-index alto) */}
-                    <div
-                      className="fixed inset-0 z-[999998]"
-                      onClick={() => setShowOnlineMenu(null)}
-                    ></div>
-
-                    {/* Caixa do menu (z-index ainda mais alto e fundo sólido) */}
-                    <div
-                      style={{
-                        top: `${showOnlineMenu.top}px`,
-                        left: `${showOnlineMenu.left}px`,
-                      }}
-                      className="fixed w-64 p-3 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] border z-[999999] animate-in fade-in zoom-in-95 duration-200 bg-gray-900 border-gray-600 text-white"
-                    >
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 border-b border-gray-700 pb-1">
-                        Membros Online ({onlineCount})
-                      </p>
-                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                        {members
-                          .filter((m) => m.isOnline)
-                          .map((membro) => (
-                            <div
-                              key={membro.id}
-                              className="flex items-center justify-between gap-2 py-1"
-                            >
-                              <div className="flex items-center space-x-2 min-w-0">
-                                <img
-                                  src={membro.photo}
-                                  alt={membro.name}
-                                  className="w-6 h-6 rounded-full object-cover shrink-0 bg-gray-800"
-                                />
-                                <span className="text-xs font-bold truncate">
-                                  {membro.name.split(" ")[0]}
-                                </span>
-                              </div>
-
-                              {membro.email !== currentUser?.email && (
-                                <button
-                                  type="button"
-                                  /* Usar onPointerDown para reagir antes do clique fora fechar o menu */
-                                  onPointerDown={(e) => {
-                                    e.preventDefault(); 
-                                    e.stopPropagation();
-                                    enviarCutucao(membro.email, membro.name);
-                                    setShowOnlineMenu(null);
-                                  }}
-                                  className="px-2.5 py-1 bg-orange-500/20 hover:bg-orange-500 text-orange-400 hover:text-white text-[10px] font-bold rounded-lg transition-all border border-orange-500/30 flex items-center space-x-1 shrink-0 cursor-pointer relative z-[1000000]"
-                                >
-                                  <span>👋</span>
-                                  <span>Cutucar</span>
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                        {onlineCount === 0 && (
-                          <p className="text-xs text-gray-500 text-center py-2">
-                            Ninguém online de momento.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
               </div>
 
             </div>
@@ -2398,11 +2332,11 @@ if (isLoadingSession) {
                       </text>
 
                       <polygon
-                        points={`${mainData.length > 0 ? 1000 - ((mainData.length - 1) * (1000 / 39)) : 1000},100 ${generatePolyline(mainData, 1000, 200, 2000)} 1000,100`}
+                        points={`${mainData.length > 0 ? 1000 - ((mainData.length - 1) * (1000 / 39)) : 1000},100 ${generatePolyline(mainData, 1000, 200, 5000)} 1000,100`}
                         fill="url(#mainGradient)"
                       />
                       <polyline
-                        points={generatePolyline(mainData, 1000, 200, 2000)}
+                        points={generatePolyline(mainData, 1000, 200, 5000)}
                         fill="none"
                         stroke="#ea580c"
                         strokeWidth="4"
@@ -3039,7 +2973,7 @@ if (isLoadingSession) {
                         <div className="w-full flex-1 min-h-0 pointer-events-none mt-1">
                           <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
                             <polyline 
-                              points={graph.id.startsWith("pot") ? generateFixedPolyline(graph.data, 1000, 200, -2000, 2000, !provaAtiva) : generateFullPolyline(graph.data, 1000, 200, !provaAtiva)} 
+                              points={graph.id.startsWith("pot") ? generateFixedPolyline(graph.data, 1000, 200, -5000, 5000, !provaAtiva) : generateFullPolyline(graph.data, 1000, 200, !provaAtiva)} 
                               fill="none" stroke={graph.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" 
                             />
                           </svg>
@@ -3589,8 +3523,8 @@ if (isLoadingSession) {
               {(expandedGraph.id.startsWith("pot") || expandedGraph.id === "bateria") && (
                 <div className="relative w-12 shrink-0 h-full">
                   {expandedGraph.id.startsWith("pot") 
-                    ? [2000, 1500, 1000, 500, 0, -500, -1000, -1500, -2000].map((val) => {
-                        const percent = ((2000 - val) / 4000) * 100;
+                    ? [5000, 4000, 3000, 2000, 1000, 0, -1000, -2000, -3000, -4000, -5000].map((val) => {
+                        const percent = ((5000 - val) / 10000) * 100;
                         return (
                           <span
                             key={`scale-pot-${val}`}
@@ -3641,7 +3575,7 @@ if (isLoadingSession) {
                   <polygon
                     points={`0,${expandedGraph.id.startsWith("pot") ? 100 : 200} ${
                       expandedGraph.id.startsWith("pot")
-                        ? generateFixedPolyline(expandedGraph.data, 1000, 200, -2000, 2000, !provaAtiva)
+                        ? generateFixedPolyline(expandedGraph.data, 1000, 200, -5000, 5000, !provaAtiva)
                         : expandedGraph.id === "bateria"
                         ? generateFixedPolyline(expandedGraph.data, 1000, 200, 0, 100, !provaAtiva)
                         : generateFullPolyline(expandedGraph.data, 1000, 200, !provaAtiva)
@@ -3652,7 +3586,7 @@ if (isLoadingSession) {
                   <polyline
                     points={
                       expandedGraph.id.startsWith("pot")
-                        ? generateFixedPolyline(expandedGraph.data, 1000, 200, -2000, 2000, !provaAtiva)
+                        ? generateFixedPolyline(expandedGraph.data, 1000, 200, -5000, 5000, !provaAtiva)
                         : expandedGraph.id === "bateria"
                         ? generateFixedPolyline(expandedGraph.data, 1000, 200, 0, 100, !provaAtiva)
                         : generateFullPolyline(expandedGraph.data, 1000, 200, !provaAtiva)
@@ -3733,8 +3667,8 @@ if (isLoadingSession) {
                     {/* Renderiza a Escala Lateral de +-2000 só se for potência */}
                     {isOnlyPower && (
                       <div className="relative w-12 shrink-0 h-full">
-                        {[2000, 1500, 1000, 500, 0, -500, -1000, -1500, -2000].map((val) => {
-                          const percent = ((2000 - val) / 4000) * 100;
+                        {[5000, 4000, 3000, 2000, 1000, 0, -1000, -2000, -3000, -4000, -5000].map((val) => {
+                          const percent = ((5000 - val) / 10000) * 100;
                           return (
                             <span
                               key={`scale-over-pot-${val}`}
@@ -3766,8 +3700,8 @@ if (isLoadingSession) {
                         {availableGraphs.filter(g => overlaySelections.includes(g.id)).map(g => (
                           <polyline
                             key={`over-line-${g.id}`}
-                            points={isOnlyPower ? generateFixedPolyline(g.data, 1000, 200, -2000, 2000, !provaAtiva) : generateFullPolyline(g.data, 1000, 200, !provaAtiva)}
-                            fill="none" 
+                            points={isOnlyPower ? generateFixedPolyline(g.data, 1000, 200, -5000, 5000, !provaAtiva) : generateFullPolyline(g.data, 1000, 200, !provaAtiva)}
+                            fill="none"                            
                             stroke={g.color} 
                             strokeWidth="3" 
                             strokeLinecap="round" 
@@ -3844,6 +3778,73 @@ if (isLoadingSession) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MENU DE USUÁRIOS ONLINE (Tirado do Header para não bugar o Z-Index) */}
+      {/* ========================================================= */}
+      {showOnlineMenu && (
+        <>
+          <div
+            className="fixed inset-0 z-[999998]"
+            onClick={() => setShowOnlineMenu(null)}
+          ></div>
+
+          <div
+            style={{
+              top: `${showOnlineMenu.top}px`,
+              left: `${showOnlineMenu.left}px`,
+            }}
+            className="fixed w-64 p-3 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] border z-[999999] animate-in fade-in zoom-in-95 duration-200 bg-gray-900 border-gray-600 text-white"
+          >
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 border-b border-gray-700 pb-1">
+              Membros Online ({onlineCount})
+            </p>
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              {members
+                .filter((m) => m.isOnline)
+                .map((membro) => (
+                  <div
+                    key={membro.id}
+                    className="flex items-center justify-between gap-2 py-1"
+                  >
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <img
+                        src={membro.photo}
+                        alt={membro.name}
+                        className="w-6 h-6 rounded-full object-cover shrink-0 bg-gray-800"
+                      />
+                      <span className="text-xs font-bold truncate">
+                        {membro.name.split(" ")[0]}
+                      </span>
+                    </div>
+
+                    {membro.email !== currentUser?.email && (
+                      <button
+                        type="button"
+                        /* Trocado para onClick padrão */
+                        onClick={(e) => {
+                          e.preventDefault(); 
+                          e.stopPropagation();
+                          enviarCutucao(membro.email, membro.name);
+                          setShowOnlineMenu(null);
+                        }}
+                        className="px-2.5 py-1 bg-orange-500/20 hover:bg-orange-500 text-orange-400 hover:text-white text-[10px] font-bold rounded-lg transition-all border border-orange-500/30 flex items-center space-x-1 shrink-0 cursor-pointer relative z-[1000000]"
+                      >
+                        <span>👋</span>
+                        <span>Cutucar</span>
+                      </button>
+                    )}
+                  </div>
+                ))}
+              {onlineCount === 0 && (
+                <p className="text-xs text-gray-500 text-center py-2">
+                  Ninguém online de momento.
+                </p>
+              )}
+            </div>
+          </div>
+        </>
       )}
 
 
