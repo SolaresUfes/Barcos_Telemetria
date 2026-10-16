@@ -2711,7 +2711,7 @@ if (isLoadingSession) {
                     <div 
                       onClick={() => setInfoModalOpen({
                         titulo: "Capacidade de Fornecimento (Painéis)",
-                        descricao: "Avalia a potência atual fornecida pelo painel solar em relação ao seu máximo teórico (neste caso, 800W). Determina o potencial disponível para carregar a bateria de forma eficiente ou para sustentar a demanda do motor elétrico.",
+                        descricao: "calcular melhor",
                         cor: "text-yellow-500"
                       })}
                       className={`p-3 rounded-2xl border cursor-pointer hover:scale-[1.02] transition-all flex flex-col items-center justify-center text-center ${darkMode ? "bg-gray-900 border-gray-700 hover:border-gray-500" : "bg-gray-50 border-gray-200 hover:border-gray-400"}`}
@@ -2754,7 +2754,7 @@ if (isLoadingSession) {
                     <div 
                       onClick={() => setInfoModalOpen({
                         titulo: "Tempo Estimado de Carga",
-                        descricao: "tenho que calcular melhor isso, não entendi o suficiente ainda",
+                        descricao: "tá até certinho",
                         cor: "text-emerald-500"
                       })}
                       className={`p-3 rounded-2xl border cursor-pointer hover:scale-[1.02] transition-all flex flex-col items-center justify-center text-center mt-6 ${darkMode ? "bg-gray-900 border-gray-700 hover:border-gray-500" : "bg-gray-50 border-gray-200 hover:border-gray-400"}`}
