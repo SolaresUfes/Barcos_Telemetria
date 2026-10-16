@@ -29,6 +29,25 @@ interface Member {
 
 // #region --- Funções Auxiliares ---
 
+const generateFixedPolyline = (data: number[], width: number, height: number, minVal: number, maxVal: number) => {
+  if (!data || data.length === 0) return `0,${height / 2} ${width},${height / 2}`;
+  const range = maxVal - minVal;
+  
+  if (data.length === 1) {
+    const y = height - ((data[0] - minVal) / range) * height;
+    return `0,${y} ${width},${y}`;
+  }
+  
+  const stepX = width / (data.length - 1);
+  return data.map((val, index) => {
+    const x = index * stepX;
+    // Opcional: trava o risco visual dentro dos limites +-2000 caso dê um pico muito louco
+    const clampedVal = Math.max(minVal, Math.min(maxVal, val));
+    const y = height - ((clampedVal - minVal) / range) * height;
+    return `${x},${y}`;
+  }).join(" ");
+};
+
 const generatePolyline = (data: number[], width: number, height: number, maxVal: number) => {
   if (data.length === 0) return `1000,${height / 2}`; // Corrigido para usar crases
   
@@ -434,13 +453,15 @@ async function buscarEquipe() {
   const [idEditando, setIdEditando] = useState<number | null>(null);
   const [novoNomeEditado, setNovoNomeEditado] = useState("");
   // estado para termos graficos espandidos
-  const [expandedGraph, setExpandedGraph] = useState<{ label: string, data: number[], color: string } | null>(null);
+  const [expandedGraph, setExpandedGraph] = useState<{ id: string, label: string, data: number[], color: string } | null>(null);
 // novos estados para configurações de gráfico
   const [overlaySelections, setOverlaySelections] = useState<string[]>([]);
   const [showOverlayModal, setShowOverlayModal] = useState(false);
   
   // Estado para controlar o modal de informações de eficiência (COLOCAR AQUI!)
   const [infoModalOpen, setInfoModalOpen] = useState<{ titulo: string; descricao: string; cor: string } | null>(null);
+
+  
 
 // Função auxiliar para disparar notificações com animação de esmaecimento
   function dispararToast(mensagem: string, tipo: 'sucesso' | 'aviso' | 'erro' = 'sucesso') {
@@ -2231,11 +2252,11 @@ if (isLoadingSession) {
                       </text>
 
                       <polygon
-                        points={`${mainData.length > 0 ? 1000 - ((mainData.length - 1) * (1000 / 39)) : 1000},100 ${generatePolyline(mainData, 1000, 200, 5000)} 1000,100`}
+                        points={`${mainData.length > 0 ? 1000 - ((mainData.length - 1) * (1000 / 39)) : 1000},100 ${generatePolyline(mainData, 1000, 200, 2000)} 1000,100`}
                         fill="url(#mainGradient)"
                       />
                       <polyline
-                        points={generatePolyline(mainData, 1000, 200, 5000)}
+                        points={generatePolyline(mainData, 1000, 200, 2000)}
                         fill="none"
                         stroke="#ea580c"
                         strokeWidth="4"
@@ -2871,7 +2892,10 @@ if (isLoadingSession) {
                         <h4 className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 shrink-0">{graph.label}</h4>
                         <div className="w-full flex-1 min-h-0 pointer-events-none mt-1">
                           <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-                            <polyline points={generateFullPolyline(graph.data, 1000, 200)} fill="none" stroke={graph.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            <polyline 
+                              points={graph.id.startsWith("pot") ? generateFixedPolyline(graph.data, 1000, 200, -2000, 2000) : generateFullPolyline(graph.data, 1000, 200)} 
+                              fill="none" stroke={graph.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" 
+                            />
                           </svg>
                         </div>
                       </div>
@@ -3372,42 +3396,76 @@ if (isLoadingSession) {
               </div>
             </div>
 
-            <div className="flex-1 w-full relative min-h-0 mt-4">
-              <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-                <defs>
-                  <linearGradient id="expandedGradient" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor={expandedGraph.color} stopOpacity="0.4" />
-                    <stop offset="100%" stopColor={expandedGraph.color} stopOpacity="0.0" />
-                  </linearGradient>
-                </defs>
+            <div className="flex-1 w-full flex relative min-h-0 mt-4">
+              
+              {/* ESCALA LATERAL: SÓ APARECE EM GRÁFICOS DE POTÊNCIA */}
+              {expandedGraph.id.startsWith("pot") && (
+                <div className="relative w-12 shrink-0 h-full border-r mr-3 border-gray-200 dark:border-gray-700">
+                  {[2000, 1500, 1000, 500, 0, -500, -1000, -1500, -2000].map((val) => {
+                    const percent = ((2000 - val) / 4000) * 100; // Cálculo de proporção matemática
+                    return (
+                      <span
+                        key={`scale-pot-${val}`}
+                        className="absolute right-2 text-[10px] md:text-[11px] font-bold text-gray-500 leading-none"
+                        style={{ top: `${percent}%`, transform: percent === 100 ? 'translateY(-100%)' : percent === 0 ? 'translateY(0)' : 'translateY(-50%)' }}
+                      >
+                        {val}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
 
-                {/* Linhas de Grade Genéricas (Fundo) */}
-                {[0, 50, 100, 150, 200].map((y) => (
-                  <line
-                    key={`grid-${y}`}
-                    x1="0" y1={y} x2="1000" y2={y}
-                    stroke={darkMode ? "#374151" : "#f3f4f6"}
-                    strokeWidth="1" strokeDasharray="5,5"
+              {/* GRÁFICO SVG PRINCIPAL */}
+              <div className="flex-1 relative h-full">
+                <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                  <defs>
+                    <linearGradient id="expandedGradient" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor={expandedGraph.color} stopOpacity="0.4" />
+                      <stop offset="100%" stopColor={expandedGraph.color} stopOpacity="0.0" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Linhas de Grade de Fundo (Mais espaçadas para a Potência bater certo com as marcações de 500W) */}
+                  {(expandedGraph.id.startsWith("pot") ? [0, 25, 50, 75, 100, 125, 150, 175, 200] : [0, 50, 100, 150, 200]).map((y) => (
+                    <line
+                      key={`grid-${y}`}
+                      x1="0" y1={y} x2="1000" y2={y}
+                      stroke={darkMode ? "#374151" : "#f3f4f6"}
+                      strokeWidth="1" strokeDasharray="5,5"
+                    />
+                  ))}
+
+                  {/* LINHA DE ZERO DESTACADA PARA POTÊNCIA */}
+                  {expandedGraph.id.startsWith("pot") && (
+                    <line x1="0" y1="100" x2="1000" y2="100" stroke={darkMode ? "#ef4444" : "#f97316"} strokeWidth="1.5" strokeDasharray="4,4" />
+                  )}
+
+                  {/* Renderização baseada no tipo de gráfico */}
+                  <polygon
+                    points={`0,${expandedGraph.id.startsWith("pot") ? 100 : 200} ${
+                      expandedGraph.id.startsWith("pot")
+                        ? generateFixedPolyline(expandedGraph.data, 1000, 200, -2000, 2000)
+                        : generateFullPolyline(expandedGraph.data, 1000, 200)
+                    } 1000,${expandedGraph.id.startsWith("pot") ? 100 : 200}`}
+                    fill="url(#expandedGradient)"
                   />
-                ))}
-
-                {/* Área preenchida (polygon) - desce agora até à base 200 */}
-                <polygon
-                  points={`0,200 ${generateFullPolyline(expandedGraph.data, 1000, 200)} 1000,200`}
-                  fill="url(#expandedGradient)"
-                />
-                
-                {/* Linha do Gráfico Principal */}
-                <polyline
-                  points={generateFullPolyline(expandedGraph.data, 1000, 200)}
-                  fill="none" stroke={expandedGraph.color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-md"
-                />
-                
-                {/* Bordas Eixo X e Y principais */}
-                <line x1="0" y1="200" x2="1000" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
-                <line x1="0" y1="0" x2="0" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
-              </svg>
+                  
+                  <polyline
+                    points={
+                      expandedGraph.id.startsWith("pot")
+                        ? generateFixedPolyline(expandedGraph.data, 1000, 200, -2000, 2000)
+                        : generateFullPolyline(expandedGraph.data, 1000, 200)
+                    }
+                    fill="none" stroke={expandedGraph.color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-md"
+                  />
+                  
+                  <line x1="0" y1="200" x2="1000" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
+                  <line x1="0" y1="0" x2="0" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
+                </svg>
+              </div>
             </div>
+
           </div>
         </div>
       )}
