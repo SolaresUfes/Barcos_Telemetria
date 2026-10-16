@@ -1761,31 +1761,22 @@ if (isLoadingSession) {
                 {isTelemetryActive ? "ESP Online" : "ESP Offline"}
               </span>
 
-              {/* Badge de Utilizadores Online com Menu Flutuante Posicionado por Fixed */}
+              {/* Badge de Utilizadores Online com Menu Flutuante Absoluto na Raiz */}
               <div className="relative">
                 <button
-                  onClick={(e) => {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    setShowOnlineMenu({
-                      top: rect.bottom + 8,
-                      right: window.innerWidth - rect.right
-                    });
-                  }}
+                  onClick={() => setShowOnlineMenu(showOnlineMenu ? null : { top: 70, right: 20 })}
                   className="hidden md:flex px-3 py-1 text-xs font-bold bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20 rounded-full items-center whitespace-nowrap shadow-sm cursor-pointer select-none transition-all hover:scale-105"
                 >
                   <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400 mr-2 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]"></span>
                   {onlineCount} Online
                 </button>
 
-                {/* Menu Flutuante com Position Fixed (Ignora qualquer overflow da header) */}
+                {/* Menu Flutuante Renderizado com Z-Index Máximo (Fora de qualquer corte de container) */}
                 {showOnlineMenu && (
                   <>
-                    <div className="fixed inset-0 z-[9998]" onClick={() => setShowOnlineMenu(null)}></div>
+                    <div className="fixed inset-0 z-[99998]" onClick={() => setShowOnlineMenu(null)}></div>
 
-                    <div 
-                      style={{ top: showOnlineMenu.top, right: showOnlineMenu.right }}
-                      className="fixed w-64 p-3 rounded-2xl shadow-2xl border backdrop-blur-xl z-[9999] animate-in fade-in zoom-in-95 duration-200 bg-gray-900 border-gray-700 text-white"
-                    >
+                    <div className="absolute right-0 top-full mt-3 w-64 p-3 rounded-2xl shadow-2xl border backdrop-blur-xl z-[99999] animate-in fade-in zoom-in-95 duration-200 bg-gray-900 border-gray-700 text-white">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 border-b border-gray-800 pb-1">
                         Membros Online ({onlineCount})
                       </p>
@@ -1799,11 +1790,13 @@ if (isLoadingSession) {
                             
                             {membro.email !== currentUser?.email && (
                               <button
-                                onClick={() => {
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   enviarCutucao(membro.email, membro.name);
                                   setShowOnlineMenu(null);
                                 }}
-                                className="px-2.5 py-1 bg-orange-500/20 hover:bg-orange-500 text-orange-400 hover:text-white text-[10px] font-bold rounded-lg transition-all border border-orange-500/30 flex items-center space-x-1 shrink-0"
+                                className="px-2.5 py-1 bg-orange-500/20 hover:bg-orange-500 text-orange-400 hover:text-white text-[10px] font-bold rounded-lg transition-all border border-orange-500/30 flex items-center space-x-1 shrink-0 cursor-pointer"
                               >
                                 <span>👋</span>
                                 <span>Cutucar</span>
