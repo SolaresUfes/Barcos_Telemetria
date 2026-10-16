@@ -2940,7 +2940,7 @@ if (isLoadingSession) {
 
                 </div>
 
-                {/* LADO DIREITO: BARRA DE CONFIGURAÇÕES DE SOBREPOSIÇÃO */}
+{/* LADO DIREITO: BARRA DE CONFIGURAÇÕES DE SOBREPOSIÇÃO */}
                 <div className={`hidden md:flex w-72 flex-col rounded-3xl shadow-sm border p-4 shrink-0 transition-colors ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
                   <div className="shrink-0 mb-4">
                     <h3 className="text-lg font-bold flex items-center">
@@ -2968,6 +2968,28 @@ if (isLoadingSession) {
                         <span className={`text-xs font-bold ${darkMode ? "text-gray-300" : "text-gray-600"}`}>{g.label}</span>
                       </label>
                     ))}
+                  </div>
+
+                  {/* NOVO: BOTÃO RÁPIDO DE GRAVAÇÃO */}
+                  <div className="shrink-0 mt-3">
+                    <button
+                      onClick={() => provaAtiva ? lidarComCliqueFim() : prova_iniciar()}
+                      className={`w-full py-3.5 rounded-xl font-black uppercase tracking-wider flex items-center justify-center transition-all shadow-lg hover:scale-[1.02] active:scale-95 ${
+                        provaAtiva 
+                          ? "bg-red-500 hover:bg-red-600 text-white shadow-red-500/20" 
+                          : "bg-green-500 hover:bg-green-600 text-white shadow-green-500/20"
+                      }`}
+                    >
+                      {provaAtiva ? (
+                        <>
+                          <Square size={20} className="mr-2 fill-current animate-pulse" /> Parar Gravação
+                        </>
+                      ) : (
+                        <>
+                          <Play size={20} className="mr-2 fill-current" /> Iniciar Gravação
+                        </>
+                      )}
+                    </button>
                   </div>
 
                   <div className="shrink-0 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex flex-col gap-2">
@@ -2998,7 +3020,6 @@ if (isLoadingSession) {
                       </button>
                     )}
                   </div>
-
                 </div>
 
               </div>
