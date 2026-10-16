@@ -29,23 +29,33 @@ interface Member {
 
 // #region --- Funções Auxiliares ---
 
-const generateFixedPolyline = (data: number[], width: number, height: number, minVal: number, maxVal: number) => {
+const generateFixedPolyline = (data: number[], width: number, height: number, minVal: number, maxVal: number, isIdle: boolean = false) => {
   if (!data || data.length === 0) return `0,${height / 2} ${width},${height / 2}`;
   const range = maxVal - minVal;
-  
-  if (data.length === 1) {
-    const y = height - ((data[0] - minVal) / range) * height;
-    return `0,${y} ${width},${y}`;
+
+  if (isIdle) {
+    const stepX = width / 39; // Trava o risco visual em 40 pontos virtuais
+    const reversedData = [...data].reverse();
+    const offsetX = width - ((reversedData.length - 1) * stepX);
+    return reversedData.map((val, index) => {
+      const x = offsetX + (index * stepX);
+      const clampedVal = Math.max(minVal, Math.min(maxVal, val));
+      const y = height - ((clampedVal - minVal) / range) * height;
+      return `${x},${y}`;
+    }).join(" ");
+  } else {
+    if (data.length === 1) {
+      const y = height - ((data[0] - minVal) / range) * height;
+      return `0,${y} ${width},${y}`;
+    }
+    const stepX = width / (data.length - 1);
+    return data.map((val, index) => {
+      const x = index * stepX;
+      const clampedVal = Math.max(minVal, Math.min(maxVal, val));
+      const y = height - ((clampedVal - minVal) / range) * height;
+      return `${x},${y}`;
+    }).join(" ");
   }
-  
-  const stepX = width / (data.length - 1);
-  return data.map((val, index) => {
-    const x = index * stepX;
-    // Opcional: trava o risco visual dentro dos limites +-2000 caso dê um pico muito louco
-    const clampedVal = Math.max(minVal, Math.min(maxVal, val));
-    const y = height - ((clampedVal - minVal) / range) * height;
-    return `${x},${y}`;
-  }).join(" ");
 };
 
 const generatePolyline = (data: number[], width: number, height: number, maxVal: number) => {
@@ -68,32 +78,36 @@ const generatePolyline = (data: number[], width: number, height: number, maxVal:
     .join(" ");
 };
 
-const generateFullPolyline = (data: number[], width: number, height: number) => {
+const generateFullPolyline = (data: number[], width: number, height: number, isIdle: boolean = false) => {
   if (!data || data.length === 0) return `0,${height}`;
-  if (data.length === 1) return `0,${height / 2} ${width},${height / 2}`;
   
   const maxData = Math.max(...data);
   const minData = Math.min(...data);
-  
-  // Se todos os valores forem iguais, desenha a linha no meio
-  if (maxData === minData) {
-    return data.map((_, i) => `${i * (width / (data.length - 1))},${height / 2}`).join(" ");
-  }
-
-  // Adiciona 15% de "respiro" no topo e na base
-  const padding = (maxData - minData) * 0.15;
+  const padding = maxData === minData ? 1 : (maxData - minData) * 0.15;
   const adjustedMax = maxData + padding;
   const adjustedMin = minData - padding;
   const range = adjustedMax - adjustedMin;
-  
-  const stepX = width / (data.length - 1);
-  
-  return data.map((val, index) => {
-    const x = index * stepX;
-    // Mapeia o valor perfeitamente dentro do SVG
-    const y = height - ((val - adjustedMin) / range) * height;
-    return `${x},${y}`;
-  }).join(" ");
+
+  if (isIdle) {
+    const stepX = width / 39;
+    const reversedData = [...data].reverse();
+    const offsetX = width - ((reversedData.length - 1) * stepX);
+    return reversedData.map((val, index) => {
+      const x = offsetX + (index * stepX);
+      const y = height - ((val - adjustedMin) / range) * height;
+      return `${x},${y}`;
+    }).join(" ");
+  } else {
+    if (data.length === 1) return `0,${height / 2} ${width},${height / 2}`;
+    if (maxData === minData) return data.map((_, i) => `${i * (width / (data.length - 1))},${height / 2}`).join(" ");
+    
+    const stepX = width / (data.length - 1);
+    return data.map((val, index) => {
+      const x = index * stepX;
+      const y = height - ((val - adjustedMin) / range) * height;
+      return `${x},${y}`;
+    }).join(" ");
+  }
 };
 
 const generateNameFromEmail = (email: string) => {
@@ -461,7 +475,12 @@ async function buscarEquipe() {
   // Estado para controlar o modal de informações de eficiência (COLOCAR AQUI!)
   const [infoModalOpen, setInfoModalOpen] = useState<{ titulo: string; descricao: string; cor: string } | null>(null);
 
-  
+  const [provaFlags, setProvaFlags] = useState<number[]>([]);
+  const [idleData, setIdleData] = useState({
+    tensao: [] as number[], potenciaBateria: [] as number[], potenciaMotor: [] as number[],
+    potenciaGeracao: [] as number[], bateria: [] as number[], velocidade: [] as number[],
+    correnteBateria: [] as number[], correnteMotor: [] as number[], s1: [] as number[], s2: [] as number[]
+  });
 
 // Função auxiliar para disparar notificações com animação de esmaecimento
   function dispararToast(mensagem: string, tipo: 'sucesso' | 'aviso' | 'erro' = 'sucesso') {
@@ -897,6 +916,20 @@ const currentPower = mainData[0] || 0;
         }
         if (medicao.string_2    != null) setString_2(medicao.string_2); 
 
+        // matriz para alimentar os gráficos em tempo real quando parado
+        setIdleData(prev => ({
+            tensao: [medicao.tensao ?? 0, ...prev.tensao].slice(0, 40),
+            potenciaBateria: [medicao.potencia ?? 0, ...prev.potenciaBateria].slice(0, 40),
+            potenciaMotor: [(medicao.tensao ?? 0) * (medicao.corrente_2 ?? 0), ...prev.potenciaMotor].slice(0, 40),
+            potenciaGeracao: [(medicao.tensao ?? 0) * (medicao.string_1 ?? 0), ...prev.potenciaGeracao].slice(0, 40),
+            bateria: [medicao.porcentagem ?? 0, ...prev.bateria].slice(0, 40),
+            velocidade: [medicao.velocidade ?? 0, ...prev.velocidade].slice(0, 40),
+            correnteBateria: [medicao.corrente ?? 0, ...prev.correnteBateria].slice(0, 40),
+            correnteMotor: [medicao.corrente_2 ?? 0, ...prev.correnteMotor].slice(0, 40),
+            s1: [medicao.string_1 ?? 0, ...prev.s1].slice(0, 40),
+            s2: [medicao.string_2 ?? 0, ...prev.s2].slice(0, 40)
+        }));
+
         // isso aqui é pra gravar os dados no grafico da aba de análise
         if (provaAtivaRef.current) {
             setRecordingData(prev => ({
@@ -976,6 +1009,7 @@ function prova_iniciar() {
     setNomeDefinitivoProva("");
     setPedirConfirmacaoDescarte(false);
     set_idProvaAtual(-1);
+    setProvaFlags([]);
 
     // Salva no localStorage para resistir ao F5 / refresh
     localStorage.setItem("telemetria_gravacao_ativa", JSON.stringify({ inicio: agora }));
@@ -1172,18 +1206,20 @@ function prova_iniciar() {
     }
   }
 
-  // Lista central de todos os gráficos disponíveis para facilitar os mapas e sobreposições
+// Troca automática entre o Histórico Permanente e a Variação em Tempo Real
+  const currentGraphData = provaAtiva ? recordingData : idleData;
+
   const availableGraphs = [
-    { id: "tensao", label: "Tensão (V)", data: recordingData.tensao, color: "#3b82f6" },
-    { id: "potBateria", label: "Pot. Bateria (W)", data: recordingData.potenciaBateria, color: "#14b8a6" },
-    { id: "potMotor", label: "Pot. Motor (W)", data: recordingData.potenciaMotor, color: "#8b5cf6" },
-    { id: "potGeracao", label: "Pot. Geração (W)", data: recordingData.potenciaGeracao, color: "#ef4444" },
-    { id: "velocidade", label: "Velocidade", data: recordingData.velocidade, color: "#eab308" },
-    { id: "corrBateria", label: "Corr. Bateria (A)", data: recordingData.correnteBateria, color: "#f97316" },
-    { id: "corrMotor", label: "Corr. Motor (A)", data: recordingData.correnteMotor, color: "#d946ef" },
-    { id: "s1", label: "S1 Status", data: recordingData.s1, color: "#22c55e" },
-    { id: "s2", label: "S2 Status", data: recordingData.s2, color: "#f43f5e" },
-    { id: "bateria", label: "Bateria (%)", data: recordingData.bateria, color: "#10b981" }
+    { id: "tensao", label: "Tensão (V)", data: currentGraphData.tensao, color: "#3b82f6" },
+    { id: "potBateria", label: "Pot. Bateria (W)", data: currentGraphData.potenciaBateria, color: "#14b8a6" },
+    { id: "potMotor", label: "Pot. Motor (W)", data: currentGraphData.potenciaMotor, color: "#8b5cf6" },
+    { id: "potGeracao", label: "Pot. Geração (W)", data: currentGraphData.potenciaGeracao, color: "#ef4444" },
+    { id: "velocidade", label: "Velocidade", data: currentGraphData.velocidade, color: "#eab308" },
+    { id: "corrBateria", label: "Corr. Bateria (A)", data: currentGraphData.correnteBateria, color: "#f97316" },
+    { id: "corrMotor", label: "Corr. Motor (A)", data: currentGraphData.correnteMotor, color: "#d946ef" },
+    { id: "s1", label: "S1 Status", data: currentGraphData.s1, color: "#22c55e" },
+    { id: "s2", label: "S2 Status", data: currentGraphData.s2, color: "#f43f5e" },
+    { id: "bateria", label: "Bateria (%)", data: currentGraphData.bateria, color: "#10b981" }
   ];
 
   // Função para marcar/desmarcar na configuração
@@ -2893,7 +2929,7 @@ if (isLoadingSession) {
                         <div className="w-full flex-1 min-h-0 pointer-events-none mt-1">
                           <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
                             <polyline 
-                              points={graph.id.startsWith("pot") ? generateFixedPolyline(graph.data, 1000, 200, -2000, 2000) : generateFullPolyline(graph.data, 1000, 200)} 
+                              points={graph.id.startsWith("pot") ? generateFixedPolyline(graph.data, 1000, 200, -2000, 2000, !provaAtiva) : generateFullPolyline(graph.data, 1000, 200, !provaAtiva)} 
                               fill="none" stroke={graph.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" 
                             />
                           </svg>
@@ -2948,6 +2984,17 @@ if (isLoadingSession) {
                         className={`w-full py-2 rounded-xl text-xs font-bold transition-all border ${darkMode ? "border-gray-700 text-gray-400 hover:bg-gray-700 hover:text-white" : "border-gray-300 text-gray-500 hover:bg-gray-100 hover:text-gray-800"}`}
                       >
                         Desmarcar todos
+                      </button>
+                    )}
+                    {provaAtiva && (
+                      <button
+                        onClick={() => {
+                          setProvaFlags(prev => [...prev, recordingData.tensao.length - 1]);
+                          dispararToast("Marcação registada no gráfico!", "sucesso");
+                        }}
+                        className="w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs font-bold rounded-xl transition-all border border-red-500/20 flex items-center justify-center mt-2"
+                      >
+                        🚩 Inserir Marcação (Flag)
                       </button>
                     )}
                   </div>
@@ -3441,7 +3488,7 @@ if (isLoadingSession) {
 
               {/* GRÁFICO SVG PRINCIPAL */}
               <div className="flex-1 relative h-full">
-                <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+<svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
                   <defs>
                     <linearGradient id="expandedGradient" x1="0" x2="0" y1="0" y2="1">
                       <stop offset="0%" stopColor={expandedGraph.color} stopOpacity="0.4" />
@@ -3451,12 +3498,7 @@ if (isLoadingSession) {
 
                   {/* Linhas de Grade de Fundo */}
                   {(expandedGraph.id.startsWith("pot") ? [0, 25, 50, 75, 100, 125, 150, 175, 200] : [0, 50, 100, 150, 200]).map((y) => (
-                    <line
-                      key={`grid-${y}`}
-                      x1="0" y1={y} x2="1000" y2={y}
-                      stroke={darkMode ? "#374151" : "#f3f4f6"}
-                      strokeWidth="1" strokeDasharray="5,5"
-                    />
+                    <line key={`grid-${y}`} x1="0" y1={y} x2="1000" y2={y} stroke={darkMode ? "#374151" : "#f3f4f6"} strokeWidth="1" strokeDasharray="5,5" />
                   ))}
 
                   {/* LINHA DE ZERO DESTACADA PARA POTÊNCIA */}
@@ -3464,14 +3506,14 @@ if (isLoadingSession) {
                     <line x1="0" y1="100" x2="1000" y2="100" stroke={darkMode ? "#ef4444" : "#f97316"} strokeWidth="1.5" strokeDasharray="4,4" />
                   )}
 
-                  {/* Renderização baseada no tipo de gráfico */}
+                  {/* Renderização baseada no tipo de gráfico (com o !provaAtiva) */}
                   <polygon
                     points={`0,${expandedGraph.id.startsWith("pot") ? 100 : 200} ${
                       expandedGraph.id.startsWith("pot")
-                        ? generateFixedPolyline(expandedGraph.data, 1000, 200, -2000, 2000)
+                        ? generateFixedPolyline(expandedGraph.data, 1000, 200, -2000, 2000, !provaAtiva)
                         : expandedGraph.id === "bateria"
-                        ? generateFixedPolyline(expandedGraph.data, 1000, 200, 0, 100)
-                        : generateFullPolyline(expandedGraph.data, 1000, 200)
+                        ? generateFixedPolyline(expandedGraph.data, 1000, 200, 0, 100, !provaAtiva)
+                        : generateFullPolyline(expandedGraph.data, 1000, 200, !provaAtiva)
                     } 1000,${expandedGraph.id.startsWith("pot") ? 100 : 200}`}
                     fill="url(#expandedGradient)"
                   />
@@ -3479,13 +3521,21 @@ if (isLoadingSession) {
                   <polyline
                     points={
                       expandedGraph.id.startsWith("pot")
-                        ? generateFixedPolyline(expandedGraph.data, 1000, 200, -2000, 2000)
+                        ? generateFixedPolyline(expandedGraph.data, 1000, 200, -2000, 2000, !provaAtiva)
                         : expandedGraph.id === "bateria"
-                        ? generateFixedPolyline(expandedGraph.data, 1000, 200, 0, 100)
-                        : generateFullPolyline(expandedGraph.data, 1000, 200)
+                        ? generateFixedPolyline(expandedGraph.data, 1000, 200, 0, 100, !provaAtiva)
+                        : generateFullPolyline(expandedGraph.data, 1000, 200, !provaAtiva)
                     }
                     fill="none" stroke={expandedGraph.color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-md"
                   />
+                  
+                  {/* === FLAGS (MARCAÇÕES VERTICAIS DE EVENTOS) === */}
+                  {provaAtiva && provaFlags.map((flagIdx, i) => {
+                    if (flagIdx >= expandedGraph.data.length || expandedGraph.data.length <= 1) return null;
+                    const stepX = 1000 / (expandedGraph.data.length - 1);
+                    const x = flagIdx * stepX;
+                    return <line key={`flag-${i}`} x1={x} y1="0" x2={x} y2="200" stroke="#ef4444" strokeWidth="2.5" strokeDasharray="6,4" className="drop-shadow-lg" />;
+                  })}
                   
                   <line x1="0" y1="200" x2="1000" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
                   <line x1="0" y1="0" x2="0" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
@@ -3569,7 +3619,7 @@ if (isLoadingSession) {
 
                     {/* SVG CONTAINER DIV */}
                     <div className="flex-1 relative h-full">
-                      <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-hidden">
+<svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-hidden">
                         
                         {/* Linhas de Grade Adaptativas */}
                         {(isOnlyPower ? [0, 25, 50, 75, 100, 125, 150, 175, 200] : [0, 50, 100, 150, 200]).map((y) => (
@@ -3585,7 +3635,7 @@ if (isLoadingSession) {
                         {availableGraphs.filter(g => overlaySelections.includes(g.id)).map(g => (
                           <polyline
                             key={`over-line-${g.id}`}
-                            points={isOnlyPower ? generateFixedPolyline(g.data, 1000, 200, -2000, 2000) : generateFullPolyline(g.data, 1000, 200)}
+                            points={isOnlyPower ? generateFixedPolyline(g.data, 1000, 200, -2000, 2000, !provaAtiva) : generateFullPolyline(g.data, 1000, 200, !provaAtiva)}
                             fill="none" 
                             stroke={g.color} 
                             strokeWidth="3" 
@@ -3594,6 +3644,15 @@ if (isLoadingSession) {
                             className="drop-shadow-sm opacity-90 hover:opacity-100 transition-all"
                           />
                         ))}
+
+                        {/* === FLAGS (MARCAÇÕES VERTICAIS DE EVENTOS NA SOBREPOSIÇÃO) === */}
+                        {provaAtiva && overlaySelections.length > 0 && provaFlags.map((flagIdx, i) => {
+                          const dataLen = availableGraphs.find(g => g.id === overlaySelections[0])?.data.length || 0;
+                          if (flagIdx >= dataLen || dataLen <= 1) return null;
+                          const stepX = 1000 / (dataLen - 1);
+                          const x = flagIdx * stepX;
+                          return <line key={`over-flag-${i}`} x1={x} y1="0" x2={x} y2="200" stroke="#ef4444" strokeWidth="2.5" strokeDasharray="6,4" />;
+                        })}
 
                         {/* Bordas Superior e Inferior para fechar o gráfico visualmente */}
                         <line x1="0" y1="200" x2="1000" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
