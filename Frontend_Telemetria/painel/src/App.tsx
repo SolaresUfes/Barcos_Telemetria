@@ -506,13 +506,18 @@ async function buscarEquipe() {
       fotoAutor: currentUser?.photo || ""
     };
     
-    setDiarioLogs([novaAnotacao, ...diarioLogs]);
+    // Cria a nova lista de anotações juntando a nova com as antigas
+    const novosLogs = [novaAnotacao, ...diarioLogs];
+    
+    // Atualiza o estado da tela
+    setDiarioLogs(novosLogs);
+    
+    // Salva a lista inteira no armazenamento local do navegador
+    localStorage.setItem("telemetria_diario", JSON.stringify(novosLogs));
+
     setTituloDiario("");
     setTextoDiario("");
     dispararToast("Anotação salva no Diário de Bordo!", "sucesso");
-    
-    // NOTA: Futuramente, você pode ligar isto ao Supabase usando algo como:
-    // await supabase.from('diario').insert([{ titulo, texto, autor }])
   }
 
 // Função auxiliar para disparar notificações com animação de esmaecimento
