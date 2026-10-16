@@ -785,17 +785,25 @@ function tocarSomSuave() {
 
 // Cálculos de Eficiência Dinâmicos (Estimativas baseadas APENAS em Potências)
 
-  const currentPower = mainData[0] || 0;
+const currentPower = mainData[0] || 0;
 
-    // 1. Painel Solar: Balanço energético. Se o motor gasta 'X' e a bateria descarrega 'Y', o painel está gerando a diferença.
-  const potSolarEstimada = Math.max(0, rpm + (batteryRate > 0 ? Math.abs(currentPower) : -Math.abs(currentPower)));
-  const eficienciaPainel = potSolarEstimada > 0 ? Math.min(100, (potSolarEstimada / 800) * 100) : 0; 
+  // Cálculos de Eficiência baseados ESTRITAMENTE E APENAS em Potências (W)
+  const potBateria = currentPower || 0;
+  const potMotor = rpm || 0;        // No seu código, 'rpm' guarda a Pot. do Motor (V * Corrente_2)
+  const potGeracao = S1_power || 0; // No seu código, 'S1_power' guarda a Pot. de Geração (V * S1)
+
+  // 1. Painel Solar: O quanto ele está a gerar em relação ao limite físico máximo dele (ex: 800W)
+  const eficienciaPainel = potGeracao > 0 ? Math.min(100, (potGeracao / 800) * 100) : 0; 
   
-  // 2. Motor: Curva de eficiência térmica BLDC. A eficiência ideal (95%) cai proporcionalmente conforme a potência aumenta.
-  const eficienciaMotor = rpm > 0 ? Math.max(70, 95 - (rpm / 1000) * 15) : 0; 
+  // 2. Motor: O quanto ele consegue aproveitar da energia total disponibilizada no sistema
+  const energiaFornecida = potGeracao + Math.abs(potBateria);
+  const eficienciaMotor = energiaFornecida > 0 ? Math.min(100, (potMotor / energiaFornecida) * 100) : 0; 
   
-  // 3. Bateria: Perda por Efeito Joule (C-Rate). Potências extremas de carga/descarga reduzem a eficiência útil real.
-  const eficienciaBateria = currentPower !== 0 ? Math.max(0, 100 - (Math.abs(currentPower) / 2000) * 10) : 100;
+  // 3. Bateria: Perdas por resistência interna. Quanto mais potência forçada, menor a eficiência.
+  const eficienciaBateria = Math.max(0, 100 - (Math.abs(potBateria) / 2000) * 10); 
+ 
+ 
+ 
   // Comentado para testes
   // const estimatedTimeRaw = (battery / Math.max(10, currentPower)) * 2.5;
   // const estHours = Math.floor(estimatedTimeRaw);
@@ -2702,8 +2710,8 @@ if (isLoadingSession) {
                     {/* Eficiência do Painel Solar */}
                     <div 
                       onClick={() => setInfoModalOpen({
-                        titulo: "Eficiência do Painel Solar",
-                        descricao: "Calculada através do balanço energético instantâneo (Potência exigida pelo Motor vs. Potência fornecida/recebida pela Bateria). Este valor estimado da geração é cruzado com a capacidade máxima instalada (800W).",
+                        titulo: "Capacidade de Fornecimento (Painéis)",
+                        descricao: "Avalia a potência atual fornecida pelo painel solar em relação ao seu máximo teórico (neste caso, 800W). Determina o potencial disponível para carregar a bateria de forma eficiente ou para sustentar a demanda do motor elétrico.",
                         cor: "text-yellow-500"
                       })}
                       className={`p-3 rounded-2xl border cursor-pointer hover:scale-[1.02] transition-all flex flex-col items-center justify-center text-center ${darkMode ? "bg-gray-900 border-gray-700 hover:border-gray-500" : "bg-gray-50 border-gray-200 hover:border-gray-400"}`}
@@ -2716,8 +2724,8 @@ if (isLoadingSession) {
                     {/* Eficiência da Bateria */}
                     <div 
                       onClick={() => setInfoModalOpen({
-                        titulo: "Eficiência do Pack (BMS)",
-                        descricao: "Calculada com base no estresse térmico (C-Rate) derivado da Potência atual da Bateria. Picos de potência muito altos (tanto na carga quanto descarga) aumentam as perdas por Efeito Joule, diminuindo a eficiência útil de entrega de energia.",
+                        titulo: "Eficiência de Transferência (Bateria)",
+                        descricao: "Calculada puramente pelo nível de potência extraída ou injetada. Quando a potência de carga/descarga é muito elevada, a bateria sofre maiores perdas por resistência (calor), diminuindo a eficiência energética útil.",
                         cor: "text-emerald-500"
                       })}
                       className={`p-3 rounded-2xl border cursor-pointer hover:scale-[1.02] transition-all flex flex-col items-center justify-center text-center ${darkMode ? "bg-gray-900 border-gray-700 hover:border-gray-500" : "bg-gray-50 border-gray-200 hover:border-gray-400"}`}
@@ -2730,8 +2738,8 @@ if (isLoadingSession) {
                     {/* Eficiência do Motor */}
                     <div 
                       onClick={() => setInfoModalOpen({
-                        titulo: "Eficiência do Motor",
-                        descricao: "Estimativa baseada na curva de potência térmica típica de motores BLDC. O motor opera com eficiência ideal (≈95%) em cargas médias, mas sofre quedas de rendimento e desperdício de energia por calor em cenários de alta potência de arranque.",
+                        titulo: "Eficiência de Consumo (Motor)",
+                        descricao: "Relação direta calculada a partir do Balanço Energético: Potência absorvida pelo Motor dividida pela Energia Total Fornecida (Potência do Painel + Potência extraída da Bateria). Quantifica o aproveitamento da energia elétrica circulante.",
                         cor: "text-blue-500"
                       })}
                       className={`p-3 rounded-2xl border cursor-pointer hover:scale-[1.02] transition-all flex flex-col items-center justify-center text-center ${darkMode ? "bg-gray-900 border-gray-700 hover:border-gray-500" : "bg-gray-50 border-gray-200 hover:border-gray-400"}`}
