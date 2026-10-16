@@ -487,8 +487,20 @@ async function buscarEquipe() {
     correnteBateria: [] as number[], correnteMotor: [] as number[], s1: [] as number[], s2: [] as number[]
   });
 
-  // Estados para o Diário de Bordo
-  const [diarioLogs, setDiarioLogs] = useState<{id: string, titulo: string, texto: string, data: string, autor: string, fotoAutor: string}[]>([]);
+// Estados para o Diário de Bordo com carregamento direto
+  const [diarioLogs, setDiarioLogs] = useState<{id: string, titulo: string, texto: string, data: string, autor: string, fotoAutor: string}[]>(() => {
+    const salvo = localStorage.getItem("telemetria_diario");
+    if (salvo) {
+      try {
+        return JSON.parse(salvo);
+      } catch (e) {
+        console.log("Erro ao carregar o diário: ", e);
+        return [];
+      }
+    }
+    return [];
+  });
+  
   const [tituloDiario, setTituloDiario] = useState("");
   const [textoDiario, setTextoDiario] = useState("");
 
@@ -604,6 +616,18 @@ function tocarSomSuave() {
   // #endregion
 
   // #region Efeitos
+
+  // Efeito para carregar as anotações do Diário de Bordo guardadas localmente
+  useEffect(() => {
+    const diarioSalvo = localStorage.getItem("telemetria_diario");
+    if (diarioSalvo) {
+      try {
+        setDiarioLogs(JSON.parse(diarioSalvo));
+      } catch (e) {
+        console.log("Erro ao carregar o diário: ", e);
+      }
+    }
+  }, []);
 
   // Efeito para controlar o modo escuro
   useEffect(() => {
