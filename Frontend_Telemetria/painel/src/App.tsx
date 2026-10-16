@@ -3540,7 +3540,8 @@ if (isLoadingSession) {
               </button>
             </div>
 
-            <div className="flex-1 w-full relative min-h-0 mt-4 bg-gray-900/5 rounded-2xl border dark:border-gray-700/50 flex py-4">
+            {/* CAIXA DO GRÁFICO (COM OVERFLOW HIDDEN PARA NÃO VAZAR) */}
+            <div className="flex-1 w-full relative min-h-0 mt-4 bg-gray-900/5 rounded-2xl border dark:border-gray-700/50 flex p-4 overflow-hidden">
               
               {/* LÓGICA CONDICIONAL: SE TODAS AS ESCOLHAS SÃO DE POTÊNCIA */}
               {(() => {
@@ -3550,7 +3551,7 @@ if (isLoadingSession) {
                   <>
                     {/* Renderiza a Escala Lateral de +-2000 só se for potência */}
                     {isOnlyPower && (
-                      <div className="relative w-12 shrink-0 h-full mr-2">
+                      <div className="relative w-12 shrink-0 h-full border-r border-gray-300 dark:border-gray-600 mr-4">
                         {[2000, 1500, 1000, 500, 0, -500, -1000, -1500, -2000].map((val) => {
                           const percent = ((2000 - val) / 4000) * 100;
                           return (
@@ -3566,31 +3567,39 @@ if (isLoadingSession) {
                       </div>
                     )}
 
-                    <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible px-4">
-                      {/* Linhas de Grade Adaptativas */}
-                      {(isOnlyPower ? [0, 25, 50, 75, 100, 125, 150, 175, 200] : [0, 50, 100, 150, 200]).map((y) => (
-                        <line key={`over-grid-${y}`} x1="0" y1={y} x2="1000" y2={y} stroke={darkMode ? "#374151" : "#e5e7eb"} strokeWidth="1" strokeDasharray="4,4" />
-                      ))}
+                    {/* SVG CONTAINER DIV */}
+                    <div className="flex-1 relative h-full">
+                      <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-hidden">
+                        
+                        {/* Linhas de Grade Adaptativas */}
+                        {(isOnlyPower ? [0, 25, 50, 75, 100, 125, 150, 175, 200] : [0, 50, 100, 150, 200]).map((y) => (
+                          <line key={`over-grid-${y}`} x1="0" y1={y} x2="1000" y2={y} stroke={darkMode ? "#374151" : "#e5e7eb"} strokeWidth="1" strokeDasharray="4,4" />
+                        ))}
 
-                      {/* Linha do Zero destacada */}
-                      {isOnlyPower && (
-                        <line x1="0" y1="100" x2="1000" y2="100" stroke={darkMode ? "#ef4444" : "#f97316"} strokeWidth="1.5" strokeDasharray="4,4" />
-                      )}
+                        {/* Linha do Zero destacada */}
+                        {isOnlyPower && (
+                          <line x1="0" y1="100" x2="1000" y2="100" stroke={darkMode ? "#ef4444" : "#f97316"} strokeWidth="2" strokeDasharray="4,4" />
+                        )}
 
-                      {/* Renderiza as Linhas com Escala Dinâmica vs Escala Fixa */}
-                      {availableGraphs.filter(g => overlaySelections.includes(g.id)).map(g => (
-                        <polyline
-                          key={`over-line-${g.id}`}
-                          points={isOnlyPower ? generateFixedPolyline(g.data, 1000, 200, -2000, 2000) : generateFullPolyline(g.data, 1000, 200)}
-                          fill="none" 
-                          stroke={g.color} 
-                          strokeWidth="3" 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                          className="drop-shadow-sm opacity-90 hover:opacity-100 hover:stroke-[5px] transition-all cursor-crosshair"
-                        />
-                      ))}
-                    </svg>
+                        {/* Renderiza as Linhas com Escala Dinâmica vs Escala Fixa */}
+                        {availableGraphs.filter(g => overlaySelections.includes(g.id)).map(g => (
+                          <polyline
+                            key={`over-line-${g.id}`}
+                            points={isOnlyPower ? generateFixedPolyline(g.data, 1000, 200, -2000, 2000) : generateFullPolyline(g.data, 1000, 200)}
+                            fill="none" 
+                            stroke={g.color} 
+                            strokeWidth="3" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            className="drop-shadow-sm opacity-90 hover:opacity-100 transition-all"
+                          />
+                        ))}
+
+                        {/* Bordas Superior e Inferior para fechar o gráfico visualmente */}
+                        <line x1="0" y1="200" x2="1000" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
+                        <line x1="0" y1="0" x2="0" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
+                      </svg>
+                    </div>
                   </>
                 );
               })()}
