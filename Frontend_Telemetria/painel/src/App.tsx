@@ -3590,8 +3590,8 @@ if (isLoadingSession) {
               </button>
             </div>
 
-            {/* CAIXA DO GRÁFICO (COM OVERFLOW HIDDEN PARA NÃO VAZAR) */}
-            <div className="flex-1 w-full relative min-h-0 mt-4 bg-gray-900/5 rounded-2xl border dark:border-gray-700/50 flex p-4 overflow-hidden">
+            {/* CAIXA DO GRÁFICO (Limpa, sem fundo cinza e com a mesma estrutura do Individual) */}
+            <div className="flex-1 w-full flex relative min-h-0 mt-4">
               
               {/* LÓGICA CONDICIONAL: SE TODAS AS ESCOLHAS SÃO DE POTÊNCIA */}
               {(() => {
@@ -3601,7 +3601,7 @@ if (isLoadingSession) {
                   <>
                     {/* Renderiza a Escala Lateral de +-2000 só se for potência */}
                     {isOnlyPower && (
-                      <div className="relative w-12 shrink-0 h-full border-r border-gray-300 dark:border-gray-600 mr-4">
+                      <div className="relative w-12 shrink-0 h-full">
                         {[2000, 1500, 1000, 500, 0, -500, -1000, -1500, -2000].map((val) => {
                           const percent = ((2000 - val) / 4000) * 100;
                           return (
@@ -3619,19 +3619,19 @@ if (isLoadingSession) {
 
                     {/* SVG CONTAINER DIV */}
                     <div className="flex-1 relative h-full">
-<svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-hidden">
+                      <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-hidden">
                         
-                        {/* Linhas de Grade Adaptativas */}
+                        {/* Linhas de Grade Adaptativas (Cores e traços idênticos ao Individual) */}
                         {(isOnlyPower ? [0, 25, 50, 75, 100, 125, 150, 175, 200] : [0, 50, 100, 150, 200]).map((y) => (
-                          <line key={`over-grid-${y}`} x1="0" y1={y} x2="1000" y2={y} stroke={darkMode ? "#374151" : "#e5e7eb"} strokeWidth="1" strokeDasharray="4,4" />
+                          <line key={`over-grid-${y}`} x1="0" y1={y} x2="1000" y2={y} stroke={darkMode ? "#374151" : "#f3f4f6"} strokeWidth="1" strokeDasharray="5,5" />
                         ))}
 
                         {/* Linha do Zero destacada */}
                         {isOnlyPower && (
-                          <line x1="0" y1="100" x2="1000" y2="100" stroke={darkMode ? "#ef4444" : "#f97316"} strokeWidth="2" strokeDasharray="4,4" />
+                          <line x1="0" y1="100" x2="1000" y2="100" stroke={darkMode ? "#ef4444" : "#f97316"} strokeWidth="1.5" strokeDasharray="4,4" />
                         )}
 
-                        {/* Renderiza as Linhas com Escala Dinâmica vs Escala Fixa */}
+                        {/* Renderiza as Linhas (Sem polygon, garantindo que NÃO há degradê) */}
                         {availableGraphs.filter(g => overlaySelections.includes(g.id)).map(g => (
                           <polyline
                             key={`over-line-${g.id}`}
