@@ -435,9 +435,12 @@ async function buscarEquipe() {
   const [novoNomeEditado, setNovoNomeEditado] = useState("");
   // estado para termos graficos espandidos
   const [expandedGraph, setExpandedGraph] = useState<{ label: string, data: number[], color: string } | null>(null);
-  // novos estados para configurações de gráfico
+// novos estados para configurações de gráfico
   const [overlaySelections, setOverlaySelections] = useState<string[]>([]);
   const [showOverlayModal, setShowOverlayModal] = useState(false);
+  
+  // Estado para controlar o modal de informações de eficiência (COLOCAR AQUI!)
+  const [infoModalOpen, setInfoModalOpen] = useState<{ titulo: string; descricao: string; cor: string } | null>(null);
 
 // Função auxiliar para disparar notificações com animação de esmaecimento
   function dispararToast(mensagem: string, tipo: 'sucesso' | 'aviso' | 'erro' = 'sucesso') {
@@ -503,23 +506,6 @@ function tocarSomSuave() {
   const [S1_power, setS1_power] = useState(-1)
   const [string_2, setString_2] = useState(-1);
   const [idProvaAtual, set_idProvaAtual] = useState(-1)
-  
-  const [tempoTotal, setTempoTotal] = useState<number>(0);
-  const [minutoAtual, setMinutoAtual] = useState<number>(0);
-
-  const previsaoBateria =
-    tempoTotal > 0
-      ? ((minutoAtual - tempoTotal) / tempoTotal) * -100
-      : 0;
-
-  const avancarMinuto = () => {
-    setMinutoAtual((minuto) => minuto + 1);
-  };
-
-  const retrocederMinuto = () => {
-    setMinutoAtual((minuto) => Math.max(0, minuto - 1));
-  };
-
   // --- novos estados para a area de desempenho ---
   const provaAtivaRef = useRef(false);
   useEffect(() => {
@@ -796,15 +782,20 @@ function tocarSomSuave() {
     timeZone: "America/Sao_Paulo",
   });
 
-  // Estado para controlar o modal de informações de eficiência
-  const [infoModalOpen, setInfoModalOpen] = useState<{ titulo: string; descricao: string; cor: string } | null>(null);
 
-  // Cálculos de Eficiência Dinâmicos (Estimativas com base nos dados atuais)
-  const eficienciaPainel = S1_power > 0 ? Math.min(100, (S1_power / 800) * 100) : 0; // Baseado numa potência teórica máxima de 800W
-  const eficienciaMotor = rpm > 0 ? Math.min(96, 85 + (speed * 0.3)) : 0; // Estimação baseada na velocidade vs consumo
-  const eficienciaBateria = tensaoReal > 0 ? Math.max(0, 100 - (voltageImbalance * 15)) : 0; // Penalizada pelo desbalanço (ΔV)
+// Cálculos de Eficiência Dinâmicos (Estimativas baseadas APENAS em Potências)
 
   const currentPower = mainData[0] || 0;
+
+    // 1. Painel Solar: Balanço energético. Se o motor gasta 'X' e a bateria descarrega 'Y', o painel está gerando a diferença.
+  const potSolarEstimada = Math.max(0, rpm + (batteryRate > 0 ? Math.abs(currentPower) : -Math.abs(currentPower)));
+  const eficienciaPainel = potSolarEstimada > 0 ? Math.min(100, (potSolarEstimada / 800) * 100) : 0; 
+  
+  // 2. Motor: Curva de eficiência térmica BLDC. A eficiência ideal (95%) cai proporcionalmente conforme a potência aumenta.
+  const eficienciaMotor = rpm > 0 ? Math.max(70, 95 - (rpm / 1000) * 15) : 0; 
+  
+  // 3. Bateria: Perda por Efeito Joule (C-Rate). Potências extremas de carga/descarga reduzem a eficiência útil real.
+  const eficienciaBateria = currentPower !== 0 ? Math.max(0, 100 - (Math.abs(currentPower) / 2000) * 10) : 100;
   // Comentado para testes
   // const estimatedTimeRaw = (battery / Math.max(10, currentPower)) * 2.5;
   // const estHours = Math.floor(estimatedTimeRaw);
@@ -2551,9 +2542,11 @@ if (isLoadingSession) {
                     </div>
                   </div>
 
-                  {/* <div className={`p-2 lg:p-6 flex flex-col items-center justify-center w-full h-full ${darkMode ? "bg-gray-800" : "bg-white"}`}>
+                  <div
+                    className={`p-2 lg:p-6 flex flex-col items-center justify-center w-full h-full ${darkMode ? "bg-gray-800" : "bg-white"}`}
+                  >
                     <span className="text-[10px] lg:text-[13px] font-black uppercase tracking-wider text-gray-500 mb-1 text-center w-full">
-                      Previsão Bateria
+                      S2 Status
                     </span>
                     <div className="flex items-baseline justify-center">
                       <span
@@ -2562,95 +2555,7 @@ if (isLoadingSession) {
                         {string_2.toFixed(3)}
                       </span>
                     </div>
-                  </div> */}
-
-
-                  <div className={`p-2 lg:p-4 flex flex-col items-center justify-center w-full h-full ${darkMode ? "bg-gray-800" : "bg-white"}`}>
-                    <span className="text-[10px] lg:text-[13px] font-black uppercase tracking-wider text-gray-500 mb-2 text-center w-full">
-                      Previsão Bateria
-                    </span>
-
-                    {/* Input do tempo total */}
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                      <label className="text-xs text-gray-500 whitespace-nowrap">
-                        Tempo de prova:
-                      </label>
-
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={tempoTotal === 0 ? "" : tempoTotal}
-                        onChange={(e) => {
-                          const valor = e.target.value;
-                          setTempoTotal(
-                            valor === "" ? 0 : Math.max(0, Number(valor))
-                          );
-                        }}
-                        placeholder="Min"
-                        className={`w-16 rounded-md border px-1 py-1 text-center text-xs font-bold outline-none ${
-                          darkMode
-                            ? "bg-gray-700 border-gray-600 text-white"
-                            : "bg-gray-50 border-gray-300 text-gray-800"
-                        }`}
-                      />
-
-                      <span className="text-xs text-gray-500">min</span>
-                    </div>
-
-                    {/* Resultado */}
-                    <div className="flex flex-col items-center mb-2">
-                      <span
-                        className={`text-base lg:text-4xl font-bold ${
-                          darkMode ? "text-rose-400" : "text-rose-600"
-                        }`}
-                      >
-                        {tempoTotal > 0
-                          ? `${previsaoBateria.toFixed(2)}%`
-                          : "--"}
-                      </span>
-
-                      <span className="text-[10px] lg:text-xs text-gray-500 mt-1">
-                        Minuto atual: {minutoAtual}
-                      </span>
-                    </div>
-
-                    {/* Botões de controle manual */}
-                    <div className="flex items-center justify-center gap-3">
-                      <button
-                        type="button"
-                        onClick={retrocederMinuto}
-                        disabled={minutoAtual === 0}
-                        className={`w-8 h-7 rounded-md font-bold text-sm transition-colors disabled:opacity-40 ${
-                          darkMode
-                            ? "bg-gray-700 hover:bg-gray-600 text-white"
-                            : "bg-gray-200 hover:bg-gray-300 text-gray-800"
-                        }`}
-                        aria-label="Diminuir minuto atual"
-                      >
-                        −
-                      </button>
-
-                      <span className="text-xs font-bold text-gray-500">
-                        {minutoAtual} min
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={avancarMinuto}
-                        className={`w-8 h-7 rounded-md font-bold text-sm transition-colors ${
-                          darkMode
-                            ? "bg-gray-700 hover:bg-gray-600 text-white"
-                            : "bg-gray-200 hover:bg-gray-300 text-gray-800"
-                        }`}
-                        aria-label="Aumentar minuto atual"
-                      >
-                        +
-                      </button>
-                    </div>
                   </div>
-
-
                 </div>
               </div>
             </div>
@@ -2798,7 +2703,7 @@ if (isLoadingSession) {
                     <div 
                       onClick={() => setInfoModalOpen({
                         titulo: "Eficiência do Painel Solar",
-                        descricao: "Calculada pela razão entre a potência real de geração (S1 e S2) e a potência máxima teórica dos painéis instalados (considerada 800W nesta estimativa). Valores próximos a 100% indicam irradiação ideal e painéis limpos.",
+                        descricao: "Calculada através do balanço energético instantâneo (Potência exigida pelo Motor vs. Potência fornecida/recebida pela Bateria). Este valor estimado da geração é cruzado com a capacidade máxima instalada (800W).",
                         cor: "text-yellow-500"
                       })}
                       className={`p-3 rounded-2xl border cursor-pointer hover:scale-[1.02] transition-all flex flex-col items-center justify-center text-center ${darkMode ? "bg-gray-900 border-gray-700 hover:border-gray-500" : "bg-gray-50 border-gray-200 hover:border-gray-400"}`}
@@ -2812,7 +2717,7 @@ if (isLoadingSession) {
                     <div 
                       onClick={() => setInfoModalOpen({
                         titulo: "Eficiência do Pack (BMS)",
-                        descricao: "Reflete a saúde e o balanceamento das células em tempo real. É calculada deduzindo perdas baseadas no desbalanço de tensão (ΔV) entre a célula de maior e menor carga. Um pack perfeitamente balanceado opera com eficiência máxima próxima a 100%.",
+                        descricao: "Calculada com base no estresse térmico (C-Rate) derivado da Potência atual da Bateria. Picos de potência muito altos (tanto na carga quanto descarga) aumentam as perdas por Efeito Joule, diminuindo a eficiência útil de entrega de energia.",
                         cor: "text-emerald-500"
                       })}
                       className={`p-3 rounded-2xl border cursor-pointer hover:scale-[1.02] transition-all flex flex-col items-center justify-center text-center ${darkMode ? "bg-gray-900 border-gray-700 hover:border-gray-500" : "bg-gray-50 border-gray-200 hover:border-gray-400"}`}
@@ -2826,7 +2731,7 @@ if (isLoadingSession) {
                     <div 
                       onClick={() => setInfoModalOpen({
                         titulo: "Eficiência do Motor",
-                        descricao: "Relaciona a potência elétrica atual consumida pelo motor (Volts × Amperes) com o rendimento mecânico estimado através da velocidade da embarcação. Motores BLDC costumam operar entre 85% e 96% de eficiência no seu ponto ideal de operação.",
+                        descricao: "Estimativa baseada na curva de potência térmica típica de motores BLDC. O motor opera com eficiência ideal (≈95%) em cargas médias, mas sofre quedas de rendimento e desperdício de energia por calor em cenários de alta potência de arranque.",
                         cor: "text-blue-500"
                       })}
                       className={`p-3 rounded-2xl border cursor-pointer hover:scale-[1.02] transition-all flex flex-col items-center justify-center text-center ${darkMode ? "bg-gray-900 border-gray-700 hover:border-gray-500" : "bg-gray-50 border-gray-200 hover:border-gray-400"}`}
