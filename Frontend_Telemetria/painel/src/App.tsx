@@ -1814,7 +1814,8 @@ if (isLoadingSession) {
                     <span
                       className={`text-[10px] sm:text-xl font-bold ml-0.5 md:ml-1 ${avgBmsTemp > 45 ? "text-red-500" : "text-orange-500"}`}
                     >
-                      °C
+                      {/* °C */}
+                      W
                     </span>
                   </div>
                 </div>
