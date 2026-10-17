@@ -439,6 +439,57 @@ async function buscarEquipe() {
   const [overlaySelections, setOverlaySelections] = useState<string[]>([]);
   const [showOverlayModal, setShowOverlayModal] = useState(false);
 
+<<<<<<< HEAD
+=======
+  // Estados para o sistema de cutucar / tchauzinho
+  const [showOnlineMenu, setShowOnlineMenu] = useState<{ top: number; left: number } | null>(null);
+  const [cutucaoRecebido, setCutucaoRecebido] = useState<{ remetente: string } | null>(null);
+  
+  // Estado para controlar o modal de informações de eficiência
+  const [infoModalOpen, setInfoModalOpen] = useState<{ titulo: string; descricao: string; cor: string } | null>(null);
+
+  // estados paras flags
+  const [provaFlags, setProvaFlags] = useState<number[]>([]);
+  const [idleData, setIdleData] = useState({
+    tensao: [] as number[], potenciaBateria: [] as number[], potenciaMotor: [] as number[],
+    potenciaGeracao: [] as number[], bateria: [] as number[], velocidade: [] as number[],
+    correnteBateria: [] as number[], correnteMotor: [] as number[], s1: [] as number[], s2: [] as number[]
+  });
+
+  // Estados para o Diário de Bordo
+  const [diarioLogs, setDiarioLogs] = useState<{id: string, titulo: string, texto: string, data: string, autor: string, fotoAutor: string}[]>([]);
+  const [tituloDiario, setTituloDiario] = useState("");
+  const [textoDiario, setTextoDiario] = useState("");
+
+  function salvarDiario() {
+    if (!tituloDiario.trim() || !textoDiario.trim()) {
+      dispararToast("Preencha o título e o texto da anotação.", "aviso");
+      return;
+    }
+    const novaAnotacao = {
+      id: Date.now().toString(),
+      titulo: tituloDiario,
+      texto: textoDiario,
+      data: new Date().toLocaleString("pt-BR"),
+      autor: currentUser?.name || "Desconhecido",
+      fotoAutor: currentUser?.photo || ""
+    };
+    
+    // Cria a nova lista de anotações juntando a nova com as antigas
+    const novosLogs = [novaAnotacao, ...diarioLogs];
+    
+    // Atualiza o estado da tela
+    setDiarioLogs(novosLogs);
+    
+    // Salva a lista inteira no armazenamento local do navegador
+    localStorage.setItem("telemetria_diario", JSON.stringify(novosLogs));
+
+    setTituloDiario("");
+    setTextoDiario("");
+    dispararToast("Anotação salva no Diário de Bordo!", "sucesso");
+  }
+
+>>>>>>> parent of 47c9ab3 (manter diário com carregamento 2)
 // Função auxiliar para disparar notificações com animação de esmaecimento
   function dispararToast(mensagem: string, tipo: 'sucesso' | 'aviso' | 'erro' = 'sucesso') {
     setIsExiting(false);
