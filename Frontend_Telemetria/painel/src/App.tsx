@@ -1273,7 +1273,7 @@ function prova_iniciar() {
 
       // --- 2. AJUSTE DE FUSO HORÁRIO ---
       // Se +3 não estava a funcionar, o erro provável é que precisava de recuar o relógio (-3)
-      const horasDeErro = -3; 
+      const horasDeErro = 3; 
       const milissegundosErro = horasDeErro * 60 * 60 * 1000;
 
       // Aplica o erro apenas se for uma prova antes da data do conserto
