@@ -1253,6 +1253,68 @@ function prova_iniciar() {
     setCarregandoProvas(false);
   }
 
+  // Função para baixar o CSV de uma prova específica do histórico
+  async function baixarCSVHistorico(prova: any) {
+    dispararToast(`A preparar o CSV da gravação #${prova.id}...`, "aviso");
+
+    try {
+      // 1. Faz a requisição filtrando pelo início e fim exatos da prova
+      const res = await fetch(`https://telemetria-be.vercel.app/api/sensores/todos?inicio=${prova.inicio}&fim=${prova.fim}`);
+      
+      if (!res.ok) throw new Error("Falha na comunicação com a API");
+      
+      const data = await res.json();
+
+      if (!data || data.length === 0) {
+        dispararToast("Nenhum dado gravado durante o período desta prova.", "erro");
+        return;
+      }
+
+      // 2. Define os cabeçalhos das colunas
+      const headers = "Tensão(V),Potência Bateria(W),Potência Motor(W),Potência Geração(W),Bateria(%),Velocidade,Corrente Bateria(A),Corrente Motor(A),S1,S2\n";
+      
+      // 3. Mapeia as linhas aplicando os cálculos de potência
+      const rows = data.map((d: any) => {
+          const tensao = d.tensao ?? 0;
+          const potBateria = d.potencia ?? 0;
+          const potMotor = (d.tensao ?? 0) * (d.corrente_2 ?? 0);
+          const potGeracao = (d.tensao ?? 0) * (d.string_1 ?? 0);
+          const bateria = d.porcentagem ?? 0;
+          const velocidade = d.velocidade ?? 0;
+          const correnteBat = d.corrente ?? 0;
+          const correnteMotor = d.corrente_2 ?? 0;
+          const s1 = d.string_1 ?? 0;
+          const s2 = d.string_2 ?? 0;
+
+          return `${tensao},${potBateria},${potMotor},${potGeracao},${bateria},${velocidade},${correnteBat},${correnteMotor},${s1},${s2}`;
+      }).join("\n");
+
+      // 4. Cria o arquivo virtual na memória do navegador
+      const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      
+      // 5. Gera um nome de arquivo bonito (ex: telemetria_Prova_sprint_25.csv)
+      const nomeFormatado = prova.nome ? prova.nome.replace(/\s+/g, '_') : `prova_${prova.id}`;
+      
+      // 6. Simula o clique para forçar o download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `telemetria_${nomeFormatado}_${prova.id}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      
+      // 7. Limpa a memória
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      dispararToast("Download do CSV concluído com sucesso!", "sucesso");
+
+    } catch (error) {
+      console.error("Erro ao baixar histórico:", error);
+      dispararToast("Erro ao processar o arquivo CSV.", "erro");
+    }
+  }
+
   // Função para salvar a edição do nome da prova
   async function salvarEdicaoNome(id: number) {
     if (!novoNomeEditado.trim()) {
@@ -3531,10 +3593,7 @@ if (isLoadingSession) {
                           <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto shrink-0">
                             
                             <button
-                              onClick={() => {
-                                dispararToast("Lógica do CSV Histórico: Conecte sua API aqui!", "aviso");
-                                // fetch(`.../api/sensores?inicio=${prova.inicio}&fim=${prova.fim}`) sixseven
-                              }}
+                              onClick={() => baixarCSVHistorico(prova)}
                               className="px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 font-bold text-xs rounded-xl transition-all border border-indigo-500/20"
                             >
                               Baixar CSV
