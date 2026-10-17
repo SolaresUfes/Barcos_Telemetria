@@ -1270,17 +1270,14 @@ function prova_iniciar() {
         return;
       }
 
-      // 2. Define os cabeçalhos das colunas (agora com o "Momento" no início)
+      // 2. Define os cabeçalhos com o "Momento" na primeira posição
       const headers = "Momento,Tensão(V),Potência Bateria(W),Potência Motor(W),Potência Geração(W),Bateria(%),Velocidade,Corrente Bateria(A),Corrente Motor(A),S1,S2\n";
       
-      // 3. Mapeia as linhas aplicando os cálculos de potência e formatando a data
+      // 3. Mapeia as linhas aplicando os cálculos e formatando a data
       const rows = data.map((d: any) => {
-          // Lógica de formatação da data e hora
           let momentoFormatado = "";
           if (d.momento) {
               const dataObj = new Date(d.momento);
-              // O toLocaleString com o fuso 'America/Sao_Paulo' converte automaticamente 
-              // o UTC (+00:00) da base de dados para a hora correta do Espírito Santo (UTC-3).
               momentoFormatado = dataObj.toLocaleString('pt-BR', { 
                   timeZone: 'America/Sao_Paulo' 
               });
@@ -1297,15 +1294,15 @@ function prova_iniciar() {
           const s1 = d.string_1 ?? 0;
           const s2 = d.string_2 ?? 0;
 
-          // Retorna a linha do CSV com o momento incluído na primeira posição
+          // Retorna a linha do CSV com o momento na primeira posição, entre aspas
           return `"${momentoFormatado}",${tensao},${potBateria},${potMotor},${potGeracao},${bateria},${velocidade},${correnteBat},${correnteMotor},${s1},${s2}`;
       }).join("\n");
 
-      // 4. Cria o arquivo virtual na memória do navegador
+      // 4. Cria o arquivo virtual
       const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
       const url = window.URL.createObjectURL(blob);
       
-      // 5. Gera um nome de arquivo bonito (ex: telemetria_Prova_sprint_25.csv)
+      // 5. Gera um nome de arquivo
       const nomeFormatado = prova.nome ? prova.nome.replace(/\s+/g, '_') : `prova_${prova.id}`;
       
       // 6. Simula o clique para forçar o download
