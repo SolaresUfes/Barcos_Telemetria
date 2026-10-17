@@ -1263,28 +1263,25 @@ function prova_iniciar() {
       
       const todosOsDados = await res.json();
 
+      // 1. Pega os tempos exatos. Como ambos (React e Supabase) usam UTC internamente, 
+      // as datas absolutas já batem. Não precisamos somar ou subtrair horas para filtrar!
       const tempoInicio = new Date(prova.inicio).getTime();
       const tempoFim = new Date(prova.fim).getTime();
 
-      // --- 1. DATA DE CORTE DO BUG ---
-      // Defina aqui a data/hora exata em que você vai consertar o backend.
-      // Tudo ANTES dessa data sofre a correção de +3h e -3h.
-      // Tudo DEPOIS dessa data é processado normalmente.
-      // Exemplo: 18 de Outubro de 2026 à meia-noite
-      const dataDoConserto = new Date('2026-10-18T00:00:00').getTime();
-      
-      const isProvaAntigaComBug = tempoInicio < dataDoConserto;
+      // Margem de segurança de 1 minuto antes e depois (para evitar perda do primeiro registro)
+      const margemErro = 60 * 1000; 
+      const limiteInicio = tempoInicio - margemErro;
+      const limiteFim = tempoFim + margemErro;
 
-      const milissegundosErro = 3 * 60 * 60 * 1000; // 3 horas
-
-      // --- 2. LIMITES DE BUSCA ---
-      // Se for prova com bug, busca no futuro. Se for prova nova consertada, busca no horário exato.
-      const limiteBuscaInicio = isProvaAntigaComBug ? tempoInicio + milissegundosErro : tempoInicio;
-      const limiteBuscaFim = isProvaAntigaComBug ? tempoFim + milissegundosErro : tempoFim;
-
+      // 2. Filtra os dados
       const dadosFiltrados = todosOsDados.filter((leitura: any) => {
-        const tempoLeitura = new Date(leitura.MOMENTO || leitura.created_at).getTime(); 
-        return tempoLeitura >= limiteBuscaInicio && tempoLeitura <= limiteBuscaFim;
+        // Tenta encontrar o campo de data seja qual for o nome que o backend mande
+        const campoDataDaLeitura = leitura.momento || leitura.MOMENTO || leitura.created_at || leitura.data;
+        
+        if (!campoDataDaLeitura) return false;
+
+        const tempoLeitura = new Date(campoDataDaLeitura).getTime(); 
+        return tempoLeitura >= limiteInicio && tempoLeitura <= limiteFim;
       });
 
       if (dadosFiltrados.length === 0) {
@@ -1292,26 +1289,23 @@ function prova_iniciar() {
         return;
       }
 
-      // --- 3. FORMATAÇÃO E CORREÇÃO PARA O CSV ---
+      // 3. Formatação da Data para o CSV
       const dadosCorrigidos = dadosFiltrados.map((item: any) => {
-        const campoData = item.MOMENTO ? 'MOMENTO' : 'created_at';
-        const tempoOriginal = new Date(item[campoData]).getTime();
+        const chaveData = item.momento !== undefined ? 'momento' : 
+                          item.MOMENTO !== undefined ? 'MOMENTO' : 
+                          item.created_at !== undefined ? 'created_at' : 'data';
 
-        let tempoFinal = tempoOriginal;
+        const tempoOriginal = new Date(item[chaveData]).getTime();
 
-        // Se a prova era da época do bug, desfaz as 3 horas
-        if (isProvaAntigaComBug) {
-          tempoFinal = tempoOriginal - milissegundosErro;
-        }
-
-        // Retorna o item com o MOMENTO legível (seja ele corrigido ou o original exato das provas novas)
+        // O 'toLocaleString' já percebe que a data está em UTC e converte automaticamente 
+        // para o fuso brasileiro (-3h) no formato DD/MM/YYYY, HH:MM:SS
         return {
           ...item,
-          [campoData]: new Date(tempoFinal).toLocaleString('pt-BR') 
+          [chaveData]: new Date(tempoOriginal).toLocaleString('pt-BR') 
         };
       });
 
-      // --- 4. GERAR O CSV ---
+      // 4. Geração do Arquivo CSV
       const cabecalhos = Object.keys(dadosCorrigidos[0]).join(",");
 
       const linhas = dadosCorrigidos.map((item: any) => {
