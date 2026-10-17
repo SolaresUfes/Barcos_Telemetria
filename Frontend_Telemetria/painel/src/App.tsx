@@ -1257,55 +1257,66 @@ function prova_iniciar() {
     dispararToast(`A preparar o CSV da gravação #${prova.id}...`, "aviso");
 
     try {
+      // Usa a única rota disponível
       const res = await fetch(`https://telemetria-be.vercel.app/api/sensores/todos`);
       
       if (!res.ok) throw new Error("Falha na comunicação com a API");
       
       const todosOsDados = await res.json();
 
-      // 1. Pega os tempos exatos. Como ambos (React e Supabase) usam UTC internamente, 
-      // as datas absolutas já batem. Não precisamos somar ou subtrair horas para filtrar!
       const tempoInicio = new Date(prova.inicio).getTime();
       const tempoFim = new Date(prova.fim).getTime();
 
-      // Margem de segurança de 1 minuto antes e depois (para evitar perda do primeiro registro)
-      const margemErro = 60 * 1000; 
-      const limiteInicio = tempoInicio - margemErro;
-      const limiteFim = tempoFim + margemErro;
+      // --- 1. DATA DE CORTE DO CONSERTO FUTURO ---
+      const dataDoConserto = new Date('2026-10-18T00:00:00').getTime();
+      const isProvaAntigaComBug = tempoInicio < dataDoConserto;
 
-      // 2. Filtra os dados
+      // --- 2. AJUSTE DE FUSO HORÁRIO ---
+      // Se +3 não estava a funcionar, o erro provável é que precisava de recuar o relógio (-3)
+      const horasDeErro = -3; 
+      const milissegundosErro = horasDeErro * 60 * 60 * 1000;
+
+      // Aplica o erro apenas se for uma prova antes da data do conserto
+      const limiteBuscaInicio = isProvaAntigaComBug ? tempoInicio + milissegundosErro : tempoInicio;
+      const limiteBuscaFim = isProvaAntigaComBug ? tempoFim + milissegundosErro : tempoFim;
+
+      // Margem extra de 2 minutos para não perder a primeira e a última leitura
+      const margem = 2 * 60 * 1000; 
+
+      // --- 3. FILTRAGEM ---
       const dadosFiltrados = todosOsDados.filter((leitura: any) => {
-        // Tenta encontrar o campo de data seja qual for o nome que o backend mande
-        const campoDataDaLeitura = leitura.momento || leitura.MOMENTO || leitura.created_at || leitura.data;
-        
-        if (!campoDataDaLeitura) return false;
+        // Procura a coluna de data, seja qual for o nome que venha do banco
+        const campoData = leitura.momento || leitura.MOMENTO || leitura.created_at || leitura.data;
+        if (!campoData) return false;
 
-        const tempoLeitura = new Date(campoDataDaLeitura).getTime(); 
-        return tempoLeitura >= limiteInicio && tempoLeitura <= limiteFim;
+        const tempoLeitura = new Date(campoData).getTime(); 
+        return tempoLeitura >= (limiteBuscaInicio - margem) && tempoLeitura <= (limiteBuscaFim + margem);
       });
 
       if (dadosFiltrados.length === 0) {
-        dispararToast("Nenhum dado encontrado para o período desta gravação.", "erro");
+        dispararToast("Nenhum dado encontrado. A rota /todos pode já não conter dados tão antigos.", "erro");
         return;
       }
 
-      // 3. Formatação da Data para o CSV
+      // --- 4. FORMATAÇÃO DO CSV ---
       const dadosCorrigidos = dadosFiltrados.map((item: any) => {
-        const chaveData = item.momento !== undefined ? 'momento' : 
-                          item.MOMENTO !== undefined ? 'MOMENTO' : 
-                          item.created_at !== undefined ? 'created_at' : 'data';
-
+        const chaveData = item.momento ? 'momento' : item.MOMENTO ? 'MOMENTO' : item.created_at ? 'created_at' : 'data';
         const tempoOriginal = new Date(item[chaveData]).getTime();
 
-        // O 'toLocaleString' já percebe que a data está em UTC e converte automaticamente 
-        // para o fuso brasileiro (-3h) no formato DD/MM/YYYY, HH:MM:SS
+        let tempoFinal = tempoOriginal;
+        
+        // Se aplicou as horas de erro para procurar, tem de desfazer para mostrar a data correta no Excel
+        if (isProvaAntigaComBug) {
+          tempoFinal = tempoOriginal - milissegundosErro;
+        }
+
         return {
           ...item,
-          [chaveData]: new Date(tempoOriginal).toLocaleString('pt-BR') 
+          [chaveData || 'Data']: new Date(tempoFinal).toLocaleString('pt-BR') 
         };
       });
 
-      // 4. Geração do Arquivo CSV
+      // --- 5. GERAR O ARQUIVO ---
       const cabecalhos = Object.keys(dadosCorrigidos[0]).join(",");
 
       const linhas = dadosCorrigidos.map((item: any) => {
@@ -1315,16 +1326,16 @@ function prova_iniciar() {
       const csvString = [cabecalhos, ...linhas].join("\n");
 
       const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
+      const urlBlob = URL.createObjectURL(blob);
 
       const link = document.createElement("a");
-      link.href = url;
+      link.href = urlBlob;
       link.setAttribute("download", `telemetria_gravacao_${prova.id}.csv`);
       document.body.appendChild(link);
       link.click();
 
       document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(urlBlob);
 
       dispararToast("CSV baixado com sucesso!", "sucesso");
 
