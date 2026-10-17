@@ -6,7 +6,7 @@ import { supabase } from "./lib/supabase";
 import { Menu, Moon, Sun, User, Activity, BarChart2, Zap, Settings, Database,
   ArrowLeft, LogOut, Unlock, Trash2, Plus, Info, Shield, AlertTriangle, ChevronDown,
   Map, Clock, Battery, BatteryCharging, DownloadCloud,
-  Play, Square, Maximize, Minimize} from "lucide-react";
+  Play, Square, Maximize, Minimize, Server, Timer, BookOpen } from "lucide-react";
 // #endregion
 
 
@@ -29,6 +29,35 @@ interface Member {
 
 // #region --- Funções Auxiliares ---
 
+const generateFixedPolyline = (data: number[], width: number, height: number, minVal: number, maxVal: number, isIdle: boolean = false) => {
+  if (!data || data.length === 0) return `0,${height / 2} ${width},${height / 2}`;
+  const range = maxVal - minVal;
+
+  if (isIdle) {
+    const stepX = width / 39; // Trava o risco visual em 40 pontos virtuais
+    const reversedData = [...data].reverse();
+    const offsetX = width - ((reversedData.length - 1) * stepX);
+    return reversedData.map((val, index) => {
+      const x = offsetX + (index * stepX);
+      const clampedVal = Math.max(minVal, Math.min(maxVal, val));
+      const y = height - ((clampedVal - minVal) / range) * height;
+      return `${x},${y}`;
+    }).join(" ");
+  } else {
+    if (data.length === 1) {
+      const y = height - ((data[0] - minVal) / range) * height;
+      return `0,${y} ${width},${y}`;
+    }
+    const stepX = width / (data.length - 1);
+    return data.map((val, index) => {
+      const x = index * stepX;
+      const clampedVal = Math.max(minVal, Math.min(maxVal, val));
+      const y = height - ((clampedVal - minVal) / range) * height;
+      return `${x},${y}`;
+    }).join(" ");
+  }
+};
+
 const generatePolyline = (data: number[], width: number, height: number, maxVal: number) => {
   if (data.length === 0) return `1000,${height / 2}`; // Corrigido para usar crases
   
@@ -49,32 +78,36 @@ const generatePolyline = (data: number[], width: number, height: number, maxVal:
     .join(" ");
 };
 
-const generateFullPolyline = (data: number[], width: number, height: number) => {
+const generateFullPolyline = (data: number[], width: number, height: number, isIdle: boolean = false) => {
   if (!data || data.length === 0) return `0,${height}`;
-  if (data.length === 1) return `0,${height / 2} ${width},${height / 2}`;
   
   const maxData = Math.max(...data);
   const minData = Math.min(...data);
-  
-  // Se todos os valores forem iguais, desenha a linha no meio
-  if (maxData === minData) {
-    return data.map((_, i) => `${i * (width / (data.length - 1))},${height / 2}`).join(" ");
-  }
-
-  // Adiciona 15% de "respiro" no topo e na base
-  const padding = (maxData - minData) * 0.15;
+  const padding = maxData === minData ? 1 : (maxData - minData) * 0.15;
   const adjustedMax = maxData + padding;
   const adjustedMin = minData - padding;
   const range = adjustedMax - adjustedMin;
-  
-  const stepX = width / (data.length - 1);
-  
-  return data.map((val, index) => {
-    const x = index * stepX;
-    // Mapeia o valor perfeitamente dentro do SVG
-    const y = height - ((val - adjustedMin) / range) * height;
-    return `${x},${y}`;
-  }).join(" ");
+
+  if (isIdle) {
+    const stepX = width / 39;
+    const reversedData = [...data].reverse();
+    const offsetX = width - ((reversedData.length - 1) * stepX);
+    return reversedData.map((val, index) => {
+      const x = offsetX + (index * stepX);
+      const y = height - ((val - adjustedMin) / range) * height;
+      return `${x},${y}`;
+    }).join(" ");
+  } else {
+    if (data.length === 1) return `0,${height / 2} ${width},${height / 2}`;
+    if (maxData === minData) return data.map((_, i) => `${i * (width / (data.length - 1))},${height / 2}`).join(" ");
+    
+    const stepX = width / (data.length - 1);
+    return data.map((val, index) => {
+      const x = index * stepX;
+      const y = height - ((val - adjustedMin) / range) * height;
+      return `${x},${y}`;
+    }).join(" ");
+  }
 };
 
 const generateNameFromEmail = (email: string) => {
@@ -434,13 +467,11 @@ async function buscarEquipe() {
   const [idEditando, setIdEditando] = useState<number | null>(null);
   const [novoNomeEditado, setNovoNomeEditado] = useState("");
   // estado para termos graficos espandidos
-  const [expandedGraph, setExpandedGraph] = useState<{ label: string, data: number[], color: string } | null>(null);
-  // novos estados para configurações de gráfico
+  const [expandedGraph, setExpandedGraph] = useState<{ id: string, label: string, data: number[], color: string } | null>(null);
+// novos estados para configurações de gráfico
   const [overlaySelections, setOverlaySelections] = useState<string[]>([]);
   const [showOverlayModal, setShowOverlayModal] = useState(false);
 
-<<<<<<< HEAD
-=======
   // Estados para o sistema de cutucar / tchauzinho
   const [showOnlineMenu, setShowOnlineMenu] = useState<{ top: number; left: number } | null>(null);
   const [cutucaoRecebido, setCutucaoRecebido] = useState<{ remetente: string } | null>(null);
@@ -456,8 +487,20 @@ async function buscarEquipe() {
     correnteBateria: [] as number[], correnteMotor: [] as number[], s1: [] as number[], s2: [] as number[]
   });
 
-  // Estados para o Diário de Bordo
-  const [diarioLogs, setDiarioLogs] = useState<{id: string, titulo: string, texto: string, data: string, autor: string, fotoAutor: string}[]>([]);
+// Estados para o Diário de Bordo com carregamento direto
+  const [diarioLogs, setDiarioLogs] = useState<{id: string, titulo: string, texto: string, data: string, autor: string, fotoAutor: string}[]>(() => {
+    const salvo = localStorage.getItem("telemetria_diario");
+    if (salvo) {
+      try {
+        return JSON.parse(salvo);
+      } catch (e) {
+        console.log("Erro ao carregar o diário: ", e);
+        return [];
+      }
+    }
+    return [];
+  });
+  
   const [tituloDiario, setTituloDiario] = useState("");
   const [textoDiario, setTextoDiario] = useState("");
 
@@ -489,7 +532,6 @@ async function buscarEquipe() {
     dispararToast("Anotação salva no Diário de Bordo!", "sucesso");
   }
 
->>>>>>> parent of 47c9ab3 (manter diário com carregamento 2)
 // Função auxiliar para disparar notificações com animação de esmaecimento
   function dispararToast(mensagem: string, tipo: 'sucesso' | 'aviso' | 'erro' = 'sucesso') {
     setIsExiting(false);
@@ -554,23 +596,6 @@ function tocarSomSuave() {
   const [S1_power, setS1_power] = useState(-1)
   const [string_2, setString_2] = useState(-1);
   const [idProvaAtual, set_idProvaAtual] = useState(-1)
-  
-  const [tempoTotal, setTempoTotal] = useState<number>(0);
-  const [minutoAtual, setMinutoAtual] = useState<number>(0);
-
-  const previsaoBateria =
-    tempoTotal > 0
-      ? ((minutoAtual - tempoTotal) / tempoTotal) * -100
-      : 0;
-
-  const avancarMinuto = () => {
-    setMinutoAtual((minuto) => minuto + 1);
-  };
-
-  const retrocederMinuto = () => {
-    setMinutoAtual((minuto) => Math.max(0, minuto - 1));
-  };
-
   // --- novos estados para a area de desempenho ---
   const provaAtivaRef = useRef(false);
   useEffect(() => {
@@ -591,6 +616,18 @@ function tocarSomSuave() {
   // #endregion
 
   // #region Efeitos
+
+  // Efeito para carregar as anotações do Diário de Bordo guardadas localmente
+  useEffect(() => {
+    const diarioSalvo = localStorage.getItem("telemetria_diario");
+    if (diarioSalvo) {
+      try {
+        setDiarioLogs(JSON.parse(diarioSalvo));
+      } catch (e) {
+        console.log("Erro ao carregar o diário: ", e);
+      }
+    }
+  }, []);
 
   // Efeito para controlar o modo escuro
   useEffect(() => {
@@ -634,18 +671,16 @@ function tocarSomSuave() {
     };
   }, [provaAtiva]);
 
-  // Efeito usado para verificar as pessoas online no supabase
+ // Efeito usado para verificar as pessoas online e gerar o canal de broadcast
   useEffect(() => {
     if (!currentUser) return;
 
-    // 1. Cria um canal de comunicação para a equipe
     const channel = supabase.channel("sala_equipe");
+    teamChannelRef.current = channel; // Guarda a referência ativa do canal
 
     channel
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState();
-
-        // 2. Extrai os e-mails de todos os usuários que estão com a tela aberta
         const onlineEmails = new Set();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         Object.values(state).forEach((presences: any) => {
@@ -653,7 +688,6 @@ function tocarSomSuave() {
           presences.forEach((p: any) => onlineEmails.add(p.email));
         });
 
-        // 3. Atualiza a interface, acendendo a bolinha verde para quem está na lista
         setMembers((prevMembers) =>
           prevMembers.map((m) => ({
             ...m,
@@ -661,26 +695,51 @@ function tocarSomSuave() {
             lastSeen: onlineEmails.has(m.email)
               ? "agora"
               : m.isOnline
-                ? new Date().toLocaleTimeString("pt-BR", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
+                ? new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
                 : m.lastSeen,
-          })),
+          }))
         );
+      })
+      .on("broadcast", { event: "cutucar" }, (payload) => {
+        if (payload.payload.destinatario === currentUser.email) {
+          setCutucaoRecebido({ remetente: payload.payload.remetenteNome });
+          tocarSomSuave();
+
+          setTimeout(() => {
+            setCutucaoRecebido(null);
+          }, 4000);
+        }
       })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
-          // 4. Ao conectar, avisa ao servidor que este usuário entrou
           await channel.track({ email: currentUser.email });
         }
       });
 
-    // 5. Desconecta do canal se o usuário deslogar ou fechar o site
     return () => {
       supabase.removeChannel(channel);
+      teamChannelRef.current = null;
     };
   }, [currentUser]);
+
+  // Função correta que utiliza o canal já subscrevido
+  const enviarCutucao = async (membroEmail: string, membroNome: string) => {
+    if (!teamChannelRef.current) {
+      dispararToast("Canal de equipa ainda não conectado.", "aviso");
+      return;
+    }
+
+    await teamChannelRef.current.send({
+      type: "broadcast",
+      event: "cutucar",
+      payload: {
+        destinatario: membroEmail,
+        remetenteNome: currentUser?.name.split(" ")[0] || "Alguém",
+      },
+    });
+    
+    dispararToast(`Cutucão enviado para ${membroNome}! 👋`, "sucesso");
+  };
 
   // Efeito que roda a função em loop quando o usuário está logado (Usado para buscar as medições)
   useEffect(() => {
@@ -796,6 +855,7 @@ function tocarSomSuave() {
   // #endregion
 
   const batteryPowerHistory = useRef<number[]>([]);
+  const teamChannelRef = useRef<any>(null);
 
 // aqui vamos ter um sinalizador pra ver se a bateria ta carregando ou descarregando (olhando os números fica óbvio, mas to deixando mais visual)
   let batteryRate = 0;
@@ -847,15 +907,28 @@ function tocarSomSuave() {
     timeZone: "America/Sao_Paulo",
   });
 
-  // Estado para controlar o modal de informações de eficiência
-  const [infoModalOpen, setInfoModalOpen] = useState<{ titulo: string; descricao: string; cor: string } | null>(null);
 
-  // Cálculos de Eficiência Dinâmicos (Estimativas com base nos dados atuais)
-  const eficienciaPainel = S1_power > 0 ? Math.min(100, (S1_power / 800) * 100) : 0; // Baseado numa potência teórica máxima de 800W
-  const eficienciaMotor = rpm > 0 ? Math.min(96, 85 + (speed * 0.3)) : 0; // Estimação baseada na velocidade vs consumo
-  const eficienciaBateria = tensaoReal > 0 ? Math.max(0, 100 - (voltageImbalance * 15)) : 0; // Penalizada pelo desbalanço (ΔV)
+// Cálculos de Eficiência Dinâmicos (Estimativas baseadas APENAS em Potências)
 
-  const currentPower = mainData[0] || 0;
+const currentPower = mainData[0] || 0;
+
+  // Cálculos de Eficiência baseados ESTRITAMENTE E APENAS em Potências (W)
+  const potBateria = currentPower || 0;
+  const potMotor = rpm || 0;        // No seu código, 'rpm' guarda a Pot. do Motor (V * Corrente_2)
+  const potGeracao = S1_power || 0; // No seu código, 'S1_power' guarda a Pot. de Geração (V * S1)
+
+  // 1. Painel Solar: O quanto ele está a gerar em relação ao limite físico máximo dele (ex: 800W)
+  const eficienciaPainel = potGeracao > 0 ? Math.min(100, (potGeracao / 800) * 100) : 0; 
+  
+  // 2. Motor: O quanto ele consegue aproveitar da energia total disponibilizada no sistema
+  const energiaFornecida = potGeracao + Math.abs(potBateria);
+  const eficienciaMotor = energiaFornecida > 0 ? Math.min(100, (potMotor / energiaFornecida) * 100) : 0; 
+  
+  // 3. Bateria: Perdas por resistência interna. Quanto mais potência forçada, menor a eficiência.
+  const eficienciaBateria = Math.max(0, 100 - (Math.abs(potBateria) / 2000) * 10); 
+ 
+ 
+ 
   // Comentado para testes
   // const estimatedTimeRaw = (battery / Math.max(10, currentPower)) * 2.5;
   // const estHours = Math.floor(estimatedTimeRaw);
@@ -927,6 +1000,20 @@ function tocarSomSuave() {
           setS1_power(medicao.tensao * medicao.string_1);
         }
         if (medicao.string_2    != null) setString_2(medicao.string_2); 
+
+        // matriz para alimentar os gráficos em tempo real quando parado
+        setIdleData(prev => ({
+            tensao: [medicao.tensao ?? 0, ...prev.tensao].slice(0, 40),
+            potenciaBateria: [medicao.potencia ?? 0, ...prev.potenciaBateria].slice(0, 40),
+            potenciaMotor: [(medicao.tensao ?? 0) * (medicao.corrente_2 ?? 0), ...prev.potenciaMotor].slice(0, 40),
+            potenciaGeracao: [(medicao.tensao ?? 0) * (medicao.string_1 ?? 0), ...prev.potenciaGeracao].slice(0, 40),
+            bateria: [medicao.porcentagem ?? 0, ...prev.bateria].slice(0, 40),
+            velocidade: [medicao.velocidade ?? 0, ...prev.velocidade].slice(0, 40),
+            correnteBateria: [medicao.corrente ?? 0, ...prev.correnteBateria].slice(0, 40),
+            correnteMotor: [medicao.corrente_2 ?? 0, ...prev.correnteMotor].slice(0, 40),
+            s1: [medicao.string_1 ?? 0, ...prev.s1].slice(0, 40),
+            s2: [medicao.string_2 ?? 0, ...prev.s2].slice(0, 40)
+        }));
 
         // isso aqui é pra gravar os dados no grafico da aba de análise
         if (provaAtivaRef.current) {
@@ -1007,6 +1094,7 @@ function prova_iniciar() {
     setNomeDefinitivoProva("");
     setPedirConfirmacaoDescarte(false);
     set_idProvaAtual(-1);
+    setProvaFlags([]);
 
     // Salva no localStorage para resistir ao F5 / refresh
     localStorage.setItem("telemetria_gravacao_ativa", JSON.stringify({ inicio: agora }));
@@ -1203,18 +1291,20 @@ function prova_iniciar() {
     }
   }
 
-  // Lista central de todos os gráficos disponíveis para facilitar os mapas e sobreposições
+// Troca automática entre o Histórico Permanente e a Variação em Tempo Real
+  const currentGraphData = provaAtiva ? recordingData : idleData;
+
   const availableGraphs = [
-    { id: "tensao", label: "Tensão (V)", data: recordingData.tensao, color: "#3b82f6" },
-    { id: "potBateria", label: "Pot. Bateria (W)", data: recordingData.potenciaBateria, color: "#14b8a6" },
-    { id: "potMotor", label: "Pot. Motor (W)", data: recordingData.potenciaMotor, color: "#8b5cf6" },
-    { id: "potGeracao", label: "Pot. Geração (W)", data: recordingData.potenciaGeracao, color: "#ef4444" },
-    { id: "velocidade", label: "Velocidade", data: recordingData.velocidade, color: "#eab308" },
-    { id: "corrBateria", label: "Corr. Bateria (A)", data: recordingData.correnteBateria, color: "#f97316" },
-    { id: "corrMotor", label: "Corr. Motor (A)", data: recordingData.correnteMotor, color: "#d946ef" },
-    { id: "s1", label: "S1 Status", data: recordingData.s1, color: "#22c55e" },
-    { id: "s2", label: "S2 Status", data: recordingData.s2, color: "#f43f5e" },
-    { id: "bateria", label: "Bateria (%)", data: recordingData.bateria, color: "#10b981" }
+    { id: "tensao", label: "Tensão (V)", data: currentGraphData.tensao, color: "#3b82f6" },
+    { id: "potBateria", label: "Pot. Bateria (W)", data: currentGraphData.potenciaBateria, color: "#14b8a6" },
+    { id: "potMotor", label: "Pot. Motor (W)", data: currentGraphData.potenciaMotor, color: "#8b5cf6" },
+    { id: "potGeracao", label: "Pot. Geração (W)", data: currentGraphData.potenciaGeracao, color: "#ef4444" },
+    { id: "velocidade", label: "Velocidade", data: currentGraphData.velocidade, color: "#eab308" },
+    { id: "corrBateria", label: "Corr. Bateria (A)", data: currentGraphData.correnteBateria, color: "#f97316" },
+    { id: "corrMotor", label: "Corr. Motor (A)", data: currentGraphData.correnteMotor, color: "#d946ef" },
+    { id: "s1", label: "S1 Status", data: currentGraphData.s1, color: "#22c55e" },
+    { id: "s2", label: "S2 Status", data: currentGraphData.s2, color: "#f43f5e" },
+    { id: "bateria", label: "Bateria (%)", data: currentGraphData.bateria, color: "#10b981" }
   ];
 
   // Função para marcar/desmarcar na configuração
@@ -1629,7 +1719,7 @@ if (isLoadingSession) {
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-4">
+<nav className="flex-1 overflow-y-auto py-4">
           <ul className="space-y-2 px-2">
             {[
               { icon: Activity, label: "Resumo" },
@@ -1638,14 +1728,23 @@ if (isLoadingSession) {
               { icon: BarChart2, label: "Análise" },
               { icon: Zap, label: "Potência" },
               { icon: Database, label: "Logs de Dados" },
+              { icon: BookOpen, label: "Diário de Bordo" },
+              { icon: Server, label: "Backend", url: "https://barcos-backendtelemetria.vercel.app" },
+              { icon: Timer, label: "Cronômetro", url: "https://cronometro-smoky-nine.vercel.app/" },
               { icon: Settings, label: "Configurações" },
             ].map((item, idx) => (
               <li key={idx}>
                 <button
                   onClick={() => {
-                    setActiveTab(item.label);
-                    if (window.innerWidth < 768) {
-                      setSidebarOpen(false);
+                    // Se o item tiver um URL definido, abre numa nova aba
+                    if (item.url) {
+                      window.open(item.url, '_blank');
+                    } else {
+                      // Se for um separador interno, muda o separador ativo normalmente
+                      setActiveTab(item.label);
+                      if (window.innerWidth < 768) {
+                        setSidebarOpen(false);
+                      }
                     }
                   }}
                   className={`w-full flex items-center py-3 rounded-xl transition-all ${
@@ -1721,11 +1820,28 @@ if (isLoadingSession) {
                 {isTelemetryActive ? "ESP Online" : "ESP Offline"}
               </span>
 
-              {/* Badge de Utilizadores Online */}
-              <span className="hidden md:flex px-3 py-1 text-xs font-bold bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20 rounded-full items-center whitespace-nowrap shadow-sm">
-                <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400 mr-2 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]"></span>
-                {onlineCount} Online
-              </span>
+              {/* Badge de Utilizadores Online com Portal Fixado na Janela */}
+              <div className="relative">
+                <button
+                  onClick={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setShowOnlineMenu(
+                      showOnlineMenu
+                        ? null
+                        : {
+                            top: rect.bottom + 10,
+                            left: rect.left - 120, // Ajuste se necessário para alinhar melhor
+                          }
+                    );
+                  }}
+                  className="hidden md:flex px-3 py-1 text-xs font-bold bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20 rounded-full items-center whitespace-nowrap shadow-sm cursor-pointer select-none transition-all hover:scale-105"
+                >
+                  <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400 mr-2 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]"></span>
+                  {onlineCount} Online
+                </button>
+
+              </div>
+
             </div>
 
 
@@ -1865,8 +1981,7 @@ if (isLoadingSession) {
                     <span
                       className={`text-[10px] sm:text-xl font-bold ml-0.5 md:ml-1 ${avgBmsTemp > 45 ? "text-red-500" : "text-orange-500"}`}
                     >
-                      {/* °C */}
-                      W
+                      °C
                     </span>
                   </div>
                 </div>
@@ -2603,9 +2718,11 @@ if (isLoadingSession) {
                     </div>
                   </div>
 
-                  {/* <div className={`p-2 lg:p-6 flex flex-col items-center justify-center w-full h-full ${darkMode ? "bg-gray-800" : "bg-white"}`}>
+                  <div
+                    className={`p-2 lg:p-6 flex flex-col items-center justify-center w-full h-full ${darkMode ? "bg-gray-800" : "bg-white"}`}
+                  >
                     <span className="text-[10px] lg:text-[13px] font-black uppercase tracking-wider text-gray-500 mb-1 text-center w-full">
-                      Previsão Bateria
+                      S2 Status
                     </span>
                     <div className="flex items-baseline justify-center">
                       <span
@@ -2614,95 +2731,7 @@ if (isLoadingSession) {
                         {string_2.toFixed(3)}
                       </span>
                     </div>
-                  </div> */}
-
-
-                  <div className={`p-2 lg:p-4 flex flex-col items-center justify-center w-full h-full ${darkMode ? "bg-gray-800" : "bg-white"}`}>
-                    <span className="text-[10px] lg:text-[13px] font-black uppercase tracking-wider text-gray-500 mb-2 text-center w-full">
-                      Previsão Bateria
-                    </span>
-
-                    {/* Input do tempo total */}
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                      <label className="text-xs text-gray-500 whitespace-nowrap">
-                        Tempo de prova:
-                      </label>
-
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={tempoTotal === 0 ? "" : tempoTotal}
-                        onChange={(e) => {
-                          const valor = e.target.value;
-                          setTempoTotal(
-                            valor === "" ? 0 : Math.max(0, Number(valor))
-                          );
-                        }}
-                        placeholder="Min"
-                        className={`w-16 rounded-md border px-1 py-1 text-center text-xs font-bold outline-none ${
-                          darkMode
-                            ? "bg-gray-700 border-gray-600 text-white"
-                            : "bg-gray-50 border-gray-300 text-gray-800"
-                        }`}
-                      />
-
-                      <span className="text-xs text-gray-500">min</span>
-                    </div>
-
-                    {/* Resultado */}
-                    <div className="flex flex-col items-center mb-2">
-                      <span
-                        className={`text-base lg:text-4xl font-bold ${
-                          darkMode ? "text-rose-400" : "text-rose-600"
-                        }`}
-                      >
-                        {tempoTotal > 0
-                          ? `${previsaoBateria.toFixed(2)}%`
-                          : "--"}
-                      </span>
-
-                      <span className="text-[10px] lg:text-xs text-gray-500 mt-1">
-                        Minuto atual: {minutoAtual}
-                      </span>
-                    </div>
-
-                    {/* Botões de controle manual */}
-                    <div className="flex items-center justify-center gap-3">
-                      <button
-                        type="button"
-                        onClick={retrocederMinuto}
-                        disabled={minutoAtual === 0}
-                        className={`w-8 h-7 rounded-md font-bold text-sm transition-colors disabled:opacity-40 ${
-                          darkMode
-                            ? "bg-gray-700 hover:bg-gray-600 text-white"
-                            : "bg-gray-200 hover:bg-gray-300 text-gray-800"
-                        }`}
-                        aria-label="Diminuir minuto atual"
-                      >
-                        −
-                      </button>
-
-                      <span className="text-xs font-bold text-gray-500">
-                        {minutoAtual} min
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={avancarMinuto}
-                        className={`w-8 h-7 rounded-md font-bold text-sm transition-colors ${
-                          darkMode
-                            ? "bg-gray-700 hover:bg-gray-600 text-white"
-                            : "bg-gray-200 hover:bg-gray-300 text-gray-800"
-                        }`}
-                        aria-label="Aumentar minuto atual"
-                      >
-                        +
-                      </button>
-                    </div>
                   </div>
-
-
                 </div>
               </div>
             </div>
@@ -2849,8 +2878,8 @@ if (isLoadingSession) {
                     {/* Eficiência do Painel Solar */}
                     <div 
                       onClick={() => setInfoModalOpen({
-                        titulo: "Eficiência do Painel Solar",
-                        descricao: "Calculada pela razão entre a potência real de geração (S1 e S2) e a potência máxima teórica dos painéis instalados (considerada 800W nesta estimativa). Valores próximos a 100% indicam irradiação ideal e painéis limpos.",
+                        titulo: "Capacidade de Fornecimento (Painéis)",
+                        descricao: "calcular melhor",
                         cor: "text-yellow-500"
                       })}
                       className={`p-3 rounded-2xl border cursor-pointer hover:scale-[1.02] transition-all flex flex-col items-center justify-center text-center ${darkMode ? "bg-gray-900 border-gray-700 hover:border-gray-500" : "bg-gray-50 border-gray-200 hover:border-gray-400"}`}
@@ -2863,8 +2892,8 @@ if (isLoadingSession) {
                     {/* Eficiência da Bateria */}
                     <div 
                       onClick={() => setInfoModalOpen({
-                        titulo: "Eficiência do Pack (BMS)",
-                        descricao: "Reflete a saúde e o balanceamento das células em tempo real. É calculada deduzindo perdas baseadas no desbalanço de tensão (ΔV) entre a célula de maior e menor carga. Um pack perfeitamente balanceado opera com eficiência máxima próxima a 100%.",
+                        titulo: "Eficiência de Transferência (Bateria)",
+                        descricao: "tenho que calcular melhor isso, não entendi o suficiente ainda",
                         cor: "text-emerald-500"
                       })}
                       className={`p-3 rounded-2xl border cursor-pointer hover:scale-[1.02] transition-all flex flex-col items-center justify-center text-center ${darkMode ? "bg-gray-900 border-gray-700 hover:border-gray-500" : "bg-gray-50 border-gray-200 hover:border-gray-400"}`}
@@ -2877,8 +2906,8 @@ if (isLoadingSession) {
                     {/* Eficiência do Motor */}
                     <div 
                       onClick={() => setInfoModalOpen({
-                        titulo: "Eficiência do Motor",
-                        descricao: "Relaciona a potência elétrica atual consumida pelo motor (Volts × Amperes) com o rendimento mecânico estimado através da velocidade da embarcação. Motores BLDC costumam operar entre 85% e 96% de eficiência no seu ponto ideal de operação.",
+                        titulo: "Eficiência de Consumo (Motor)",
+                        descricao: "tenho que calcular melhor isso, não entendi o suficiente ainda",
                         cor: "text-blue-500"
                       })}
                       className={`p-3 rounded-2xl border cursor-pointer hover:scale-[1.02] transition-all flex flex-col items-center justify-center text-center ${darkMode ? "bg-gray-900 border-gray-700 hover:border-gray-500" : "bg-gray-50 border-gray-200 hover:border-gray-400"}`}
@@ -2893,7 +2922,7 @@ if (isLoadingSession) {
                     <div 
                       onClick={() => setInfoModalOpen({
                         titulo: "Tempo Estimado de Carga",
-                        descricao: "Previsão calculada em tempo real com base na taxa de carregamento atual (% por minuto). Apenas é ativada quando o sistema deteta que o barco está a ganhar energia de forma constante.",
+                        descricao: "tá até certinho",
                         cor: "text-emerald-500"
                       })}
                       className={`p-3 rounded-2xl border cursor-pointer hover:scale-[1.02] transition-all flex flex-col items-center justify-center text-center mt-6 ${darkMode ? "bg-gray-900 border-gray-700 hover:border-gray-500" : "bg-gray-50 border-gray-200 hover:border-gray-400"}`}
@@ -3002,7 +3031,10 @@ if (isLoadingSession) {
                         <h4 className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 shrink-0">{graph.label}</h4>
                         <div className="w-full flex-1 min-h-0 pointer-events-none mt-1">
                           <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-                            <polyline points={generateFullPolyline(graph.data, 1000, 200)} fill="none" stroke={graph.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            <polyline 
+                              points={graph.id.startsWith("pot") ? generateFixedPolyline(graph.data, 1000, 200, -5000, 5000, !provaAtiva) : generateFullPolyline(graph.data, 1000, 200, !provaAtiva)} 
+                              fill="none" stroke={graph.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" 
+                            />
                           </svg>
                         </div>
                       </div>
@@ -3011,7 +3043,7 @@ if (isLoadingSession) {
 
                 </div>
 
-                {/* LADO DIREITO: BARRA DE CONFIGURAÇÕES DE SOBREPOSIÇÃO */}
+{/* LADO DIREITO: BARRA DE CONFIGURAÇÕES DE SOBREPOSIÇÃO */}
                 <div className={`hidden md:flex w-72 flex-col rounded-3xl shadow-sm border p-4 shrink-0 transition-colors ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
                   <div className="shrink-0 mb-4">
                     <h3 className="text-lg font-bold flex items-center">
@@ -3041,7 +3073,29 @@ if (isLoadingSession) {
                     ))}
                   </div>
 
-                  <div className="shrink-0 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  {/* NOVO: BOTÃO RÁPIDO DE GRAVAÇÃO */}
+                  <div className="shrink-0 mt-3">
+                    <button
+                      onClick={() => provaAtiva ? lidarComCliqueFim() : prova_iniciar()}
+                      className={`w-full py-3.5 rounded-xl font-black uppercase tracking-wider flex items-center justify-center transition-all shadow-lg hover:scale-[1.02] active:scale-95 ${
+                        provaAtiva 
+                          ? "bg-red-500 hover:bg-red-600 text-white shadow-red-500/20" 
+                          : "bg-green-500 hover:bg-green-600 text-white shadow-green-500/20"
+                      }`}
+                    >
+                      {provaAtiva ? (
+                        <>
+                          <Square size={20} className="mr-2 fill-current animate-pulse" /> Parar Gravação
+                        </>
+                      ) : (
+                        <>
+                          <Play size={20} className="mr-2 fill-current" /> Iniciar Gravação
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="shrink-0 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex flex-col gap-2">
                     <button
                       onClick={() => setShowOverlayModal(true)}
                       disabled={overlaySelections.length === 0}
@@ -3049,6 +3103,25 @@ if (isLoadingSession) {
                     >
                       Abrir Gráfico Unificado
                     </button>
+                    {overlaySelections.length > 0 && (
+                      <button
+                        onClick={() => setOverlaySelections([])}
+                        className={`w-full py-2 rounded-xl text-xs font-bold transition-all border ${darkMode ? "border-gray-700 text-gray-400 hover:bg-gray-700 hover:text-white" : "border-gray-300 text-gray-500 hover:bg-gray-100 hover:text-gray-800"}`}
+                      >
+                        Desmarcar todos
+                      </button>
+                    )}
+                    {provaAtiva && (
+                      <button
+                        onClick={() => {
+                          setProvaFlags(prev => [...prev, recordingData.tensao.length - 1]);
+                          dispararToast("Marcação registada no gráfico!", "sucesso");
+                        }}
+                        className="w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs font-bold rounded-xl transition-all border border-red-500/20 flex items-center justify-center mt-2"
+                      >
+                        🚩 Inserir Marcação (Flag)
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -3166,7 +3239,88 @@ if (isLoadingSession) {
               {/* #endregion */}
             </div>
 
-          ) : (
+            ) : activeTab === "Diário de Bordo" ? (
+            <div className="h-full w-full max-w-6xl mx-auto flex flex-col animate-in fade-in duration-300 min-h-0">
+              <div className="flex items-center space-x-3 mb-4 shrink-0 px-2 md:px-0">
+                <div className="p-3 bg-purple-500/10 rounded-2xl">
+                  <BookOpen className="text-purple-500" size={28} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">Diário de Bordo</h2>
+                  <p className={`text-[10px] md:text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                    Anotações de ocorrências, manutenções e observações do barco durante a competição.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0 overflow-hidden">
+                {/* Lado Esquerdo: Formulário */}
+                <div className={`md:w-1/3 flex flex-col rounded-3xl shadow-sm border p-5 shrink-0 transition-colors overflow-y-auto ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                  <h3 className="text-lg font-bold mb-4 flex items-center">
+                    <Plus size={18} className="mr-2 text-purple-500" />
+                    Nova Anotação
+                  </h3>
+                  
+                  <input
+                    type="text"
+                    placeholder="Título da anotação..."
+                    value={tituloDiario}
+                    onChange={(e) => setTituloDiario(e.target.value)}
+                    className={`w-full px-4 py-3 rounded-xl border mb-3 outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-colors ${darkMode ? "bg-gray-900 border-gray-700 text-white" : "bg-gray-50 border-gray-300"}`}
+                  />
+                  
+                  <textarea
+                    placeholder="Descreva o que aconteceu (ex: Ajuste no painel solar, clima mudou, hélice trocada...)"
+                    value={textoDiario}
+                    onChange={(e) => setTextoDiario(e.target.value)}
+                    rows={6}
+                    className={`w-full flex-1 px-4 py-3 rounded-xl border mb-4 outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-colors resize-none ${darkMode ? "bg-gray-900 border-gray-700 text-white" : "bg-gray-50 border-gray-300"}`}
+                  />
+                  
+                  <button
+                    onClick={salvarDiario}
+                    className="w-full py-3.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-purple-600/20 flex items-center justify-center mt-auto hover:scale-[1.02] active:scale-95"
+                  >
+                    <BookOpen size={18} className="mr-2" /> Salvar Registo
+                  </button>
+                </div>
+
+                {/* Lado Direito: Feed de Anotações */}
+                <div className={`flex-1 flex flex-col rounded-3xl shadow-sm border p-5 transition-colors overflow-hidden ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                  <h3 className="text-lg font-bold mb-4">Histórico do Barco</h3>
+                  
+                  <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+                    {diarioLogs.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-gray-500 opacity-60">
+                        <BookOpen size={48} className="mb-3 opacity-20" />
+                        <p>Nenhuma anotação no diário ainda.</p>
+                      </div>
+                    ) : (
+                      diarioLogs.map(log => (
+                        <div key={log.id} className={`p-4 rounded-2xl border transition-all ${darkMode ? "bg-gray-900/50 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                          <div className="flex justify-between items-start mb-2">
+                            <h4 className="font-bold text-md text-purple-500 dark:text-purple-400">{log.titulo}</h4>
+                            <span className="text-[10px] md:text-xs font-semibold text-gray-500 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-md">{log.data}</span>
+                          </div>
+                          
+                          <p className={`text-sm whitespace-pre-wrap leading-relaxed ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                            {log.texto}
+                          </p>
+                          
+                          <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center gap-2">
+                            <img src={log.fotoAutor} alt={log.autor} className="w-5 h-5 rounded-full border border-gray-400" />
+                            <span className={`text-xs font-bold ${darkMode ? "text-gray-400" : "text-gray-500"}`}>{log.autor}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          
+) : (
             <div className="flex h-full items-center justify-center text-gray-500">
               <p className="text-xl">Área de {activeTab} em desenvolvimento.</p>
             </div>
@@ -3503,47 +3657,102 @@ if (isLoadingSession) {
               </div>
             </div>
 
-            <div className="flex-1 w-full relative min-h-0 mt-4">
-              <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-                <defs>
-                  <linearGradient id="expandedGradient" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor={expandedGraph.color} stopOpacity="0.4" />
-                    <stop offset="100%" stopColor={expandedGraph.color} stopOpacity="0.0" />
-                  </linearGradient>
-                </defs>
+            <div className="flex-1 w-full flex relative min-h-0 mt-4">
+              
+              {/* ESCALA LATERAL: APARECE EM GRÁFICOS DE POTÊNCIA E BATERIA */}
+              {(expandedGraph.id.startsWith("pot") || expandedGraph.id === "bateria") && (
+                <div className="relative w-12 shrink-0 h-full">
+                  {expandedGraph.id.startsWith("pot") 
+                    ? [5000, 4000, 3000, 2000, 1000, 0, -1000, -2000, -3000, -4000, -5000].map((val) => {
+                        const percent = ((5000 - val) / 10000) * 100;
+                        return (
+                          <span
+                            key={`scale-pot-${val}`}
+                            className="absolute right-2 text-[10px] md:text-[11px] font-bold text-gray-500 leading-none"
+                            style={{ top: `${percent}%`, transform: percent === 100 ? 'translateY(-100%)' : percent === 0 ? 'translateY(0)' : 'translateY(-50%)' }}
+                          >
+                            {val}
+                          </span>
+                        );
+                      })
+                    : [100, 75, 50, 25, 0].map((val) => {
+                        const percent = 100 - val;
+                        return (
+                          <span
+                            key={`scale-bat-${val}`}
+                            className="absolute right-2 text-[10px] md:text-[11px] font-bold text-gray-500 leading-none"
+                            style={{ top: `${percent}%`, transform: percent === 100 ? 'translateY(-100%)' : percent === 0 ? 'translateY(0)' : 'translateY(-50%)' }}
+                          >
+                            {val}%
+                          </span>
+                        );
+                      })
+                  }
+                </div>
+              )}
 
-                {/* Linhas de Grade Genéricas (Fundo) */}
-                {[0, 50, 100, 150, 200].map((y) => (
-                  <line
-                    key={`grid-${y}`}
-                    x1="0" y1={y} x2="1000" y2={y}
-                    stroke={darkMode ? "#374151" : "#f3f4f6"}
-                    strokeWidth="1" strokeDasharray="5,5"
+              {/* GRÁFICO SVG PRINCIPAL */}
+              <div className="flex-1 relative h-full">
+<svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                  <defs>
+                    <linearGradient id="expandedGradient" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor={expandedGraph.color} stopOpacity="0.4" />
+                      <stop offset="100%" stopColor={expandedGraph.color} stopOpacity="0.0" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Linhas de Grade de Fundo */}
+                  {(expandedGraph.id.startsWith("pot") ? [0, 25, 50, 75, 100, 125, 150, 175, 200] : [0, 50, 100, 150, 200]).map((y) => (
+                    <line key={`grid-${y}`} x1="0" y1={y} x2="1000" y2={y} stroke={darkMode ? "#374151" : "#f3f4f6"} strokeWidth="1" strokeDasharray="5,5" />
+                  ))}
+
+                  {/* LINHA DE ZERO DESTACADA PARA POTÊNCIA */}
+                  {expandedGraph.id.startsWith("pot") && (
+                    <line x1="0" y1="100" x2="1000" y2="100" stroke={darkMode ? "#ef4444" : "#f97316"} strokeWidth="1.5" strokeDasharray="4,4" />
+                  )}
+
+                  {/* Renderização baseada no tipo de gráfico (com o !provaAtiva) */}
+                  <polygon
+                    points={`0,${expandedGraph.id.startsWith("pot") ? 100 : 200} ${
+                      expandedGraph.id.startsWith("pot")
+                        ? generateFixedPolyline(expandedGraph.data, 1000, 200, -5000, 5000, !provaAtiva)
+                        : expandedGraph.id === "bateria"
+                        ? generateFixedPolyline(expandedGraph.data, 1000, 200, 0, 100, !provaAtiva)
+                        : generateFullPolyline(expandedGraph.data, 1000, 200, !provaAtiva)
+                    } 1000,${expandedGraph.id.startsWith("pot") ? 100 : 200}`}
+                    fill="url(#expandedGradient)"
                   />
-                ))}
-
-                {/* Área preenchida (polygon) - desce agora até à base 200 */}
-                <polygon
-                  points={`0,200 ${generateFullPolyline(expandedGraph.data, 1000, 200)} 1000,200`}
-                  fill="url(#expandedGradient)"
-                />
-                
-                {/* Linha do Gráfico Principal */}
-                <polyline
-                  points={generateFullPolyline(expandedGraph.data, 1000, 200)}
-                  fill="none" stroke={expandedGraph.color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-md"
-                />
-                
-                {/* Bordas Eixo X e Y principais */}
-                <line x1="0" y1="200" x2="1000" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
-                <line x1="0" y1="0" x2="0" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
-              </svg>
+                  
+                  <polyline
+                    points={
+                      expandedGraph.id.startsWith("pot")
+                        ? generateFixedPolyline(expandedGraph.data, 1000, 200, -5000, 5000, !provaAtiva)
+                        : expandedGraph.id === "bateria"
+                        ? generateFixedPolyline(expandedGraph.data, 1000, 200, 0, 100, !provaAtiva)
+                        : generateFullPolyline(expandedGraph.data, 1000, 200, !provaAtiva)
+                    }
+                    fill="none" stroke={expandedGraph.color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-md"
+                  />
+                  
+                  {/* === FLAGS (MARCAÇÕES VERTICAIS DE EVENTOS) === */}
+                  {provaAtiva && provaFlags.map((flagIdx, i) => {
+                    if (flagIdx >= expandedGraph.data.length || expandedGraph.data.length <= 1) return null;
+                    const stepX = 1000 / (expandedGraph.data.length - 1);
+                    const x = flagIdx * stepX;
+                    return <line key={`flag-${i}`} x1={x} y1="0" x2={x} y2="200" stroke="#ef4444" strokeWidth="2.5" strokeDasharray="6,4" className="drop-shadow-lg" />;
+                  })}
+                  
+                  <line x1="0" y1="200" x2="1000" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
+                  <line x1="0" y1="0" x2="0" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
+                </svg>
+              </div>
             </div>
+
           </div>
         </div>
       )}
 
-      {/* ========================================================= */}
+{/* ========================================================= */}
       {/* MODAL DE SOBREPOSIÇÃO MÚLTIPLA                            */}
       {/* ========================================================= */}
       {showOverlayModal && (
@@ -3586,27 +3795,79 @@ if (isLoadingSession) {
               </button>
             </div>
 
-            <div className="flex-1 w-full relative min-h-0 mt-4 bg-gray-900/5 rounded-2xl border dark:border-gray-700/50">
-              <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-visible p-4">
-                {/* Linhas de Grade */}
-                {[0, 50, 100, 150, 200].map((y) => (
-                  <line key={`over-grid-${y}`} x1="0" y1={y} x2="1000" y2={y} stroke={darkMode ? "#374151" : "#e5e7eb"} strokeWidth="1" strokeDasharray="4,4" />
-                ))}
+            {/* CAIXA DO GRÁFICO (Limpa, sem fundo cinza e com a mesma estrutura do Individual) */}
+            <div className="flex-1 w-full flex relative min-h-0 mt-4">
+              
+              {/* LÓGICA CONDICIONAL: SE TODAS AS ESCOLHAS SÃO DE POTÊNCIA */}
+              {(() => {
+                const isOnlyPower = overlaySelections.length > 0 && overlaySelections.every(id => id.startsWith("pot"));
+                
+                return (
+                  <>
+                    {/* Renderiza a Escala Lateral de +-2000 só se for potência */}
+                    {isOnlyPower && (
+                      <div className="relative w-12 shrink-0 h-full">
+                        {[5000, 4000, 3000, 2000, 1000, 0, -1000, -2000, -3000, -4000, -5000].map((val) => {
+                          const percent = ((5000 - val) / 10000) * 100;
+                          return (
+                            <span
+                              key={`scale-over-pot-${val}`}
+                              className="absolute right-2 text-[10px] md:text-[11px] font-bold text-gray-500 leading-none"
+                              style={{ top: `${percent}%`, transform: percent === 100 ? 'translateY(-100%)' : percent === 0 ? 'translateY(0)' : 'translateY(-50%)' }}
+                            >
+                              {val}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
 
-                {/* Linhas dos Gráficos Selecionados */}
-                {availableGraphs.filter(g => overlaySelections.includes(g.id)).map(g => (
-                  <polyline
-                    key={`over-line-${g.id}`}
-                    points={generateFullPolyline(g.data, 1000, 200)}
-                    fill="none" 
-                    stroke={g.color} 
-                    strokeWidth="3" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    className="drop-shadow-sm opacity-90 hover:opacity-100 hover:stroke-[5px] transition-all cursor-crosshair"
-                  />
-                ))}
-              </svg>
+                    {/* SVG CONTAINER DIV */}
+                    <div className="flex-1 relative h-full">
+                      <svg viewBox="0 0 1000 200" preserveAspectRatio="none" className="w-full h-full overflow-hidden">
+                        
+                        {/* Linhas de Grade Adaptativas (Cores e traços idênticos ao Individual) */}
+                        {(isOnlyPower ? [0, 25, 50, 75, 100, 125, 150, 175, 200] : [0, 50, 100, 150, 200]).map((y) => (
+                          <line key={`over-grid-${y}`} x1="0" y1={y} x2="1000" y2={y} stroke={darkMode ? "#374151" : "#f3f4f6"} strokeWidth="1" strokeDasharray="5,5" />
+                        ))}
+
+                        {/* Linha do Zero destacada */}
+                        {isOnlyPower && (
+                          <line x1="0" y1="100" x2="1000" y2="100" stroke={darkMode ? "#ef4444" : "#f97316"} strokeWidth="1.5" strokeDasharray="4,4" />
+                        )}
+
+                        {/* Renderiza as Linhas (Sem polygon, garantindo que NÃO há degradê) */}
+                        {availableGraphs.filter(g => overlaySelections.includes(g.id)).map(g => (
+                          <polyline
+                            key={`over-line-${g.id}`}
+                            points={isOnlyPower ? generateFixedPolyline(g.data, 1000, 200, -5000, 5000, !provaAtiva) : generateFullPolyline(g.data, 1000, 200, !provaAtiva)}
+                            fill="none"                            
+                            stroke={g.color} 
+                            strokeWidth="3" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            className="drop-shadow-sm opacity-90 hover:opacity-100 transition-all"
+                          />
+                        ))}
+
+                        {/* === FLAGS (MARCAÇÕES VERTICAIS DE EVENTOS NA SOBREPOSIÇÃO) === */}
+                        {provaAtiva && overlaySelections.length > 0 && provaFlags.map((flagIdx, i) => {
+                          const dataLen = availableGraphs.find(g => g.id === overlaySelections[0])?.data.length || 0;
+                          if (flagIdx >= dataLen || dataLen <= 1) return null;
+                          const stepX = 1000 / (dataLen - 1);
+                          const x = flagIdx * stepX;
+                          return <line key={`over-flag-${i}`} x1={x} y1="0" x2={x} y2="200" stroke="#ef4444" strokeWidth="2.5" strokeDasharray="6,4" />;
+                        })}
+
+                        {/* Bordas Superior e Inferior para fechar o gráfico visualmente */}
+                        <line x1="0" y1="200" x2="1000" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
+                        <line x1="0" y1="0" x2="0" y2="200" stroke={darkMode ? "#4b5563" : "#d1d5db"} strokeWidth="2" />
+                      </svg>
+                    </div>
+                  </>
+                );
+              })()}
+              
             </div>
           </div>
         </div>
@@ -3642,6 +3903,88 @@ if (isLoadingSession) {
             </button>
           </div>
         </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* AVISO FLUTUANTE DE CUTUCÃO (Canto Inferior Direito)       */}
+      {/* ========================================================= */}
+      {cutucaoRecebido && (
+        <div className="fixed bottom-6 right-6 z-[10001] animate-in slide-in-from-bottom-5 fade-in duration-300">
+          <div className="px-5 py-4 rounded-2xl shadow-2xl border bg-orange-950/90 border-orange-500/50 text-orange-200 shadow-orange-950/50 flex items-center space-x-3 text-sm font-semibold backdrop-blur-xl">
+            <span className="text-2xl animate-bounce">👋</span>
+            <div>
+              <p className="font-bold">Recebeu um tchauzinho!</p>
+              <p className="text-xs text-orange-300 font-normal">{cutucaoRecebido.remetente} cutucou-te na telemetria.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MENU DE USUÁRIOS ONLINE (Tirado do Header para não bugar o Z-Index) */}
+      {/* ========================================================= */}
+      {showOnlineMenu && (
+        <>
+          <div
+            className="fixed inset-0 z-[999998]"
+            onClick={() => setShowOnlineMenu(null)}
+          ></div>
+
+          <div
+            style={{
+              top: `${showOnlineMenu.top}px`,
+              left: `${showOnlineMenu.left}px`,
+            }}
+            className="fixed w-64 p-3 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] border z-[999999] animate-in fade-in zoom-in-95 duration-200 bg-gray-900 border-gray-600 text-white"
+          >
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 border-b border-gray-700 pb-1">
+              Membros Online ({onlineCount})
+            </p>
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              {members
+                .filter((m) => m.isOnline)
+                .map((membro) => (
+                  <div
+                    key={membro.id}
+                    className="flex items-center justify-between gap-2 py-1"
+                  >
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <img
+                        src={membro.photo}
+                        alt={membro.name}
+                        className="w-6 h-6 rounded-full object-cover shrink-0 bg-gray-800"
+                      />
+                      <span className="text-xs font-bold truncate">
+                        {membro.name.split(" ")[0]}
+                      </span>
+                    </div>
+
+                    {membro.email !== currentUser?.email && (
+                      <button
+                        type="button"
+                        /* Trocado para onClick padrão */
+                        onClick={(e) => {
+                          e.preventDefault(); 
+                          e.stopPropagation();
+                          enviarCutucao(membro.email, membro.name);
+                          setShowOnlineMenu(null);
+                        }}
+                        className="px-2.5 py-1 bg-orange-500/20 hover:bg-orange-500 text-orange-400 hover:text-white text-[10px] font-bold rounded-lg transition-all border border-orange-500/30 flex items-center space-x-1 shrink-0 cursor-pointer relative z-[1000000]"
+                      >
+                        <span>👋</span>
+                        <span>Cutucar</span>
+                      </button>
+                    )}
+                  </div>
+                ))}
+              {onlineCount === 0 && (
+                <p className="text-xs text-gray-500 text-center py-2">
+                  Ninguém online de momento.
+                </p>
+              )}
+            </div>
+          </div>
+        </>
       )}
 
 
