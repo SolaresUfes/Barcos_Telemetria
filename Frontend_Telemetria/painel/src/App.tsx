@@ -1257,53 +1257,78 @@ function prova_iniciar() {
     dispararToast(`A preparar o CSV da gravação #${prova.id}...`, "aviso");
 
     try {
-      // 1. Busca todos os dados da API
       const res = await fetch(`https://telemetria-be.vercel.app/api/sensores/todos`);
       
       if (!res.ok) throw new Error("Falha na comunicação com a API");
       
       const todosOsDados = await res.json();
 
-      // 2. Converte as datas de início e fim para timestamps numéricos
       const tempoInicio = new Date(prova.inicio).getTime();
       const tempoFim = new Date(prova.fim).getTime();
 
-      // 3. Filtra os dados: mantém apenas os que estão entre o início e o fim da prova
+      // --- 1. DATA DE CORTE DO BUG ---
+      // Defina aqui a data/hora exata em que você vai consertar o backend.
+      // Tudo ANTES dessa data sofre a correção de +3h e -3h.
+      // Tudo DEPOIS dessa data é processado normalmente.
+      // Exemplo: 18 de Outubro de 2026 à meia-noite
+      const dataDoConserto = new Date('2026-10-18T00:00:00').getTime();
+      
+      const isProvaAntigaComBug = tempoInicio < dataDoConserto;
+
+      const milissegundosErro = 3 * 60 * 60 * 1000; // 3 horas
+
+      // --- 2. LIMITES DE BUSCA ---
+      // Se for prova com bug, busca no futuro. Se for prova nova consertada, busca no horário exato.
+      const limiteBuscaInicio = isProvaAntigaComBug ? tempoInicio + milissegundosErro : tempoInicio;
+      const limiteBuscaFim = isProvaAntigaComBug ? tempoFim + milissegundosErro : tempoFim;
+
       const dadosFiltrados = todosOsDados.filter((leitura: any) => {
-        // Altere "created_at" se a sua coluna de data no Supabase tiver outro nome
-        const tempoLeitura = new Date(leitura.created_at).getTime(); 
-        return tempoLeitura >= tempoInicio && tempoLeitura <= tempoFim;
+        const tempoLeitura = new Date(leitura.MOMENTO || leitura.created_at).getTime(); 
+        return tempoLeitura >= limiteBuscaInicio && tempoLeitura <= limiteBuscaFim;
       });
 
-      // 4. Verifica se sobrou algum dado após o filtro
       if (dadosFiltrados.length === 0) {
         dispararToast("Nenhum dado encontrado para o período desta gravação.", "erro");
         return;
       }
 
-      // 5. Monta o cabeçalho do CSV pegando as chaves do primeiro item
-      const cabecalhos = Object.keys(dadosFiltrados[0]).join(",");
+      // --- 3. FORMATAÇÃO E CORREÇÃO PARA O CSV ---
+      const dadosCorrigidos = dadosFiltrados.map((item: any) => {
+        const campoData = item.MOMENTO ? 'MOMENTO' : 'created_at';
+        const tempoOriginal = new Date(item[campoData]).getTime();
 
-      // 6. Monta as linhas pegando os valores de cada item
-      const linhas = dadosFiltrados.map((item: any) => {
+        let tempoFinal = tempoOriginal;
+
+        // Se a prova era da época do bug, desfaz as 3 horas
+        if (isProvaAntigaComBug) {
+          tempoFinal = tempoOriginal - milissegundosErro;
+        }
+
+        // Retorna o item com o MOMENTO legível (seja ele corrigido ou o original exato das provas novas)
+        return {
+          ...item,
+          [campoData]: new Date(tempoFinal).toLocaleString('pt-BR') 
+        };
+      });
+
+      // --- 4. GERAR O CSV ---
+      const cabecalhos = Object.keys(dadosCorrigidos[0]).join(",");
+
+      const linhas = dadosCorrigidos.map((item: any) => {
         return Object.values(item).map(valor => `"${valor}"`).join(",");
       });
 
-      // 7. Junta cabeçalho e linhas com quebra de linha
       const csvString = [cabecalhos, ...linhas].join("\n");
 
-      // 8. Cria o arquivo físico (Blob) na memória do navegador
       const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
 
-      // 9. Cria um link invisível e força o clique para iniciar o download
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `telemetria_gravacao_${prova.id}.csv`); // Nome do arquivo
+      link.setAttribute("download", `telemetria_gravacao_${prova.id}.csv`);
       document.body.appendChild(link);
       link.click();
 
-      // 10. Limpa o link invisível da tela
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
