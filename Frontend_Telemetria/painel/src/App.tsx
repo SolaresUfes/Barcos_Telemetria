@@ -1253,74 +1253,65 @@ function prova_iniciar() {
     setCarregandoProvas(false);
   }
 
-  // Função para baixar o CSV de uma prova específica do histórico
   async function baixarCSVHistorico(prova: any) {
     dispararToast(`A preparar o CSV da gravação #${prova.id}...`, "aviso");
 
     try {
-      // 1. Faz a requisição filtrando pelo início e fim exatos da prova
-      const res = await fetch(`https://telemetria-be.vercel.app/api/sensores/todos?inicio=${prova.inicio}&fim=${prova.fim}`);
+      // 1. Busca todos os dados da API
+      const res = await fetch(`https://telemetria-be.vercel.app/api/sensores/todos`);
       
       if (!res.ok) throw new Error("Falha na comunicação com a API");
       
-      const data = await res.json();
+      const todosOsDados = await res.json();
 
-      if (!data || data.length === 0) {
-        dispararToast("Nenhum dado gravado durante o período desta prova.", "erro");
+      // 2. Converte as datas de início e fim para timestamps numéricos
+      const tempoInicio = new Date(prova.inicio).getTime();
+      const tempoFim = new Date(prova.fim).getTime();
+
+      // 3. Filtra os dados: mantém apenas os que estão entre o início e o fim da prova
+      const dadosFiltrados = todosOsDados.filter((leitura: any) => {
+        // Altere "created_at" se a sua coluna de data no Supabase tiver outro nome
+        const tempoLeitura = new Date(leitura.created_at).getTime(); 
+        return tempoLeitura >= tempoInicio && tempoLeitura <= tempoFim;
+      });
+
+      // 4. Verifica se sobrou algum dado após o filtro
+      if (dadosFiltrados.length === 0) {
+        dispararToast("Nenhum dado encontrado para o período desta gravação.", "erro");
         return;
       }
 
-      // 2. Define os cabeçalhos com o "Momento" na primeira posição
-      const headers = "Momento,Tensão(V),Potência Bateria(W),Potência Motor(W),Potência Geração(W),Bateria(%),Velocidade,Corrente Bateria(A),Corrente Motor(A),S1,S2\n";
-      
-      // 3. Mapeia as linhas aplicando os cálculos e formatando a data
-      const rows = data.map((d: any) => {
-          let momentoFormatado = "";
-          if (d.momento) {
-              const dataObj = new Date(d.momento);
-              momentoFormatado = dataObj.toLocaleString('pt-BR', { 
-                  timeZone: 'America/Sao_Paulo' 
-              });
-          }
+      // 5. Monta o cabeçalho do CSV pegando as chaves do primeiro item
+      const cabecalhos = Object.keys(dadosFiltrados[0]).join(",");
 
-          const tensao = d.tensao ?? 0;
-          const potBateria = d.potencia ?? 0;
-          const potMotor = (d.tensao ?? 0) * (d.corrente_2 ?? 0);
-          const potGeracao = (d.tensao ?? 0) * (d.string_1 ?? 0);
-          const bateria = d.porcentagem ?? 0;
-          const velocidade = d.velocidade ?? 0;
-          const correnteBat = d.corrente ?? 0;
-          const correnteMotor = d.corrente_2 ?? 0;
-          const s1 = d.string_1 ?? 0;
-          const s2 = d.string_2 ?? 0;
+      // 6. Monta as linhas pegando os valores de cada item
+      const linhas = dadosFiltrados.map((item: any) => {
+        return Object.values(item).map(valor => `"${valor}"`).join(",");
+      });
 
-          // Retorna a linha do CSV com o momento na primeira posição, entre aspas
-          return `"${momentoFormatado}",${tensao},${potBateria},${potMotor},${potGeracao},${bateria},${velocidade},${correnteBat},${correnteMotor},${s1},${s2}`;
-      }).join("\n");
+      // 7. Junta cabeçalho e linhas com quebra de linha
+      const csvString = [cabecalhos, ...linhas].join("\n");
 
-      // 4. Cria o arquivo virtual
-      const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
-      const url = window.URL.createObjectURL(blob);
-      
-      // 5. Gera um nome de arquivo
-      const nomeFormatado = prova.nome ? prova.nome.replace(/\s+/g, '_') : `prova_${prova.id}`;
-      
-      // 6. Simula o clique para forçar o download
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `telemetria_${nomeFormatado}_${prova.id}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      
-      // 7. Limpa a memória
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
-      dispararToast("Download do CSV concluído com sucesso!", "sucesso");
+      // 8. Cria o arquivo físico (Blob) na memória do navegador
+      const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
 
-    } catch (error) {
-      console.error("Erro ao baixar histórico:", error);
-      dispararToast("Erro ao processar o arquivo CSV.", "erro");
+      // 9. Cria um link invisível e força o clique para iniciar o download
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `telemetria_gravacao_${prova.id}.csv`); // Nome do arquivo
+      document.body.appendChild(link);
+      link.click();
+
+      // 10. Limpa o link invisível da tela
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      dispararToast("CSV baixado com sucesso!", "sucesso");
+
+    } catch (erro) {
+      console.error(erro);
+      dispararToast("Erro ao baixar o CSV.", "erro");
     }
   }
 
