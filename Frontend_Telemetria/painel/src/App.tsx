@@ -1259,7 +1259,7 @@ function prova_iniciar() {
     try {
       // 1. BYPASS NO BACKEND: Buscamos direto do Supabase no Frontend!
       // ATENÇÃO: Substitua 'sensores' pelo nome EXATO da sua tabela de medições no Supabase
-      const NOME_DA_TABELA = 'sensores'; 
+      const NOME_DA_TABELA = 'medicoes'; 
 
       // Pede ao Supabase APENAS os dados entre o início e o fim da prova
       const { data: dadosFiltrados, error } = await supabase
