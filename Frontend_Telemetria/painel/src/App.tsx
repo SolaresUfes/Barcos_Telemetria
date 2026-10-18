@@ -1254,72 +1254,26 @@ function prova_iniciar() {
   }
 
   async function baixarCSVHistorico(prova: any) {
-    dispararToast(`A preparar o CSV da gravação #${prova.id}...`, "aviso");
+    dispararToast(`Baixando base de dados completa para diagnóstico...`, "aviso");
 
     try {
-      // Usa a única rota disponível
       const res = await fetch(`https://telemetria-be.vercel.app/api/sensores/todos`);
       
       if (!res.ok) throw new Error("Falha na comunicação com a API");
       
       const todosOsDados = await res.json();
 
-      const tempoInicio = new Date(prova.inicio).getTime();
-      const tempoFim = new Date(prova.fim).getTime();
-
-      // --- 1. DATA DE CORTE DO CONSERTO FUTURO ---
-      const dataDoConserto = new Date('2026-10-18T00:00:00').getTime();
-      const isProvaAntigaComBug = tempoInicio < dataDoConserto;
-
-      // --- 2. AJUSTE DE FUSO HORÁRIO ---
-      // Se +3 não estava a funcionar, o erro provável é que precisava de recuar o relógio (-3)
-      const horasDeErro = 3; 
-      const milissegundosErro = horasDeErro * 60 * 60 * 1000;
-
-      // Aplica o erro apenas se for uma prova antes da data do conserto
-      const limiteBuscaInicio = isProvaAntigaComBug ? tempoInicio + milissegundosErro : tempoInicio;
-      const limiteBuscaFim = isProvaAntigaComBug ? tempoFim + milissegundosErro : tempoFim;
-
-      // Margem extra de 2 minutos para não perder a primeira e a última leitura
-      const margem = 2 * 60 * 1000; 
-
-      // --- 3. FILTRAGEM ---
-      const dadosFiltrados = todosOsDados.filter((leitura: any) => {
-        // Procura a coluna de data, seja qual for o nome que venha do banco
-        const campoData = leitura.momento || leitura.MOMENTO || leitura.created_at || leitura.data;
-        if (!campoData) return false;
-
-        const tempoLeitura = new Date(campoData).getTime(); 
-        return tempoLeitura >= (limiteBuscaInicio - margem) && tempoLeitura <= (limiteBuscaFim + margem);
-      });
-
-      if (dadosFiltrados.length === 0) {
-        dispararToast("Nenhum dado encontrado. A rota /todos pode já não conter dados tão antigos.", "erro");
+      // Se a rota estiver retornando um array vazio de cara, o erro vai estourar aqui.
+      if (!todosOsDados || todosOsDados.length === 0) {
+        dispararToast("A rota /todos devolveu uma lista completamente VAZIA. O backend não está enviando os dados.", "erro");
         return;
       }
 
-      // --- 4. FORMATAÇÃO DO CSV ---
-      const dadosCorrigidos = dadosFiltrados.map((item: any) => {
-        const chaveData = item.momento ? 'momento' : item.MOMENTO ? 'MOMENTO' : item.created_at ? 'created_at' : 'data';
-        const tempoOriginal = new Date(item[chaveData]).getTime();
+      // --- DIAGNÓSTICO (SEM FILTRO) ---
+      // Pega as chaves exatamente como o backend mandou (para vermos os nomes reais das colunas)
+      const cabecalhos = Object.keys(todosOsDados[0]).join(",");
 
-        let tempoFinal = tempoOriginal;
-        
-        // Se aplicou as horas de erro para procurar, tem de desfazer para mostrar a data correta no Excel
-        if (isProvaAntigaComBug) {
-          tempoFinal = tempoOriginal - milissegundosErro;
-        }
-
-        return {
-          ...item,
-          [chaveData || 'Data']: new Date(tempoFinal).toLocaleString('pt-BR') 
-        };
-      });
-
-      // --- 5. GERAR O ARQUIVO ---
-      const cabecalhos = Object.keys(dadosCorrigidos[0]).join(",");
-
-      const linhas = dadosCorrigidos.map((item: any) => {
+      const linhas = todosOsDados.map((item: any) => {
         return Object.values(item).map(valor => `"${valor}"`).join(",");
       });
 
@@ -1330,18 +1284,18 @@ function prova_iniciar() {
 
       const link = document.createElement("a");
       link.href = urlBlob;
-      link.setAttribute("download", `telemetria_gravacao_${prova.id}.csv`);
+      link.setAttribute("download", `DIAGNOSTICO_COMPLETO_todos_os_dados.csv`);
       document.body.appendChild(link);
       link.click();
 
       document.body.removeChild(link);
       URL.revokeObjectURL(urlBlob);
 
-      dispararToast("CSV baixado com sucesso!", "sucesso");
+      dispararToast("Diagnóstico baixado! Abra o arquivo e verifique as colunas.", "sucesso");
 
     } catch (erro) {
       console.error(erro);
-      dispararToast("Erro ao baixar o CSV.", "erro");
+      dispararToast("Erro ao baixar o diagnóstico.", "erro");
     }
   }
 
