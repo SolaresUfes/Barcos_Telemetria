@@ -1254,52 +1254,51 @@ function prova_iniciar() {
   }
 
   async function baixarCSVHistorico(prova: any) {
-    dispararToast(`A buscar os dados diretamente do banco para a gravação #${prova.id}...`, "aviso");
+    dispararToast(`A buscar a gravação #${prova.id} na tabela medicoes...`, "aviso");
 
     try {
-      // 1. BYPASS NO BACKEND: Buscamos direto do Supabase no Frontend!
-      // ATENÇÃO: Substitua 'sensores' pelo nome EXATO da sua tabela de medições no Supabase
       const NOME_DA_TABELA = 'medicoes'; 
+      
+      // Se a sua coluna de data no banco tiver outro nome, alteraremos aqui depois.
+      const NOME_COLUNA_DATA = 'created_at'; 
 
-      // Pede ao Supabase APENAS os dados entre o início e o fim da prova
       const { data: dadosFiltrados, error } = await supabase
         .from(NOME_DA_TABELA)
         .select('*')
-        .gte('created_at', prova.inicio) // Data maior ou igual ao início
-        .lte('created_at', prova.fim)    // Data menor ou igual ao fim
-        .order('created_at', { ascending: true }); // Ordena do mais antigo pro mais novo
+        .gte(NOME_COLUNA_DATA, prova.inicio)
+        .lte(NOME_COLUNA_DATA, prova.fim)
+        .order(NOME_COLUNA_DATA, { ascending: true });
 
-      if (error) throw new Error(error.message);
+      // AQUI ESTÁ A ARMADILHA: Se o Supabase negar, ele vai nos dizer o porquê!
+      if (error) {
+        alert("ERRO DO SUPABASE: " + error.message);
+        throw new Error(error.message);
+      }
 
       if (!dadosFiltrados || dadosFiltrados.length === 0) {
-        dispararToast("Nenhum dado encontrado no banco para o período desta gravação.", "erro");
+        dispararToast("A busca funcionou, mas não há dados salvos neste intervalo de tempo.", "erro");
         return;
       }
 
-      // 2. Formatação da Data para o Excel
+      // Formatação da Data
       const dadosCorrigidos = dadosFiltrados.map((item: any) => {
-        // Identifica o nome da coluna de data
-        const chaveData = item.momento ? 'momento' : item.MOMENTO ? 'MOMENTO' : item.created_at ? 'created_at' : 'data';
-        
-        const dataFormatada = item[chaveData] 
-          ? new Date(item[chaveData]).toLocaleString('pt-BR') 
+        const dataFormatada = item[NOME_COLUNA_DATA] 
+          ? new Date(item[NOME_COLUNA_DATA]).toLocaleString('pt-BR') 
           : 'Sem Data';
 
         return {
           ...item,
-          [chaveData || 'MOMENTO']: dataFormatada 
+          [NOME_COLUNA_DATA]: dataFormatada 
         };
       });
 
-      // 3. Geração do Arquivo CSV
+      // Geração do Arquivo CSV
       const cabecalhos = Object.keys(dadosCorrigidos[0]).join(",");
-
       const linhas = dadosCorrigidos.map((item: any) => {
         return Object.values(item).map(valor => `"${valor}"`).join(",");
       });
 
       const csvString = [cabecalhos, ...linhas].join("\n");
-
       const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
       const urlBlob = URL.createObjectURL(blob);
 
@@ -1315,8 +1314,8 @@ function prova_iniciar() {
       dispararToast("CSV baixado com sucesso!", "sucesso");
 
     } catch (erro) {
-      console.error("Erro no Supabase:", erro);
-      dispararToast("Erro ao buscar os dados direto do banco.", "erro");
+      console.error("Erro completo:", erro);
+      dispararToast("Falha ao buscar no banco. Verifique o alerta.", "erro");
     }
   }
 
