@@ -1260,7 +1260,7 @@ function prova_iniciar() {
       const NOME_DA_TABELA = 'medicoes'; 
       
       // Se a sua coluna de data no banco tiver outro nome, alteraremos aqui depois.
-      const NOME_COLUNA_DATA = 'created_at'; 
+      const NOME_COLUNA_DATA = 'momento'; 
 
       const { data: dadosFiltrados, error } = await supabase
         .from(NOME_DA_TABELA)
