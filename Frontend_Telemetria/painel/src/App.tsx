@@ -1295,8 +1295,12 @@ function prova_iniciar() {
         
         if (item[NOME_COLUNA_DATA]) {
           const tempoNoBanco = new Date(item[NOME_COLUNA_DATA]).getTime();
-          // Aqui não precisamos ajustar o fuso, o toLocaleString assume que a string ISO já é absoluta
-          dataFormatada = new Date(tempoNoBanco).toLocaleString('pt-BR');
+          
+          // O navegador subtraiu 3 horas achando que era UTC.
+          // Devolvemos as 3 horas (3 * 60 * 60 * 1000) para o CSV ficar igual à UI
+          const tempoCorrigido = tempoNoBanco + (3 * 60 * 60 * 1000); 
+          
+          dataFormatada = new Date(tempoCorrigido).toLocaleString('pt-BR');
         }
 
         return {
