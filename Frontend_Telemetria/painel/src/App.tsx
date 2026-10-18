@@ -1258,33 +1258,46 @@ function prova_iniciar() {
 
     try {
       const NOME_DA_TABELA = 'medicoes'; 
-      
-      // Se a sua coluna de data no banco tiver outro nome, alteraremos aqui depois.
       const NOME_COLUNA_DATA = 'momento'; 
 
+      // 1. Converter as datas da prova (que estão em UTC) para o fuso brasileiro (-3h)
+      // para que a busca no banco de dados "bata" com o que está gravado lá.
+      const inicioOriginal = new Date(prova.inicio).getTime();
+      const fimOriginal = new Date(prova.fim).getTime();
+      
+      const milissegundosErro = 3 * 60 * 60 * 1000; // 3 horas
+      const margemSeguranca = 2 * 60 * 1000; // 2 minutos de margem
+      
+      const inicioAjustado = new Date(inicioOriginal - milissegundosErro - margemSeguranca).toISOString();
+      const fimAjustado = new Date(fimOriginal - milissegundosErro + margemSeguranca).toISOString();
+
+      // 2. Busca direta no Supabase
       const { data: dadosFiltrados, error } = await supabase
         .from(NOME_DA_TABELA)
         .select('*')
-        .gte(NOME_COLUNA_DATA, prova.inicio)
-        .lte(NOME_COLUNA_DATA, prova.fim)
+        .gte(NOME_COLUNA_DATA, inicioAjustado)
+        .lte(NOME_COLUNA_DATA, fimAjustado)
         .order(NOME_COLUNA_DATA, { ascending: true });
 
-      // AQUI ESTÁ A ARMADILHA: Se o Supabase negar, ele vai nos dizer o porquê!
       if (error) {
         alert("ERRO DO SUPABASE: " + error.message);
         throw new Error(error.message);
       }
 
       if (!dadosFiltrados || dadosFiltrados.length === 0) {
-        dispararToast("A busca funcionou, mas não há dados salvos neste intervalo de tempo.", "erro");
+        dispararToast("Nenhum dado encontrado para as datas ajustadas.", "erro");
         return;
       }
 
-      // Formatação da Data
+      // 3. Formatação para o CSV
       const dadosCorrigidos = dadosFiltrados.map((item: any) => {
-        const dataFormatada = item[NOME_COLUNA_DATA] 
-          ? new Date(item[NOME_COLUNA_DATA]).toLocaleString('pt-BR') 
-          : 'Sem Data';
+        let dataFormatada = 'Sem Data';
+        
+        if (item[NOME_COLUNA_DATA]) {
+          const tempoNoBanco = new Date(item[NOME_COLUNA_DATA]).getTime();
+          // Aqui não precisamos ajustar o fuso, o toLocaleString assume que a string ISO já é absoluta
+          dataFormatada = new Date(tempoNoBanco).toLocaleString('pt-BR');
+        }
 
         return {
           ...item,
@@ -1292,7 +1305,7 @@ function prova_iniciar() {
         };
       });
 
-      // Geração do Arquivo CSV
+      // 4. Gerar e descarregar o ficheiro
       const cabecalhos = Object.keys(dadosCorrigidos[0]).join(",");
       const linhas = dadosCorrigidos.map((item: any) => {
         return Object.values(item).map(valor => `"${valor}"`).join(",");
@@ -1315,7 +1328,7 @@ function prova_iniciar() {
 
     } catch (erro) {
       console.error("Erro completo:", erro);
-      dispararToast("Falha ao buscar no banco. Verifique o alerta.", "erro");
+      dispararToast("Falha ao gerar o ficheiro.", "erro");
     }
   }
 
