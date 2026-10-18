@@ -1254,26 +1254,47 @@ function prova_iniciar() {
   }
 
   async function baixarCSVHistorico(prova: any) {
-    dispararToast(`Baixando base de dados completa para diagnóstico...`, "aviso");
+    dispararToast(`A buscar os dados diretamente do banco para a gravação #${prova.id}...`, "aviso");
 
     try {
-      const res = await fetch(`https://telemetria-be.vercel.app/api/sensores/todos`);
-      
-      if (!res.ok) throw new Error("Falha na comunicação com a API");
-      
-      const todosOsDados = await res.json();
+      // 1. BYPASS NO BACKEND: Buscamos direto do Supabase no Frontend!
+      // ATENÇÃO: Substitua 'sensores' pelo nome EXATO da sua tabela de medições no Supabase
+      const NOME_DA_TABELA = 'sensores'; 
 
-      // Se a rota estiver retornando um array vazio de cara, o erro vai estourar aqui.
-      if (!todosOsDados || todosOsDados.length === 0) {
-        dispararToast("A rota /todos devolveu uma lista completamente VAZIA. O backend não está enviando os dados.", "erro");
+      // Pede ao Supabase APENAS os dados entre o início e o fim da prova
+      const { data: dadosFiltrados, error } = await supabase
+        .from(NOME_DA_TABELA)
+        .select('*')
+        .gte('created_at', prova.inicio) // Data maior ou igual ao início
+        .lte('created_at', prova.fim)    // Data menor ou igual ao fim
+        .order('created_at', { ascending: true }); // Ordena do mais antigo pro mais novo
+
+      if (error) throw new Error(error.message);
+
+      if (!dadosFiltrados || dadosFiltrados.length === 0) {
+        dispararToast("Nenhum dado encontrado no banco para o período desta gravação.", "erro");
         return;
       }
 
-      // --- DIAGNÓSTICO (SEM FILTRO) ---
-      // Pega as chaves exatamente como o backend mandou (para vermos os nomes reais das colunas)
-      const cabecalhos = Object.keys(todosOsDados[0]).join(",");
+      // 2. Formatação da Data para o Excel
+      const dadosCorrigidos = dadosFiltrados.map((item: any) => {
+        // Identifica o nome da coluna de data
+        const chaveData = item.momento ? 'momento' : item.MOMENTO ? 'MOMENTO' : item.created_at ? 'created_at' : 'data';
+        
+        const dataFormatada = item[chaveData] 
+          ? new Date(item[chaveData]).toLocaleString('pt-BR') 
+          : 'Sem Data';
 
-      const linhas = todosOsDados.map((item: any) => {
+        return {
+          ...item,
+          [chaveData || 'MOMENTO']: dataFormatada 
+        };
+      });
+
+      // 3. Geração do Arquivo CSV
+      const cabecalhos = Object.keys(dadosCorrigidos[0]).join(",");
+
+      const linhas = dadosCorrigidos.map((item: any) => {
         return Object.values(item).map(valor => `"${valor}"`).join(",");
       });
 
@@ -1284,18 +1305,18 @@ function prova_iniciar() {
 
       const link = document.createElement("a");
       link.href = urlBlob;
-      link.setAttribute("download", `DIAGNOSTICO_COMPLETO_todos_os_dados.csv`);
+      link.setAttribute("download", `telemetria_gravacao_${prova.id}.csv`);
       document.body.appendChild(link);
       link.click();
 
       document.body.removeChild(link);
       URL.revokeObjectURL(urlBlob);
 
-      dispararToast("Diagnóstico baixado! Abra o arquivo e verifique as colunas.", "sucesso");
+      dispararToast("CSV baixado com sucesso!", "sucesso");
 
     } catch (erro) {
-      console.error(erro);
-      dispararToast("Erro ao baixar o diagnóstico.", "erro");
+      console.error("Erro no Supabase:", erro);
+      dispararToast("Erro ao buscar os dados direto do banco.", "erro");
     }
   }
 
