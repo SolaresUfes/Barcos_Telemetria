@@ -374,7 +374,7 @@ export default function App() {
       // Atrasa a liberação do painel em 1.5 segundos para a animação brilhar
       setTimeout(() => {
         setisLogged(true);
-      }, 1500);
+      }, 500);
 
       // Carrega a equipe em segundo plano ou aguarda
       await buscarEquipe();
