@@ -4,10 +4,10 @@
 			"path": "."
 		},
 		{
-			"path": "Teste_Lora/Lora"
+			"path": "ESP_Completo"
 		},
 		{
-			"path": "ESP_Completo"
+			"path": "Lora"
 		}
 	],
 	"settings": {}
