@@ -2,4 +2,4 @@
 
 #include <Arduino.h>
 
-void configurarPotenciaLoRa()
+void configurarPotenciaLoRa();
