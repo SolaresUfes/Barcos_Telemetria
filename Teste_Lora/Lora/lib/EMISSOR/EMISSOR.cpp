@@ -1,20 +1,16 @@
-#include <Arduino.h>
+#include "EMISSOR.h"
 
 // Pinos
-#define RXD2 15 // Fio AMARELO (RXD do LoRa)
-#define TXD2 16 // Fio LARANJA (TXD do LoRa) 
+// Fio AMARELO (RXD do LoRa) - 15
+// Fio LARANJA (TXD do LoRa) - 16
 
 int contador = 1;
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(BAUD_SERIAL);
   
   // O LoRa está configurado para 9600 bps no ar e na serial
-  Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
-  
-  Serial.println("\n=========================================");
-  Serial.println("[BARCO - S3] TRANSMISSOR INICIADO");
-  Serial.println("=========================================");
+  LORA_iniciar_modulo_emissor();  
 }
 
 void loop() {
@@ -32,4 +28,14 @@ void loop() {
   
   // Aguarda 1 segundo (1000 ms) antes do próximo envio
   delay(1000); 
+}
+
+void LORA_iniciar_modulo_emissor(){
+
+  Serial2.begin(BAUD_MODULOS, SERIAL_8N1, RX_EMISSOR, TX_EMISSOR);
+  
+  Serial.println("\n=========================================");
+  Serial.println("[BARCO - S3] TRANSMISSOR INICIADO");
+  Serial.println("=========================================");
+
 }
