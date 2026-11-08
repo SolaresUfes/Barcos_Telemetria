@@ -1,4 +1,4 @@
-const SteeringWheelIcon = ({ size = 20, className = "" }) => (
+export const SteeringWheelIcon = ({ size = 20, className = "" }) => (
   <svg
     width={size}
     height={size}
@@ -18,7 +18,7 @@ const SteeringWheelIcon = ({ size = 20, className = "" }) => (
   </svg>
 );
 
-const GoogleIcon = ({ size = 24 }) => (
+export const GoogleIcon = ({ size = 24 }) => (
   <svg
     width={size}
     height={size}
