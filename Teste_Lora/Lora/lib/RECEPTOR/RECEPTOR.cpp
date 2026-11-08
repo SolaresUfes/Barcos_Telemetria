@@ -1,17 +1,12 @@
-#include <Arduino.h>
+#include "RECEPTOR.h"
 
 // Novos pinos 
-#define RXD2 16 // Fio LARANJA (TXD do LoRa)
-#define TXD2 17 // Fio AMARELO (RXD do LoRa)
+// Fio LARANJA (TXD do LoRa) - 16
+// Fio AMARELO (RXD do LoRa) - 17
 
 void setup() {
-  Serial.begin(115200);
-  Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
-  
-  Serial.println("\n=========================================");
-  Serial.println("[BASE - ESP32] RECEPTOR INICIADO");
-  Serial.println("=========================================");
-  Serial.println("Aguardando telemetria do barco...\n");
+  Serial.begin(BAUD_SERIAL);
+  LORA_iniciar_modulo_receptor();
 }
 
 void loop() {
@@ -29,4 +24,15 @@ void loop() {
       Serial.println(pacoteRecebido);
     }
   }
+}
+
+void LORA_iniciar_modulo_receptor(){
+
+  Serial2.begin(BAUD_MODULOS, SERIAL_8N1, RX_RECEPTOR, TX_RECEPTOR);
+
+  Serial.println("\n=========================================");
+  Serial.println("[BASE - ESP32] RECEPTOR INICIADO");
+  Serial.println("=========================================");
+  Serial.println("Aguardando telemetria do barco...\n");
+
 }
