@@ -1,7 +1,0 @@
-.vscode/
-build/
-*.bin
-*.elf
-*.map
-*.log
-.DS_Store
