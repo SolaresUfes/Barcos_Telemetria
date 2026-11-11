@@ -1,23 +1,52 @@
-# Inventário Solares
+<p align="center">
+  <img src="public/favicon.svg" alt="Logo do Inventário Solares" width="72" />
+</p>
 
-Painel de inventário do galpão do Projeto Solares (área de Barcos · Telemetria).
-Mesma "vibe" do painel de telemetria: Vite + React + TypeScript + Tailwind, Supabase (banco + login Google) e deploy na Vercel.
+<h1 align="center">Inventário Solares</h1>
 
-## Funcionalidades
+<p align="center">
+  Sistema web de controle de estoque de componentes eletrônicos da equipe de <b>Telemetria</b> (Barcos) do Projeto Solares.<br/>
+  Estoque, estado de cada unidade, empréstimos, orçamento, melhores preços e relatórios em PDF.
+</p>
+
+<p align="center">
+  <img alt="React" src="https://img.shields.io/badge/React-18-61dafb?logo=react&logoColor=white" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white" />
+  <img alt="Vite" src="https://img.shields.io/badge/Vite-646cff?logo=vite&logoColor=white" />
+  <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind-38bdf8?logo=tailwindcss&logoColor=white" />
+  <img alt="Supabase" src="https://img.shields.io/badge/Supabase-3ecf8e?logo=supabase&logoColor=white" />
+  <img alt="Vercel" src="https://img.shields.io/badge/Deploy-Vercel-000?logo=vercel" />
+</p>
+
+## Sobre
+
+Mesma "vibe" do painel de telemetria: **Vite + React + TypeScript + Tailwind**, **Supabase** (banco Postgres, login Google, storage de imagens) e deploy na **Vercel**. O acesso é restrito à equipe e as permissões também são aplicadas no banco (RLS).
+
+## Destaques
+
+- 📦 **Estoque** com alertas de falta/baixo estoque, busca, filtros, ordenação e visão em **cards** ou **galeria de imagens**.
+- 📋 **Ficha do componente** (clique no card): foto ampliável, descrição completa, link do datasheet, tipos e características.
+- 🔎 **Estado das unidades**: bom / duvidoso / ruim, em bloco (unidades padrão) ou uma a uma (unidades específicas).
+- 🤝 **Empréstimos**: pedido, entrega, devolução, atrasos e histórico, com quem está cada item.
+- 🏷️ **Vários tipos por componente** (ex: LED + **Básico**).
+- 💰 **Orçamento** e **Melhores Preços** (onde já comprou mais barato).
+- 📄 **PDF** do inventário (por tipo) e do orçamento (por status, com total) + **CSV** de tudo.
+- 👥 **Equipe** com cargos Trainee / Membro / Moderador.
+- 🌗 Modo claro e escuro.
+
+## Funcionalidades por aba
 
 | Aba | O que faz |
 |---|---|
-| Resumo | Cards com totais, aviso de itens em falta, unidades por tipo, orçamento em aberto, últimas anotações |
-| Inventário | Cadastro/edição de componentes, busca, filtros (tipo, estoque, condição bom/duvidoso/ruim, empréstimo), ordenação (nome, quantidade, recentes), botões +/− de estoque. **Clique no card** para abrir a ficha completa |
+| Resumo | Cards com totais, aviso de itens em falta, unidades por tipo, empréstimos, orçamento em aberto, últimas anotações |
+| Inventário | Cadastro/edição de componentes, busca, filtros (tipo, estoque, condição bom/duvidoso/ruim, empréstimo), ordenação (nome, quantidade, recentes), botões +/− de estoque, alternância **cards / galeria de imagens**. **Clique no card** para abrir a ficha completa |
 | Alertas | Itens em falta (qtd 0) e com estoque baixo (qtd ≤ mínimo) + botão "Solicitar orçamento" |
 | Diário de Bordo | Anotações de falha / perda / observação, com componente relacionado e desconto opcional do estoque |
-| Empréstimos | Pedidos de empréstimo, o que está emprestado e com quem, e histórico. Qualquer pessoa (inclusive Trainee) pede pelo botão "Pedir emprestado" do card |
-| Orçamento | Lista de compras com preço, fornecedor, link, status e botão "Dar entrada no estoque" |
+| Empréstimos | Pedidos de empréstimo, o que está emprestado e com quem, atrasos e histórico. Qualquer pessoa (inclusive Trainee) pede pelo botão "Pedir emprestado" do card |
+| Orçamento | Lista de compras com preço, fornecedor, link, status, botão "Dar entrada no estoque" e **PDF** para a financeira |
 | Melhores Preços | Onde cada componente já foi comprado e por quanto (o mais barato fica destacado) |
-| Importar/Exportar | Exporta CSV (inventário, diário, orçamento, preços), exporta PDF do inventário (escolhendo os tipos) e importa CSV de componentes (com pré-visualização) |
-| Equipe | Cadastro de quem pode acessar (igual ao painel): Trainee / Membro / Moderador |
-
-Modo escuro/claro no botão do cabeçalho (lembra a escolha).
+| Importar/Exportar | CSV (inventário, diário, orçamento, preços), **PDF do inventário** (escolhendo os tipos), **PDF do orçamento** (escolhendo os status) e importação de CSV de componentes com pré-visualização |
+| Equipe | Cadastro de quem pode acessar: Trainee / Membro / Moderador |
 
 ### Ficha do componente (clique no card)
 - Imagem, descrição completa, link do datasheet, tipos (principal + extras como **Básico**).
@@ -51,6 +80,7 @@ src/
 └─ types/            interfaces TypeScript
 supabase/schema.sql        tabelas + permissões (rodar no SQL Editor)
 supabase/migracao_v2.sql   novidades: ficha, unidades, empréstimos, preços, imagens
+supabase/datasheets.sql    (opcional) preenche o link do datasheet de vários componentes pelo nome
 public/                    ícone do site (favicon.svg e PNGs)
 ```
 
@@ -85,6 +115,9 @@ public/                    ícone do site (favicon.svg e PNGs)
 
 ### 2.1. Atualizando um banco que já existe (v2)
 Se o banco já estava rodando antes das novidades (ficha, unidades, empréstimos, melhores preços, imagens), abra **SQL Editor → New query**, cole o conteúdo de `supabase/migracao_v2.sql` e clique em **Run**. Ele só adiciona colunas/tabelas/permissões (pode rodar mais de uma vez sem problema) e cria o bucket público `componentes` para as imagens. Em instalação nova: rode `schema.sql` e depois `migracao_v2.sql`.
+
+### 2.2. Datasheets em massa (opcional)
+`supabase/datasheets.sql` preenche o link do datasheet de vários componentes de uma vez, casando pelo nome (ignora maiúsculas, acentos e símbolos). Ao final ele mostra quantos foram atualizados e quais nomes não foram encontrados. Edite a lista de `values (...)` para incluir os seus componentes.
 
 ### 3. Testar local
 ```bash
