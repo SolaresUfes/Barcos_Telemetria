@@ -4,10 +4,10 @@
 			"path": "."
 		},
 		{
-			"path": "ESP_Completo"
+			"path": "ESP_Telemetria/ESP_Completo"
 		},
 		{
-			"path": "Lora"
+			"path": "ESP_Telemetria/Lora"
 		}
 	],
 	"settings": {}
