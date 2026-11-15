@@ -1,6 +1,6 @@
 # Frontend de Telemetria — Painel Solares
 
-Site que mostra, em tempo real, os dados do barco solar da equipe Solares (UFES): bateria, células, potências, velocidade e posição GPS. Também grava provas, guarda o histórico e permite que a equipe analise o desempenho depois.
+Site que mostra, em tempo real, os dados do barco solar da equipe Solares (UFES): bateria, células, potências e velocidade. Também grava provas, guarda o histórico e permite que a equipe analise o desempenho depois.
 
 O código do site está na pasta [`painel/`](./painel). Este README explica **o que o site faz e como ele se encaixa no sistema**. Para detalhes de código (estrutura de pastas, hooks, como criar uma aba nova), veja o [README do painel](./painel/README.md).
 
