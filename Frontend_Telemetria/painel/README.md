@@ -1,73 +1,29 @@
-# React + TypeScript + Vite
+# `src/` — código do painel
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Tudo o que é código do site está aqui. Cada pasta tem seu próprio README explicando os arquivos.
 
-Currently, two official plugins are available:
+| Pasta / arquivo | O que tem | Detalhes |
+|---|---|---|
+| [`components/`](./components) | Telas, abas, menus e janelas (a parte visual) | [README](./components/README.md) |
+| [`hooks/`](./hooks) | A lógica do app: login, telemetria, gravação, equipe... | [README](./hooks/README.md) |
+| [`utils/`](./utils) | Funções de cálculo e formatação, sem React | [README](./utils/README.md) |
+| [`types/`](./types) | Tipos TypeScript compartilhados | [README](./types/README.md) |
+| [`lib/`](./lib) | Cliente do Supabase | [README](./lib/README.md) |
+| [`assets/`](./assets) | Imagens usadas pelo código | [README](./assets/README.md) |
+| `App.tsx` | Junta todos os hooks, decide qual tela mostrar e qual aba está ativa | |
+| `main.tsx` | Ponto de entrada: monta o `App` na página | |
+| `index.css` | Importa o Tailwind CSS | |
+| `App.css` | Sobra do template do Vite, não é importado por ninguém | |
+| `vite-env.d.ts` | Tipos do Vite (inclui `import.meta.env`) | |
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Como as peças se conectam
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+main.tsx ─▶ App.tsx ─┬─▶ hooks/        guardam o estado e falam com o backend e o Supabase
+                     ├─▶ utils/        calculam as métricas derivadas
+                     └─▶ components/   recebem tudo pronto por props e só exibem
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+O `App.tsx` chama todos os hooks, junta os resultados num único objeto (`AppContext`, definido em `types/appContext.ts`) e entrega às telas. Os componentes não buscam dados por conta própria: pedem o que precisam via `Pick<AppContext, ...>`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Para ver o que o site faz, leia o [README do Frontend](../../README.md). Para criar uma aba nova, veja o [guia do painel](../README.md#como-criar-uma-aba-nova).
