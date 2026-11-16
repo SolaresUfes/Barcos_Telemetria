@@ -1,8 +1,37 @@
-# Frontend de Telemetria — Painel Solares
+<p align="center">
+  <img src="painel/public/icon.svg" alt="Logo do Painel Solares" width="72" />
+</p>
+
+<h1 align="center">Frontend de Telemetria — Painel Solares</h1>
+
+<p align="center">
+  Painel web de telemetria em tempo real do barco solar da equipe <b>Solares</b> (UFES).<br/>
+  Bateria, células, potências e velocidade ao vivo, gravação de provas, histórico, análise e modo piloto.
+</p>
+
+<p align="center">
+  <img alt="React" src="https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white" />
+  <img alt="Vite" src="https://img.shields.io/badge/Vite-7-646cff?logo=vite&logoColor=white" />
+  <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind-4-38bdf8?logo=tailwindcss&logoColor=white" />
+  <img alt="Supabase" src="https://img.shields.io/badge/Supabase-3ecf8e?logo=supabase&logoColor=white" />
+  <img alt="Vercel" src="https://img.shields.io/badge/Deploy-Vercel-000?logo=vercel" />
+</p>
+
+## Sobre
 
 Site que mostra, em tempo real, os dados do barco solar da equipe Solares (UFES): bateria, células, potências e velocidade. Também grava provas, guarda o histórico e permite que a equipe analise o desempenho depois.
 
 O código do site está na pasta [`painel/`](./painel). Este README explica **o que o site faz e como ele se encaixa no sistema**. Para detalhes de código (estrutura de pastas, hooks, como criar uma aba nova), veja o [README do painel](./painel/README.md).
+
+## Destaques
+
+- 📡 **Ao vivo**: bateria, potência, corrente, velocidade e temperatura das células, atualizados duas vezes por segundo.
+- 🎥 **Gravação de provas**: início → fim, com nome, consulta posterior e exportação em CSV.
+- 📊 **Análise**: gráficos da prova, sobreposição de séries e impressão.
+- 🧑‍✈️ **Modo Piloto**: tela grande e simplificada, com alerta de bateria baixa.
+- 👥 **Equipe**: quem acessa, quem é piloto, quem é moderador e quem está online (com botão **Cutucar**).
+- 🌗 Modo claro e escuro, e manifest para adicionar o site à tela inicial do celular.
 
 ---
 
