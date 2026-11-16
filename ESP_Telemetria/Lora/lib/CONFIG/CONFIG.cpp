@@ -171,7 +171,7 @@ void LORA_definir_modo(LoRaOperatingMode modo) {
  *                       false -> envia comando 0xC2 (salva temporário na RAM).
  * @return true se o módulo respondeu e confirmou todos os registradores; false se falhou.
  */
-bool LORA_configurar_modulo(const LoRaConfig& cfg, bool salvarNaEeprom) {
+bool LORA_configurar_modulo(const LoRaConfig& cfg, bool salvarNaEeprom=false) {
   // PASSO 1: Coloca o módulo no Modo 3 (M0=1, M1=1).
   // Sem isso, o rádio ignora comandos de configuração e transmite os bytes pelo ar.
   LORA_definir_modo(LoRaOperatingMode::ConfigSleep);
