@@ -109,16 +109,52 @@ size_t lerRespostaUart(HardwareSerial& serial, uint8_t* buffer, size_t maxLen, u
 
 
 // ============================================================================
-// SEÇÃO 2: CONTROLE FÍSICO DOS PINOS DE MODO (M0 e M1)
+// SEÇÃO 2: PINO AUX E CONTROLE FÍSICO DOS PINOS DE MODO (M0 e M1)
 // ============================================================================
 
 /**
- * Configura os pinos M0 e M1 do ESP32 como saídas digitais.
- * Os números dos pinos vêm de `include/Config.h` (M0_CONFIG e M1_CONFIG).
+ * Configura o pino AUX como entrada, uma única vez por GPIO.
+ *
+ * Usa INPUT_PULLUP: o AUX do módulo é uma saída ativa, então o pull-up não interfere
+ * quando o fio está ligado. Se o fio soltar, o pino fica em ALTO (= "livre") em vez de
+ * flutuar e gerar leituras aleatórias.
+ *
+ * O controle por "uma vez só" existe porque, no ESP32, reconfigurar o pino com pinMode()
+ * depois de um attachInterrupt() pode desfazer a interrupção (o RECEPTOR usa o AUX em ISR).
+ * Aceita GPIOs de 0 a 63 (o ESP32-S3 vai até o 48).
+ */
+void LORA_iniciar_aux(uint8_t pinoAux) {
+  static uint64_t iniciados = 0;
+  const uint64_t bit = 1ULL << pinoAux;
+  if (iniciados & bit) return;
+
+  pinMode(pinoAux, INPUT_PULLUP);
+  iniciados |= bit;
+}
+
+/**
+ * Espera o AUX ficar ALTO (módulo livre: sem dados pendentes na UART, sem transmissão
+ * em curso, sem autoteste/reset). Retorna true se ficou livre dentro do timeout.
+ */
+bool LORA_aguardar_aux_livre(uint8_t pinoAux, uint32_t timeoutMs) {
+  LORA_iniciar_aux(pinoAux);
+
+  const unsigned long inicio = millis();
+  while (digitalRead(pinoAux) == LOW) {
+    if ((millis() - inicio) >= timeoutMs) return false;
+    yield();
+  }
+  return true;
+}
+
+/**
+ * Configura os pinos M0 e M1 do ESP32 como saídas digitais (e o AUX como entrada).
+ * Os números dos pinos vêm de `include/Config_defs.h` (M0_CONFIG, M1_CONFIG e AUX_CONFIG).
  */
 void LORA_iniciar_pinos_config() {
   pinMode(M0_CONFIG, OUTPUT);
   pinMode(M1_CONFIG, OUTPUT);
+  LORA_iniciar_aux(AUX_CONFIG);
 }
 
 /**
@@ -129,9 +165,20 @@ void LORA_iniciar_pinos_config() {
  *   Modo 1 (WorTransmit): M0 = HIGH, M1 = LOW  -> Envia preâmbulo longo para acordar receptores.
  *   Modo 2 (WorReceive):  M0 = LOW,  M1 = HIGH -> Fica dormindo e acorda periodicamente.
  *   Modo 3 (ConfigSleep): M0 = HIGH, M1 = HIGH -> Desliga o rádio RF e libera configuração via UART.
+ *
+ * A troca é guiada pelo pino AUX:
+ *   1) só mexe em M0/M1 quando o AUX está ALTO (módulo ocioso, sem nada a meio caminho);
+ *   2) depois da troca o módulo derruba o AUX enquanto reinicializa e o sobe de novo quando
+ *      está pronto, então espera o AUX voltar a ALTO antes de devolver o controle.
+ * Se o AUX não responder (fio solto, soldagem ruim), cai no atraso fixo antigo de 50 ms.
  */
 void LORA_definir_modo(LoRaOperatingMode modo) {
   LORA_iniciar_pinos_config();
+
+  // 1) Antes: o módulo precisa estar livre para aceitar a troca de modo.
+  if (!LORA_aguardar_aux_livre(AUX_CONFIG, AUX_TIMEOUT_MODO_MS)) {
+    Serial.println("[AVISO] AUX nao ficou livre antes da troca de modo (fio solto?).");
+  }
 
   switch (modo) {
     case LoRaOperatingMode::Normal:
@@ -152,9 +199,15 @@ void LORA_definir_modo(LoRaOperatingMode modo) {
       break;
   }
 
-  // O microcontrolador interno do módulo LoRa precisa de ~20 a 40 ms para chavear
-  // o circuito de RF e estabilizar a UART após qualquer troca de modo.
-  delay(50);
+  // 2) Depois: dá tempo para o módulo perceber M0/M1 e derrubar o AUX, e então espera
+  // ele terminar de chavear o circuito de RF e estabilizar a UART (AUX volta a ALTO).
+  delay(AUX_ATRASO_TROCA_MS);
+  if (LORA_aguardar_aux_livre(AUX_CONFIG, AUX_TIMEOUT_MODO_MS)) {
+    delay(AUX_ATRASO_POS_MODO_MS);
+  } else {
+    Serial.println("[AVISO] AUX nao subiu apos a troca de modo; usando atraso fixo de 50 ms.");
+    delay(50);
+  }
 }
 
 
