@@ -2,7 +2,7 @@
 
 // Includes necessários
 #include <Arduino.h>
-#include "Config.h"
+#include "CONFIG.h"
 
 
 void LORA_iniciar_modulo_receptor();

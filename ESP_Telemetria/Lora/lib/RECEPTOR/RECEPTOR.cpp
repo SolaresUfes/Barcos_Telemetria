@@ -2,57 +2,7 @@
 
 static int ultimoRSSI = 0;
 
-// ---- AUX (borda de descida = módulo ocupado, subida = livre) ----
-static volatile uint32_t tRise = 0;
-static volatile bool roseFlag = false;
-
-void IRAM_ATTR isrAux() {
-  if (digitalRead(AUX_RECEPTOR)) { tRise = micros(); roseFlag = true; }
-}
-
-// ---- Estratégias: quando mandar o comando de RSSI ----
-// 0 = no primeiro byte do pacote; demais = X microssegundos depois do AUX subir
-static const int N_EST = 8;
-static const uint32_t ATRASO_US[N_EST] = {0, 0, 500, 1000, 2000, 5000, 10000, 30000};
-static const int ESTRATEGIA_FIXA = -1;   // -1 = varre todas; depois do teste, coloque o número vencedor
-static uint16_t tentativas[N_EST] = {0}, acertos[N_EST] = {0};
-static uint32_t contPacotes = 0;
-
-static const uint8_t CMD_RSSI[6] = {0xC0, 0xC1, 0xC2, 0xC3, 0x00, 0x02};
-
-void LORA_iniciar_modulo_receptor(){
-  Serial2.begin(BAUD_MODULOS, SERIAL_8N1, RX_RECEPTOR, TX_RECEPTOR);
-  pinMode(AUX_RECEPTOR, INPUT);
-  attachInterrupt(digitalPinToInterrupt(AUX_RECEPTOR), isrAux, RISING);
-
-  Serial.println("\n=========================================");
-  Serial.println("[BASE - ESP32] RECEPTOR INICIADO (com AUX)");
-  Serial.println("=========================================");
-}
-
-// Procura C1 00 02 <ruído> <rssi> no buffer. true se RSSI do pacote != 0.
-static bool acharFrame(const uint8_t* b, size_t n, int& rssi, int& ruido) {
-  for (size_t i = 0; i + 5 <= n; i++) {
-    if (b[i] == 0xC1 && b[i+1] == 0x00 && b[i+2] == 0x02) {
-      ruido = (int)b[i+3] - 256;
-      if (b[i+4] == 0) return false;
-      rssi = (int)b[i+4] - 256;
-      return true;
-    }
-  }
-  return false;
-}
-
-static void mandarComando() {
-  Serial2.write(CMD_RSSI, sizeof(CMD_RSSI));
-  Serial2.flush();
-}
-
-#include "RECEPTOR.h"
-
-static int ultimoRSSI = 0;
-
-// ---- AUX: borda de subida = módulo livre ----
+// ---- AUX: borda de subida = módulo livre (terminou de despejar o pacote na UART) ----
 static volatile uint32_t tRise = 0;
 static volatile bool roseFlag = false;
 
@@ -76,7 +26,10 @@ static const uint8_t CMD_RSSI[6] = {0xC0, 0xC1, 0xC2, 0xC3, 0x00, 0x02};
 
 void LORA_iniciar_modulo_receptor(){
   Serial2.begin(BAUD_MODULOS, SERIAL_8N1, RX_RECEPTOR, TX_RECEPTOR);
-  pinMode(AUX_RECEPTOR, INPUT);
+
+  // O pino é configurado pelo helper (idempotente) ANTES do attachInterrupt, para que
+  // nenhum pinMode() posterior (ex.: dentro de LORA_configurar_modulo) desfaça a ISR.
+  LORA_iniciar_aux(AUX_RECEPTOR);
   attachInterrupt(digitalPinToInterrupt(AUX_RECEPTOR), isrAux, RISING);
 
   Serial.println("\n=========================================");
@@ -166,11 +119,5 @@ void LORA_printar_pacote() {
 int lerIntensidadePacote() {
   int r = ultimoRSSI;
   ultimoRSSI = 0;   // só devolve valor novo uma vez
-  return r;
-}
-
-int lerIntensidadePacote() {
-  int r = ultimoRSSI;
-  ultimoRSSI = 0;
   return r;
 }
