@@ -2,7 +2,7 @@
 
 Adafruit_NeoPixel led(LEDS, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
-void iniciar_NeoPixel(int intensidade = 30){
+void iniciar_NeoPixel(int intensidade){
     // Cria o objeto led
 
     // Inicializa o objeto led
@@ -15,13 +15,13 @@ void iniciar_NeoPixel(int intensidade = 30){
 
 }
 
-void atualizar_cor_RSSI(int rssi, int rssi_minimo = -120, int rssi_maximo = -30){
+void atualizar_cor_RSSI(int rssi, int rssi_minimo, int rssi_maximo){
     // Mapear o valores do RSSI para um intervalo de 0 a 255
     int RSSI_limitado = constrain(rssi, rssi_minimo, rssi_maximo);                  // Faz os valores lidos do LoRa variarem só entre -120 e -30 (maximos e minimos tabelados no datasheet)
     uint8_t sinal     = map(RSSI_limitado, rssi_minimo, rssi_maximo, 0, 255);       // Converte o valor para uma nova escala de 0 a 255 pra colocar nas entradas do neopixel
 
     // Definição das cores
-    uint32_t red, green, blue = 0; // inicialização em 0 pra atualizar depois
+    uint8_t red, green; // inicialização em 0 pra atualizar depois
 
     /*CONFIGURANDO O DEGRADÊ DE CORES
         Se o sinal for ruim/mediano (entre 0 a 127), fixamos o vermelho no máximo e variamos o verde até chegar no amarelo (ficando de rgb(255,0,0) até rgb(255,255,0) )
@@ -44,7 +44,7 @@ void atualizar_cor_RSSI(int rssi, int rssi_minimo = -120, int rssi_maximo = -30)
     */
 
     // Envia a cor definida pro microship do NeoPixel
-    led.setPixelColor(N, red, green, blue);
+    led.setPixelColor(LED_INDEX, led.Color(red, green, 0));
     led.show();
 }
 

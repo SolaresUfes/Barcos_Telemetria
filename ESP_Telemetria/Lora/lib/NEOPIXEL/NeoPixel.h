@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
-#include "NeoPixel.h"
+#include "NeoPixel_defs.h"
 
 void iniciar_NeoPixel(int intensidade = 30);
 

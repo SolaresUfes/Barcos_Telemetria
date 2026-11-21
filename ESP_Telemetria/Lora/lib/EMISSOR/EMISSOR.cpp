@@ -4,28 +4,21 @@
 // Fio AMARELO (RXD do LoRa) - 15
 // Fio LARANJA (TXD do LoRa) - 16
 
-int contador = 1;
+void LORA_iniciar_modulo_emissor(){
 
-void setup() {
-  Serial.begin(BAUD_SERIAL);
+  Serial2.begin(BAUD_MODULOS, SERIAL_8N1, RX_EMISSOR, TX_EMISSOR);
   
-  // O LoRa está configurado para 9600 bps no ar e na serial
-  LORA_iniciar_modulo_emissor();  
+  Serial.println("\n=========================================");
+  Serial.println("[BARCO - S3] TRANSMISSOR INICIADO");
+  Serial.println("=========================================");
+
 }
 
-void loop() {
-  // Cria um pacote de dados simulando a telemetria do Solares
-  String pacote = "TELEMETRIA_SOLARES | Pacote_ID: " + String(contador);
+void LORA_enviar_pacote(String dados) {
+  // Envia a string pelo rádio LoRa com quebra de linha (\n) no final
+  Serial2.println(dados);
   
-  // Envia a string pelo rádio LoRa
-  Serial2.println(pacote);
-  
-  // Imprime no monitor do PC pra saber o que acabou de sair
+  // Imprime no monitor do PC pra debug
   Serial.print("Transmitindo: ");
-  Serial.println(pacote);
-  
-  contador++;
-  
-  // Aguarda 1 segundo (1000 ms) antes do próximo envio
-  delay(1000); 
+  Serial.println(dados);
 }
