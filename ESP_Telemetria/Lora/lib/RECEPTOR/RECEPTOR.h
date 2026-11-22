@@ -2,17 +2,15 @@
 
 // Includes necessários
 #include <Arduino.h>
-#include "Config.h"
+#include "CONFIG.h"
 
 
-// Funções vinculadas ao EMISSOR
-void LORA_iniciar_modulo_receptor(){
+void LORA_iniciar_modulo_receptor();
 
-  Serial2.begin(BAUD_MODULOS, SERIAL_8N1, RX_RECEPTOR, TX_RECEPTOR);
+static bool tentarRSSI(int& rssi, int& ruido, uint32_t esperaMs);
 
-  Serial.println("\n=========================================");
-  Serial.println("[BASE - ESP32] RECEPTOR INICIADO");
-  Serial.println("=========================================");
-  Serial.println("Aguardando telemetria do barco...\n");
+void LORA_printar_pacote();
 
-}
+void LORA_enviar_pacote(String dados);
+
+int lerIntensidadePacote();

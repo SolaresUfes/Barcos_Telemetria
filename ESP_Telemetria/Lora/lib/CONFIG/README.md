@@ -61,6 +61,7 @@ Lora/
 | **RXD** | `GPIO 17` (`TX_CONFIG`) | Amarelo | Entrada serial do LoRa $\leftarrow$ Saída TX do ESP32 |
 | **M0** | `GPIO 18` (`M0_CONFIG`) | Azul | Seleção de modo de operação (bit 0) |
 | **M1** | `GPIO 19` (`M1_CONFIG`) | Verde | Seleção de modo de operação (bit 1) |
+| **AUX** | `GPIO 8` (`AUX_CONFIG`) | — | Status do módulo: `HIGH` = livre, `LOW` = ocupado |
 | **VCC** | `5V` (`VIN`) | Vermelho | Alimentação principal (suporta picos de $620\text{ mA}$) |
 | **GND** | `GND` | Preto | Referência comum |
 
@@ -72,6 +73,18 @@ Lora/
 | **1** | `0` (`LOW`) | `1` (`HIGH`) | **WOR Transmissor** | Envia preâmbulo longo para acordar receptores em modo economia. |
 | **2** | `1` (`HIGH`) | `0` (`LOW`) | **WOR Receptor** | Rádio dorme e acorda periodicamente para escutar pacotes. |
 | **3** | `1` (`HIGH`) | `1` (`HIGH`) | **Sleep / Configuração** | **RF desligado. UART travada em `9600 bps 8N1` para gravar/ler registradores.** |
+
+### Pino `AUX` (status do módulo)
+
+O `AUX` fica em **`HIGH` quando o módulo está livre** e vai a **`LOW` quando está ocupado**: autoteste ao ligar, reinicialização após trocar `M0`/`M1`, transmissão em curso (ou espera do `LBT`) e despejo de um pacote recebido na UART. O código usa isso assim:
+
+| Onde | O que faz com o `AUX` |
+| :--- | :--- |
+| `LORA_definir_modo()` | Só troca `M0`/`M1` com `AUX` em `HIGH`; depois espera o `AUX` cair e voltar a `HIGH` (+ folga de `AUX_ATRASO_POS_MODO_MS`) em vez de um atraso fixo. |
+| `LORA_enviar_pacote()` (`EMISSOR`) | Espera o `AUX` ficar `HIGH` antes de escrever na UART, para não sobrescrever uma transmissão em andamento. |
+| `LORA_printar_pacote()` (`RECEPTOR`) | A borda de subida do `AUX` marca o fim do pacote na UART; o comando de RSSI é enviado um atraso depois dela. |
+
+Os pinos e tempos ficam em `include/Config_defs.h` (`AUX_CONFIG`, `AUX_RECEPTOR`, `AUX_EMISSOR`, `AUX_TIMEOUT_*`, `AUX_ATRASO_*`). O pino é configurado como `INPUT_PULLUP`; se o fio do `AUX` soltar, o código avisa no Serial e cai no comportamento de antes (atrasos fixos) em vez de travar.
 
 ---
 
